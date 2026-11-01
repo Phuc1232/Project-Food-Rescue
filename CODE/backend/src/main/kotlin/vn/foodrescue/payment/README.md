@@ -1,0 +1,5 @@
+# payment
+
+Thu tiền, xác minh callback, chống trùng và hoàn tiền. Không tin kết quả do app tự gửi.
+
+Khi triển khai, tạo `api/`, `application/`, `domain/`, `persistence/` theo mẫu mô-đun `system`. Chỉ gọi mô-đun khác qua dịch vụ công khai; không truy cập Repository của nhau. Chưa có chức năng nghiệp vụ được triển khai trong thư mục này.

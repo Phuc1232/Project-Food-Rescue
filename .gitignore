@@ -1,0 +1,18 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+local.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+google-services.json
+# Build / IDE
+.gradle/
+.kotlin/
+**/build/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
