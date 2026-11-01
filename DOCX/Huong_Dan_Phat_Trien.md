@@ -22,11 +22,11 @@ Backend dùng kiến trúc phân lớp. Các package nằm trong `vn.foodrescue`
 | `config` | Cấu hình ứng dụng và bảo mật |
 | `exception` | Xử lý lỗi API |
 
-Tạo entity và các lớp nghiệp vụ khi triển khai chức năng cụ thể. Migration nằm tại `CODE/backend/src/main/resources/db/migration`; không sửa migration đã dùng chung, hãy thêm phiên bản mới.
+Tạo entity và các lớp nghiệp vụ khi triển khai chức năng cụ thể. Migration nằm tại `CODE/FoodRescueApi/src/main/resources/db/migration`; không sửa migration đã dùng chung, hãy thêm phiên bản mới.
 
 ## Chạy backend trong IDE
 
-Từ `CODE`, chạy `docker compose up -d postgres`. Mở `CODE/backend` bằng IntelliJ IDEA, chọn JDK 21, đặt biến môi trường `DB_PASSWORD` trùng `POSTGRES_PASSWORD` trong `.env` và chạy `FoodRescueApplication`.
+Từ `CODE`, chạy `docker compose up -d postgres`. Mở `CODE/FoodRescueApi` bằng IntelliJ IDEA, chọn JDK 21, đặt biến môi trường `DB_PASSWORD` trùng `POSTGRES_PASSWORD` trong `.env` và chạy `FoodRescueApplication`.
 
 Không chạy đồng thời backend trong IDE và Docker trên cổng 8080. Nếu cần, dùng `docker compose stop backend`.
 
@@ -34,7 +34,7 @@ Android Emulator gọi `http://10.0.2.2:8080/`. Với điện thoại qua USB: c
 
 ## Kiểm tra
 
-Trong `CODE/backend`:
+Trong `CODE/FoodRescueApi`:
 
 ```powershell
 .\gradlew.bat test bootJar
@@ -42,7 +42,7 @@ Trong `CODE/backend`:
 
 Kiểm thử cơ sở dữ liệu chạy bằng `integrationTest`; cần PostgreSQL và các biến `DB_URL`, `DB_USER`, `DB_PASSWORD` trỏ đến cơ sở dữ liệu kiểm thử riêng. GitHub Actions đã cấu hình bước này.
 
-Trong `CODE/android`:
+Trong `CODE/FoodRescueApp`:
 
 ```powershell
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug

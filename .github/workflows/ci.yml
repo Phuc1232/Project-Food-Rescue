@@ -35,13 +35,13 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Test, migrate PostgreSQL, and package
-        working-directory: CODE/backend
+        working-directory: CODE/FoodRescueApi
         run: ./gradlew test integrationTest bootJar --no-daemon
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-test-reports
-          path: CODE/backend/build/reports/tests/
+          path: CODE/FoodRescueApi/build/reports/tests/
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -59,14 +59,14 @@ jobs:
       - name: Install SDK
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
       - name: Build, unit test, and lint
-        working-directory: CODE/android
+        working-directory: CODE/FoodRescueApp
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: foodrescue-debug-apk
-          path: CODE/android/app/build/outputs/apk/debug/app-debug.apk
+          path: CODE/FoodRescueApp/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-test-reports
-          path: CODE/android/app/build/reports/
+          path: CODE/FoodRescueApp/app/build/reports/

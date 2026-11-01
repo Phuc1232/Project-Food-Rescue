@@ -15,7 +15,7 @@ services:
       timeout: 5s
       retries: 20
   backend:
-    build: ./backend
+    build: ./FoodRescueApi
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-foodrescue}
       DB_USER: ${POSTGRES_USER:-foodrescue}
