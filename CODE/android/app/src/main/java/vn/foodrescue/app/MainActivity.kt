@@ -15,12 +15,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import vn.foodrescue.app.feature.starter.presentation.StarterUiState
-import vn.foodrescue.app.feature.starter.presentation.StarterViewModel
+import vn.foodrescue.app.ui.home.HomeUiState
+import vn.foodrescue.app.ui.home.HomeViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val viewModel: StarterViewModel by viewModels()
+    private val viewModel: HomeViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -35,18 +35,14 @@ class MainActivity : ComponentActivity() {
                             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("Kết nối hệ thống", style = MaterialTheme.typography.titleLarge)
                                 when (val current = state) {
-                                    StarterUiState.Loading -> { CircularProgressIndicator(); Text("Đang kiểm tra máy chủ và cơ sở dữ liệu…") }
-                                    is StarterUiState.Ready -> Text("Đã kết nối ${current.serviceName}. Backend và PostgreSQL đang hoạt động.")
-                                    is StarterUiState.Error -> Text(current.message, color = MaterialTheme.colorScheme.error)
+                                    HomeUiState.Loading -> { CircularProgressIndicator(); Text("Đang kiểm tra máy chủ và cơ sở dữ liệu…") }
+                                    is HomeUiState.Ready -> Text("Đã kết nối ${current.serviceName}. Backend và PostgreSQL đang hoạt động.")
+                                    is HomeUiState.Error -> Text(current.message, color = MaterialTheme.colorScheme.error)
                                 }
-                                Button(onClick = viewModel::refresh, enabled = state !is StarterUiState.Loading) { Text("Kiểm tra lại") }
+                                Button(onClick = viewModel::refresh, enabled = state !is HomeUiState.Loading) { Text("Kiểm tra lại") }
                             }
                         }
-                        Text("Bản khởi tạo dành cho nhóm", style = MaterialTheme.typography.titleLarge)
-                        Text("Màn hình này kiểm tra kết nối thật. Đăng nhập, đặt hộp và thanh toán sẽ được triển khai ở các bước tiếp theo.")
-                        listOf("Khách hàng" to "Tìm hộp, đặt hàng và theo dõi đơn", "Chủ cửa hàng" to "Quản lý cửa hàng, nhân viên và đợt bán", "Nhân viên" to "Đóng gói và bàn giao hộp", "Quản trị viên" to "Xét duyệt, khiếu nại và đối soát").forEach { (title, detail) ->
-                            OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text(title, style = MaterialTheme.typography.titleMedium); Text(detail) } }
-                        }
+
                     }
                 }
             }

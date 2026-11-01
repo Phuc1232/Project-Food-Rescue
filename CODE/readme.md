@@ -1,7 +1,7 @@
 # Mã nguồn FoodRescue
 
-- `android`: giao diện Android bằng Kotlin/Compose.
-- `backend`: REST API Kotlin/Spring Boot.
-- `infrastructure`: PostgreSQL và cấu hình chạy local.
+- `android/`: mở bằng Android Studio.
+- `backend/`: mở bằng IntelliJ IDEA.
+- `compose.yml`: chạy backend và PostgreSQL.
 
-Xem [README gốc](../README.md) để chạy toàn hệ thống.
+Xem [README chính](../README.md) để bắt đầu.

@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
-import vn.foodrescue.system.application.SystemService
+import vn.foodrescue.service.SystemService
 
 @Tag("integration")
 @SpringBootTest

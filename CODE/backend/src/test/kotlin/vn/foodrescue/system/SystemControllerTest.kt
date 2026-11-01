@@ -8,10 +8,10 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import vn.foodrescue.shared.security.SecurityConfig
-import vn.foodrescue.system.api.SystemController
-import vn.foodrescue.system.api.SystemStatus
-import vn.foodrescue.system.application.SystemService
+import vn.foodrescue.config.SecurityConfig
+import vn.foodrescue.controller.SystemController
+import vn.foodrescue.dto.SystemStatus
+import vn.foodrescue.service.SystemService
 
 @WebMvcTest(SystemController::class)
 @Import(SecurityConfig::class)
