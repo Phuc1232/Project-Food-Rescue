@@ -1,0 +1,72 @@
+name: Build and test
+on:
+  push:
+    branches: [master, 'feature/**', 'fix/**']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: foodrescue_test
+          POSTGRES_USER: foodrescue
+          POSTGRES_PASSWORD: ci_test_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U foodrescue -d foodrescue_test"
+          --health-interval=5s --health-timeout=5s --health-retries=15
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/foodrescue_test
+      DB_USER: foodrescue
+      DB_PASSWORD: ci_test_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test, migrate PostgreSQL, and package
+        working-directory: CODE/FoodRescueApi
+        run: ./gradlew test integrationTest bootJar --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-reports
+          path: CODE/FoodRescueApi/build/reports/tests/
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install SDK
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Build, unit test, and lint
+        working-directory: CODE/FoodRescueApp
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foodrescue-debug-apk
+          path: CODE/FoodRescueApp/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-test-reports
+          path: CODE/FoodRescueApp/app/build/reports/
