@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
-import vn.foodrescue.app.ui.auth.AuthFlow
+import vn.foodrescue.app.ui.customer.CustomerApp
 import vn.foodrescue.app.ui.theme.FoodRescueTheme
 
 @AndroidEntryPoint
@@ -19,6 +19,6 @@ class MainActivity : ComponentActivity() {
                 .withEndAction { screen.remove() }.start()
         }
         enableEdgeToEdge()
-        setContent { FoodRescueTheme { AuthFlow() } }
+        setContent { FoodRescueTheme { CustomerApp(startInPreview = BuildConfig.DEBUG && intent.getBooleanExtra("preview_discovery", false)) } }
     }
 }

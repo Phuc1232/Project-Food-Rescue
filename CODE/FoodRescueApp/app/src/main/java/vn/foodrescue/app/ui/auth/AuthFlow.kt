@@ -142,7 +142,7 @@ private fun AuthScreen(s: AuthUiState, vm: AuthViewModel, onPreview: (() -> Unit
                                     }
                                 }
                                 Spacer(Modifier.height(20.dp))
-                                Text(if (s.loginComplete) "Bạn đã hoàn tất luồng đăng nhập trong bản xem thử."
+                                Text(if (s.loginComplete) "Bạn có thể tiếp tục xem giao diện khách hàng bằng dữ liệu mẫu."
                                     else "Bạn có thể quay lại màn hình đăng nhập để tiếp tục.", style = MaterialTheme.typography.bodyLarge)
                             }
                             else -> Unit
