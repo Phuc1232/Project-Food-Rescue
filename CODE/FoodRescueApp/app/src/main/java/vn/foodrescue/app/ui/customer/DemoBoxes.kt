@@ -19,6 +19,7 @@ data class DemoBox(
     val price: Int, val minimumValue: Int, val remaining: Int, val pickup: String,
     val description: String, val allergens: String, val district: String,
     val distanceMeters: Int, val pickupStartHour: Int, val initials: String,
+    val location: StoreLocation? = null,
 )
 
 // Fictional stores and distances for the UI preview; not live inventory.
@@ -49,7 +50,7 @@ val demoBoxes = listOf(
         75000, 180000, 3, "17:00 – 19:00",
         "Hộp kết hợp nhiều nhóm thực phẩm; có thể gồm đồ ăn và đồ uống. Cửa hàng công bố thông tin an toàn, không công bố trước danh sách sản phẩm thực tế.",
         "Có thể chứa lúa mì, sữa, đậu nành, trứng và các loại hạt. Liên hệ cửa hàng nếu bạn có dị ứng.", "Quận 1", 2100, 17, "GN"),
-)
+).map { it.copy(location = previewLocations[it.id]) }
 
 /** Prices are whole VND. Null in DiscoveryFilters means no price restriction. */
 data class PriceRange(val min: Int, val max: Int) {

@@ -36,7 +36,7 @@ internal fun DemoBox.photo() = when (category) {
 @Composable
 internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (String) -> Unit,
     onOpenSearch: () -> Unit, onFilters: () -> Unit, onArea: () -> Unit,
-    onBox: (Int) -> Unit, onReset: () -> Unit) {
+    onMap: () -> Unit, onBox: (Int) -> Unit, onReset: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val largeText = LocalDensity.current.fontScale > 1.2f
     var storeResults by remember { mutableStateOf(false) }
@@ -55,6 +55,9 @@ internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (
                                 }
                             }
                         }
+                    }
+                    Surface(onClick = onMap, color = colors.surface, shape = CircleShape, border = BorderStroke(1.dp, colors.outlineVariant)) {
+                        Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) { CatalogGlyph(CatalogIcon.MAP, tint = colors.primary, description = "Xem bản đồ") }
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

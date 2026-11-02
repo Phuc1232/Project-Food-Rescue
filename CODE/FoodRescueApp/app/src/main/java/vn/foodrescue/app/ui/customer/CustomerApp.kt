@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -32,11 +33,14 @@ fun CustomerApp(startInPreview: Boolean = false) {
     var preview by rememberSaveable { mutableStateOf(BuildConfig.DEBUG && startInPreview) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var boxId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var mapOpen by rememberSaveable { mutableStateOf(false) }
+    var mapSelectedId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var mapViewport by rememberSaveable { mutableStateOf(emptyList<Double>()) }
     var modal by remember { mutableStateOf<String?>(null) }
     val vm: DiscoveryViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler(preview && (boxId != null || tab != 0)) {
-        if (boxId != null) boxId = null else tab = 0
+    BackHandler(preview && (boxId != null || mapOpen || tab != 0)) {
+        if (boxId != null) boxId = null else if (mapOpen) mapOpen = false else tab = 0
     }
     if (!preview) {
         AuthFlow(onPreview = if (BuildConfig.DEBUG) ({ preview = true }) else null)
@@ -45,7 +49,7 @@ fun CustomerApp(startInPreview: Boolean = false) {
     val selected = demoBoxes.find { it.id == boxId }
     val colors = MaterialTheme.colorScheme
     Scaffold(containerColor = colors.background, bottomBar = {
-        if (selected == null) {
+        if (selected == null && !mapOpen) {
             Surface(color = colors.surface, shadowElevation = 2.dp) {
                 NavigationBar(containerColor = colors.surface, tonalElevation = 0.dp) {
                     val labels = listOf("Khám phá", "Tìm kiếm", "Đơn hàng", "Tài khoản")
@@ -59,7 +63,7 @@ fun CustomerApp(startInPreview: Boolean = false) {
                     }
                 }
             }
-        } else Surface(color = colors.surface, shadowElevation = 4.dp) {
+        } else if (selected != null) Surface(color = colors.surface, shadowElevation = 4.dp) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -72,10 +76,13 @@ fun CustomerApp(startInPreview: Boolean = false) {
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             if (selected != null) BoxDetail(selected) { boxId = null }
+            else if (mapOpen) StoreMapScreen(state, mapSelectedId, mapViewport,
+                { mapSelectedId = it }, { mapViewport = it }, { mapOpen = false },
+                { modal = "filters" }, { modal = "area" }, { boxId = it }, vm::reset)
             else key(tab) {
                 when (tab) {
                     0, 1 -> DiscoveryScreen(state, tab == 1, vm::search, { tab = 1 },
-                        { modal = "filters" }, { modal = "area" }, { boxId = it }, vm::reset)
+                        { modal = "filters" }, { modal = "area" }, { mapOpen = true }, { boxId = it }, vm::reset)
                     2 -> CatalogEmpty("Đơn hàng của bạn", "Bản xem thử chưa có đơn hàng. Bạn có thể khám phá các hộp mẫu trước.", "Khám phá", { tab = 0 })
                     3 -> Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                         Text("Tài khoản", style = MaterialTheme.typography.headlineLarge)
@@ -182,6 +189,8 @@ private fun AreaSheet(current: String, onSelect: (String) -> Unit) {
 @Composable
 private fun BoxDetail(box: DemoBox, onBack: () -> Unit) {
     val c = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    var directions by remember { mutableStateOf(false) }
     LazyColumn(contentPadding = PaddingValues(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         item { Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { CatalogGlyph(CatalogIcon.BACK, description = "Quay lại khám phá") }
@@ -201,6 +210,14 @@ private fun BoxDetail(box: DemoBox, onBack: () -> Unit) {
                     Column { Text("Nhận tại cửa hàng", fontWeight = FontWeight.SemiBold);Text("Hôm nay · ${box.pickup}", style = MaterialTheme.typography.bodyMedium) }
                 }
             }
+            box.location?.let { location ->
+                Text("Địa điểm nhận hộp", style = MaterialTheme.typography.titleSmall)
+                Text(location.address, style = MaterialTheme.typography.bodyMedium)
+                if (location.isPreview) Text("Địa điểm mẫu, chưa phải cửa hàng đã xác minh.", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                OutlinedButton(onClick = { if (location.isPreview) directions = true else openDirections(context, location) }) {
+                    Text("Chỉ đường đến cửa hàng")
+                }
+            }
             Text("Giá trị thực phẩm tối thiểu", style = MaterialTheme.typography.titleSmall)
             Text("${money(box.minimumValue)} cho mỗi hộp. Thành phần và số lượng từng món không được công bố trước.", style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider(color = c.outlineVariant)
@@ -209,11 +226,14 @@ private fun BoxDetail(box: DemoBox, onBack: () -> Unit) {
             Text("Bản xem thử · Ảnh không thể hiện chính xác các món sẽ có trong hộp.", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
         } }
     }
+    if (directions) box.location?.let { location ->
+        PreviewDirectionsDialog(onOpen = { directions = false; openDirections(context, location) }, onDismiss = { directions = false })
+    }
 }
 
 @Preview(name = "Khám phá · compact", widthDp = 360, heightDp = 800, showBackground = true)
 @Preview(name = "Khám phá · large text", widthDp = 360, heightDp = 800, fontScale = 1.5f, showBackground = true)
 @Composable
 private fun DiscoveryPreview() { FoodRescueTheme {
-    DiscoveryScreen(DiscoveryState(), false, {}, {}, {}, {}, {}, {})
+    DiscoveryScreen(DiscoveryState(), false, {}, {}, {}, {}, {}, {}, {})
 } }
