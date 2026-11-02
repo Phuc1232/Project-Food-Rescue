@@ -35,7 +35,7 @@ internal fun DemoBox.photo() = when (category) {
 
 @Composable
 internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (String) -> Unit,
-    onOpenSearch: () -> Unit,
+    onOpenSearch: () -> Unit, onFilters: () -> Unit, onArea: () -> Unit,
     onBox: (Int) -> Unit, onReset: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val largeText = LocalDensity.current.fontScale > 1.2f
@@ -43,10 +43,19 @@ internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (
     LazyColumn(contentPadding = PaddingValues(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Column(Modifier.padding(horizontal = 24.dp).padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("KHU VỰC NHẬN HỘP", fontSize = 9.sp, lineHeight = 14.sp,
-                        letterSpacing = 1.sp, color = colors.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                    Text(s.district, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(onClick = onArea, color = Color.Transparent, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
+                        Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CatalogGlyph(CatalogIcon.PIN, Modifier.size(20.dp), colors.primary)
+                            Column(Modifier.weight(1f)) {
+                                Text("KHU VỰC NHẬN HỘP", fontSize = 9.sp, lineHeight = 14.sp, letterSpacing = 1.sp, color = colors.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(s.district, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    CatalogGlyph(CatalogIcon.CHEVRON, Modifier.size(17.dp))
+                                }
+                            }
+                        }
+                    }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(if (searchMode) "Tìm kiếm" else "Khám phá", Modifier.semantics { heading() }, fontSize = if (largeText) 26.sp else 30.sp,
@@ -73,6 +82,13 @@ internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (
                             }
                         }
                     }
+                    Surface(onClick = onFilters, color = if (s.filters.activeCount > 0) colors.primaryContainer else colors.surface,
+                        shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, colors.outlineVariant)) {
+                        Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
+                            CatalogGlyph(CatalogIcon.FILTER, tint = colors.primary, description = "Bộ lọc")
+                            if (s.filters.activeCount > 0) Badge(Modifier.align(Alignment.TopEnd).padding(4.dp), containerColor = colors.primary) { Text(s.filters.activeCount.toString()) }
+                        }
+                    }
                 }
             }
         }
@@ -89,8 +105,18 @@ internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (
                 Text("${s.boxes.size} ${if (searchMode && storeResults) "nơi" else "hộp"}", fontSize = 12.sp, color = colors.onSurfaceVariant)
             }
         }
+        if (s.filters.activeCount > 0) item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(listOfNotNull(s.filters.category?.label,
+                    s.filters.price?.let { "${money(it.min)} – ${money(it.max)}" },
+                    s.filters.pickup.takeIf { it != PickupBand.ALL }?.label,
+                    s.filters.sort.takeIf { it != CatalogSort.NEAREST }?.label).joinToString(" · "),
+                    Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                TextButton(onClick = onReset) { Text("Đặt lại") }
+            }
+        }
         if (s.boxes.isEmpty()) item {
-            CatalogEmpty("Chưa tìm thấy hộp phù hợp", "Thử tên cửa hàng hoặc nhóm thực phẩm khác.", "Xóa tìm kiếm", onReset)
+            CatalogEmpty("Chưa tìm thấy hộp phù hợp", "Thử từ khóa khác, đổi khu vực hoặc điều chỉnh bộ lọc.", "Xóa tìm kiếm và bộ lọc", onReset)
         }
         items(s.boxes, key = { it.id }) { box ->
             if (searchMode && storeResults) StoreResult(box) { onBox(box.id) }

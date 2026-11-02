@@ -3,6 +3,7 @@ package vn.foodrescue.app.ui.customer
 import java.text.Normalizer
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.roundToInt
 
 enum class BoxCategory(val label: String) {
     BAKERY("Bánh & đồ ngọt"),
@@ -50,11 +51,45 @@ val demoBoxes = listOf(
         "Có thể chứa lúa mì, sữa, đậu nành, trứng và các loại hạt. Liên hệ cửa hàng nếu bạn có dị ứng.", "Quận 1", 2100, 17, "GN"),
 )
 
+/** Prices are whole VND. Null in DiscoveryFilters means no price restriction. */
+data class PriceRange(val min: Int, val max: Int) {
+    init { require(min >= 0 && max >= min) }
+    operator fun contains(price: Int) = price in min..max
+}
+const val PRICE_STEP = 1_000
+fun catalogPriceCeiling(catalog: List<DemoBox> = demoBoxes): Int {
+    val highest = (catalog.maxOfOrNull { it.price } ?: 0).coerceAtLeast(100_000)
+    return (((highest.toLong() + 49_999) / 50_000) * 50_000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+}
+fun selectedPriceRange(start: Float, end: Float, ceiling: Int): PriceRange? {
+    fun snap(value: Float) = ((value.coerceIn(0f, ceiling.toFloat()) / PRICE_STEP).roundToInt().toLong() * PRICE_STEP)
+        .coerceIn(0, ceiling.toLong()).toInt()
+    val first = snap(start)
+    val second = snap(end)
+    val low = minOf(first, second)
+    val high = maxOf(first, second)
+    return if (low == 0 && high == ceiling) null else PriceRange(low, high)
+}
+enum class PickupBand(val label: String) { ALL("Mọi khung giờ"), BEFORE_18("Bắt đầu trước 18:00"), FROM_18("Bắt đầu từ 18:00") }
+enum class CatalogSort(val label: String) { NEAREST("Gần nhất"), PRICE("Giá thấp nhất") }
+data class DiscoveryFilters(val category: BoxCategory? = null, val price: PriceRange? = null,
+    val pickup: PickupBand = PickupBand.ALL, val sort: CatalogSort = CatalogSort.NEAREST) {
+    val activeCount: Int get() = (if (category != null) 1 else 0) + (if (price != null) 1 else 0) + (if (pickup != PickupBand.ALL) 1 else 0) + (if (sort != CatalogSort.NEAREST) 1 else 0)
+}
 fun money(value: Int): String = NumberFormat.getIntegerInstance(Locale.forLanguageTag("vi-VN")).format(value) + " đ"
 fun distance(meters: Int): String = String.format(Locale.forLanguageTag("vi-VN"), "%.1f km", meters / 1000.0)
 private fun String.searchKey() = Normalizer.normalize(lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
     .replace("\\p{M}+".toRegex(), "")
-fun searchCatalog(query: String, catalog: List<DemoBox> = demoBoxes): List<DemoBox> =
-    catalog.filter {
-        (it.name + " " + it.store + " " + it.category.label).searchKey().contains(query.trim().searchKey())
-    }.sortedBy { it.distanceMeters }
+fun filterCatalog(query: String, district: String, filters: DiscoveryFilters, catalog: List<DemoBox> = demoBoxes): List<DemoBox> {
+    val result = catalog.filter {
+        (district == "TP. Hồ Chí Minh" || it.district == district) &&
+        (filters.category == null || it.category == filters.category) &&
+        (it.name + " " + it.store + " " + it.category.label).searchKey().contains(query.trim().searchKey()) &&
+        (filters.price == null || it.price in filters.price) && when (filters.pickup) {
+            PickupBand.ALL -> true
+            PickupBand.BEFORE_18 -> it.pickupStartHour < 18
+            PickupBand.FROM_18 -> it.pickupStartHour >= 18
+        }
+    }
+    return if (filters.sort == CatalogSort.PRICE) result.sortedBy { it.price } else result.sortedBy { it.distanceMeters }
+}
