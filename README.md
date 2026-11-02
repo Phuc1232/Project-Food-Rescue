@@ -54,7 +54,9 @@ Các chức năng dưới đây là **phạm vi dự kiến**, chưa được tr
 | Nhân viên | Đóng gói, bàn giao hộp và ghi nhận khách không đến nhận |
 | Quản trị viên | Xét duyệt cửa hàng, xử lý khiếu nại, hoàn tiền và đối soát |
 
-**Đã có:** màn hình kiểm tra kết nối Android → API → PostgreSQL, migration cơ sở dữ liệu, kiểm thử và GitHub Actions.
+**Đã có:** giao diện mở đầu, đăng ký, xác minh email, đăng nhập và khôi phục mật khẩu; bộ khung API → PostgreSQL, migration cơ sở dữ liệu, kiểm thử và GitHub Actions.
+
+Luồng tài khoản hiện dùng dữ liệu mô phỏng trong bản debug, chưa gửi email hoặc tạo tài khoản thật. Bản release báo dịch vụ chưa sẵn sàng. Xem [hướng dẫn chạy thử](CODE/FoodRescueApp/AUTH_PREVIEW.md).
 
 ## Cài đặt và chạy
 
@@ -76,7 +78,7 @@ Kiểm tra API tại `http://localhost:8080/api/v1/system/status`. Kết quả c
 2. Chọn Gradle JDK 21, cài Android SDK 36 và Build Tools 35.0.0.
 3. Chờ Gradle sync, chọn Android Emulator API 26 trở lên và nhấn **Run**.
 
-App sử dụng `http://10.0.2.2:8080/` để kết nối máy chủ trên máy tính. Màn hình hiển thị kết quả kết nối và cho phép thử lại.
+App mở màn hình chào và luồng tài khoản. Có thể chạy thử giao diện mà không cần bật backend. Cấu hình API mặc định cho máy ảo là `http://10.0.2.2:8080/`; luồng tài khoản chưa sử dụng API này.
 
 ## Tài liệu
 

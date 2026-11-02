@@ -1,0 +1,11 @@
+<resources>
+    <string name="welcome_title">Ăn ngon, tiết kiệm.</string>
+    <string name="welcome_title_accent">Cùng giảm lãng phí.</string>
+    <string name="welcome_description">Hộp thực phẩm bất ngờ với giá ưu đãi từ cửa hàng gần bạn.</string>
+    <string name="welcome_pickup_hint">Đặt trước · Nhận tại cửa hàng</string>
+    <string name="welcome_register">Tạo tài khoản</string>
+    <string name="welcome_login_prompt">Đã có tài khoản?\u0020</string>
+    <string name="welcome_login">Đăng nhập</string>
+    <string name="welcome_preview">Xem thử giao diện khách hàng</string>
+    <string name="welcome_more">Tùy chọn bản phát triển</string>
+</resources>

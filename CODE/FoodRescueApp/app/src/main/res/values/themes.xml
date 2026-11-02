@@ -3,4 +3,11 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
+    <style name="Theme.FoodRescue.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#00665E</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_foodrescue_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.FoodRescue</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#00665E</item>
+    </style>
 </resources>
