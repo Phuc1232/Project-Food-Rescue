@@ -54,7 +54,7 @@ Các chức năng dưới đây là **phạm vi dự kiến**, chưa được tr
 | Nhân viên | Đóng gói, bàn giao hộp và ghi nhận khách không đến nhận |
 | Quản trị viên | Xét duyệt cửa hàng, xử lý khiếu nại, hoàn tiền và đối soát |
 
-**Đã có:** màn hình kiểm tra kết nối Android → API → PostgreSQL, migration cơ sở dữ liệu, kiểm thử và GitHub Actions.
+**Đã có:** giao diện khách hàng gồm Khám phá, tìm kiếm/lọc, Đã lưu và Chi tiết hộp với dữ liệu minh họa. Backend có API kiểm tra kết nối PostgreSQL, migration, kiểm thử và GitHub Actions. Chưa có đăng nhập hoặc giao dịch thật.
 
 ## Cài đặt và chạy
 
@@ -76,12 +76,13 @@ Kiểm tra API tại `http://localhost:8080/api/v1/system/status`. Kết quả c
 2. Chọn Gradle JDK 21, cài Android SDK 36 và Build Tools 35.0.0.
 3. Chờ Gradle sync, chọn Android Emulator API 26 trở lên và nhấn **Run**.
 
-App sử dụng `http://10.0.2.2:8080/` để kết nối máy chủ trên máy tính. Màn hình hiển thị kết quả kết nối và cho phép thử lại.
+App mở màn Khám phá với dữ liệu minh họa, có thể xem giao diện khi chưa chạy backend. Cấu hình API debug cho emulator vẫn là `http://10.0.2.2:8080/`; giao diện khách hàng chưa lấy danh sách hộp từ API.
 
 ## Tài liệu
 
 | Tài liệu | Nội dung |
 | --- | --- |
+| [Giao diện khách hàng](DOCX/Giao_Dien_Khach_Hang.md) | Phạm vi bản mẫu, component dùng chung và cách kiểm tra |
 | [Hướng dẫn phát triển](DOCX/Huong_Dan_Phat_Trien.md) | Tổ chức code, chạy trong IDE, kiểm thử và quy tắc đóng góp |
 
 Không đưa `.env`, `local.properties`, mật khẩu hoặc khóa ký ứng dụng vào Git. Nhóm phát triển trên nhánh riêng và review PR trước khi merge vào `master`.
