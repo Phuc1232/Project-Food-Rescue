@@ -1,128 +1,95 @@
 package vn.foodrescue.app.ui.customer
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CheckoutScreen(box: DemoBox, vm: CustomerViewModel, onBack: () -> Unit, onOrder: (String) -> Unit) {
     var count by rememberSaveable(box.id) { mutableIntStateOf(1) }
-    var plan by rememberSaveable { mutableStateOf(PaymentPlan.FULL) }
-    var method by rememberSaveable { mutableStateOf(PaymentMethod.CARD) }
-    var accepted by rememberSaveable { mutableStateOf(false) }
+    var plan by rememberSaveable(box.id) { mutableStateOf(PaymentPlan.FULL) }
+    var method by rememberSaveable(box.id) { mutableStateOf(PaymentMethod.VNPAY_QR) }
+    var accepted by rememberSaveable(box.id) { mutableStateOf(false) }
+    var methodOpen by rememberSaveable { mutableStateOf(false) }
     var policyOpen by rememberSaveable { mutableStateOf(false) }
     val pickupStart = rememberSaveable(box.id) { previewPickup(box, System.currentTimeMillis()).first }
     val pickup = pickupStart to pickupStart + 2 * 60 * 60_000L
     val available = vm.available(box, pickup.first)
     val policy = remember { OrderPolicy() }
     val total = box.price.toLong() * count
-    val payNow = if (plan == PaymentPlan.FULL) total else policy.deposit(total)
+    val deposit = policy.deposit(total)
+    val payNow = if (plan == PaymentPlan.FULL) total else deposit
     CustomerPage("Xác nhận đặt hộp", onBack, footer = {
-        AmountRow("Trả qua ứng dụng", payNow, true)
-        Spacer(Modifier.height(10.dp))
-        PrimaryAction("Tiếp tục thanh toán", accepted && count <= available) {
+        PaymentFooter(payNow, "Tiếp tục", accepted && count <= available, total - payNow) {
             vm.place(box, count, plan, method, pickup)?.let(onOrder)
         }
     }) {
-        PreviewNotice()
-        CustomerCard { OrderBoxSummary(box)
-            HorizontalDivider()
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.weight(1f)) { Text("Số lượng", style = MaterialTheme.typography.titleSmall); Text("Còn $available hộp", style = MaterialTheme.typography.bodySmall) }
-                OutlinedButton(onClick = { count-- }, enabled = count > 1, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(48.dp)) { Text("−", fontSize = 22.sp) }
-                Text(count.toString(), Modifier.padding(horizontal = 18.dp), fontWeight = FontWeight.Bold)
-                OutlinedButton(onClick = { count++ }, enabled = count < available, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(48.dp)) { Text("+", fontSize = 22.sp) }
+        PaymentPreviewLabel()
+        CheckoutSummary(box, count, available, pickup.first, pickup.second, { count-- }, { count++ })
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PaymentSectionTitle("Chọn khoản thanh toán")
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PaymentPlanOption("Trả toàn bộ", total, "Đến nhận hộp, không cần trả thêm.", plan == PaymentPlan.FULL) { plan = PaymentPlan.FULL }
+                PaymentPlanOption("Đặt cọc ${policy.depositPercent}%", deposit, "Còn ${money(total - deposit)} trả tại cửa hàng.", plan == PaymentPlan.DEPOSIT) { plan = PaymentPlan.DEPOSIT }
             }
-            if (available == 0) Text("Hộp vừa hết. Quay lại khám phá để chọn hộp khác.", color = MaterialTheme.colorScheme.error)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PaymentSectionTitle("Phương thức thanh toán")
+            SelectedPaymentMethod(method) { methodOpen = true }
         }
         CustomerCard {
-            Text("Đến cửa hàng nhận hộp", style = MaterialTheme.typography.titleMedium)
-            Text(orderTime(pickup.first) + " – " + orderTime(pickup.second).substringBefore(" ·"), style = MaterialTheme.typography.bodyLarge)
-            Text(box.location?.address ?: box.district, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Khung giờ của đợt mẫu; không có dịch vụ giao hàng.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text("Bạn muốn thanh toán thế nào?", style = MaterialTheme.typography.titleMedium)
-        SelectionCard("Trả toàn bộ · ${money(total)}", "Đến nhận hộp, không cần trả thêm.", plan == PaymentPlan.FULL) { plan = PaymentPlan.FULL }
-        SelectionCard("Đặt cọc ${policy.depositPercent}% · ${money(policy.deposit(total))}", "Còn ${money(total - policy.deposit(total))} trả tại cửa hàng khi nhận.", plan == PaymentPlan.DEPOSIT) { plan = PaymentPlan.DEPOSIT }
-        Text("Phương thức thanh toán", style = MaterialTheme.typography.titleMedium)
-        PaymentMethod.entries.forEach { option -> SelectionCard(option.label, "Qua cổng thanh toán của FoodRescue", method == option) { method = option } }
-        CustomerCard {
+            PaymentSectionTitle("Chi tiết số tiền")
             AmountRow("${money(box.price)} × $count hộp", total)
-            AmountRow("Trả qua ứng dụng", payNow, true)
-            AmountRow("Trả tại cửa hàng", total - payNow)
-            Text("Thanh toán khoản trả trước qua FoodRescue. Phần còn lại, nếu có, trả tại cửa hàng khi nhận hộp.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            AmountRow(if (plan == PaymentPlan.DEPOSIT) "Đặt cọc hôm nay" else "Trả toàn bộ hôm nay", payNow, true)
+            AmountRow("Trả khi nhận hộp", total - payNow)
         }
-        CustomerCard {
-            Text("Trước khi đặt", style = MaterialTheme.typography.titleMedium)
-            Text("• Giữ hộp ${policy.holdMinutes} phút kể từ khi tiếp tục thanh toán.\n• Hủy hợp lệ trước giờ nhận: hoàn toàn bộ khoản đã trả qua ứng dụng.\n• Món cụ thể được giữ bí mật; vui lòng xem kỹ thông tin dị ứng.", style = MaterialTheme.typography.bodyMedium)
-            Text(box.allergens, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = { policyOpen = !policyOpen }) { Text(if (policyOpen) "Thu gọn chính sách" else "Xem chính sách không đến nhận") }
-            if (policyOpen) Text("Nếu được xác minh không đến nhận, khoản giữ lại là ${money(policy.deposit(total))} dù bạn trả toàn bộ hay đặt cọc. Phần vượt khoản này được hoàn; bạn không phải trả thêm. Bạn có thể phản ánh trong 48 giờ từ khi nhận thông báo. Tỷ lệ cọc ${policy.depositPercent}% đang là cấu hình minh họa, chưa phải chính sách phát hành.", style = MaterialTheme.typography.bodySmall)
-            Row(verticalAlignment = Alignment.Top) {
-                Checkbox(accepted, { accepted = it })
-                Text("Tôi đã xem giờ nhận, thông tin dị ứng và chính sách của đơn.", Modifier.padding(top = 10.dp).weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                CatalogGlyph(CatalogIcon.CLOCK, Modifier.size(18.dp), MaterialTheme.colorScheme.primary)
+                Text("Hộp được giữ ${policy.holdMinutes} phút từ bước tiếp theo.", fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = { policyOpen = true }, contentPadding = PaddingValues(0.dp)) {
+                Text("Xem chính sách và thông tin dị ứng", fontSize = 12.sp)
+            }
+            Row(Modifier.fillMaxWidth().toggleable(value = accepted, role = Role.Checkbox, onValueChange = { accepted = it }).padding(vertical = 8.dp),
+                verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Checkbox(accepted, onCheckedChange = null, modifier = Modifier.padding(top = 2.dp).size(24.dp))
+                Text("Tôi đồng ý với giờ nhận, thông tin dị ứng và chính sách của đơn.", Modifier.weight(1f), fontSize = 12.sp, lineHeight = 19.sp)
             }
         }
     }
-}
-
-@Composable
-internal fun PaymentScreen(order: CustomerOrder, now: Long, vm: CustomerViewModel, onBack: () -> Unit, onDetails: () -> Unit) {
-    var scenario by rememberSaveable(order.id) { mutableStateOf(PreviewPaymentResult.SUCCESS) }
-    var scenariosOpen by rememberSaveable { mutableStateOf(false) }
-    val awaiting = order.status == OrderStatus.WAITING && order.payment == PaymentStatus.NOT_STARTED
-    val checking = order.payment == PaymentStatus.CHECKING
-    val seconds = ((order.holdUntil - now).coerceAtLeast(0) / 1000)
-    val title = when {
-        order.payment == PaymentStatus.LATE -> "Khoản thanh toán đến muộn"
-        order.status == OrderStatus.CONFIRMED -> "Hộp của bạn đã được xác nhận"
-        order.status == OrderStatus.EXPIRED -> "Đã hết thời gian giữ hộp"
-        checking -> "Đang xác nhận thanh toán"
-        order.payment == PaymentStatus.FAILED -> "Thanh toán chưa thành công"
-        order.status == OrderStatus.CANCELLED -> "Đã dừng lượt thanh toán"
-        else -> "Hoàn tất thanh toán"
-    }
-    CustomerPage("Thanh toán", onBack, footer = {
-        if (awaiting) PrimaryAction("Thanh toán thử ${money(order.payNow)}") { vm.pay(order.id, scenario) }
-        else PrimaryAction("Xem chi tiết đơn", onClick = onDetails)
-    }) {
-        PreviewNotice("Thanh toán mô phỏng · Không nhập thẻ, không chuyển tiền thật")
-        CustomerCard {
-            if (checking) CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-            else CatalogGlyph(if (order.status == OrderStatus.CONFIRMED) CatalogIcon.CHECK else CatalogIcon.RECEIPT, Modifier.size(32.dp), MaterialTheme.colorScheme.primary)
-            Text(title, style = MaterialTheme.typography.headlineSmall)
-            Text(when {
-                order.payment == PaymentStatus.LATE -> "Đơn đã kết thúc nên không được khôi phục. Khoản đã nhận được chuyển xử lý hoàn tiền."
-                order.status == OrderStatus.CONFIRMED -> "Bạn có thể xem mã nhận hàng và khung giờ trong chi tiết đơn."
-                checking -> "Bạn có thể rời màn hình này và theo dõi ở Đơn hàng. Chưa có kết quả không có nghĩa là thất bại; đừng thanh toán thêm lần nữa."
-                order.status == OrderStatus.EXPIRED -> "Hộp đã được giải phóng. Nếu giao dịch đến sau, hệ thống sẽ kiểm tra và xử lý hoàn tiền."
-                order.status == OrderStatus.CANCELLED -> "Đơn chưa được xác nhận. Bạn có thể quay lại khám phá để đặt lượt mới."
-                else -> "Hoàn tất khoản trả trước để xác nhận hộp."
-            }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (order.status == OrderStatus.WAITING) Text("Giữ hộp còn ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+    if (methodOpen) PaymentMethodSheet(method, { method = it; methodOpen = false }, { methodOpen = false })
+    if (policyOpen) ModalBottomSheet(onDismissRequest = { policyOpen = false },
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Text("Trước khi đặt hộp", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            PaymentSectionTitle("Nhận tại cửa hàng")
+            Text("Đến nhận trong khung giờ đã chọn. Món cụ thể được giữ bí mật đến khi nhận hộp.", style = MaterialTheme.typography.bodyMedium)
+            PaymentSectionTitle("Thông tin dị ứng")
+            Text(box.allergens, style = MaterialTheme.typography.bodyMedium)
+            PaymentSectionTitle("Hủy và hoàn tiền")
+            Text("Hủy hợp lệ trước giờ nhận: hoàn toàn bộ khoản đã trả qua ứng dụng. Sau giờ nhận, yêu cầu cần được xem xét. Kết quả hoàn tiền được theo dõi riêng trong chi tiết đơn.", style = MaterialTheme.typography.bodyMedium)
+            PaymentSectionTitle("Không đến nhận hộp")
+            Text("Nếu được xác minh không đến nhận, khoản giữ lại là ${money(deposit)} dù bạn trả toàn bộ hay đặt cọc. Phần vượt khoản này được hoàn và bạn không phải trả thêm. Bạn có thể phản ánh trong 48 giờ từ khi nhận thông báo.", style = MaterialTheme.typography.bodyMedium)
+            Text("Cọc ${policy.depositPercent}% và giữ hộp ${policy.holdMinutes} phút là cấu hình của bản thử, chưa phải chính sách phát hành.",
+                fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            PrimaryAction("Đã hiểu") { policyOpen = false }
         }
-        CustomerCard {
-            OrderBoxSummary(order.box, order.quantity)
-            HorizontalDivider()
-            AmountRow("Tổng đơn", order.total)
-            AmountRow("${order.plan.label} qua ứng dụng", order.payNow, true)
-            Text("${order.method.label} · Cổng thanh toán thử", style = MaterialTheme.typography.bodySmall)
-            if (order.plan == PaymentPlan.DEPOSIT) AmountRow("Dự kiến trả khi nhận", order.total - order.payNow)
-        }
-        if (awaiting) {
-            TextButton(onClick = { scenariosOpen = !scenariosOpen }) { Text("Tình huống thử thanh toán") }
-            if (scenariosOpen) PreviewPaymentResult.entries.forEach { option ->
-                SelectionCard(option.label, "Chỉ áp dụng cho bản trải nghiệm", option == scenario) { scenario = option }
-            }
-            TextButton(onClick = { vm.stopPayment(order.id) }, modifier = Modifier.fillMaxWidth()) { Text("Dừng thanh toán") }
-        }
-        if (checking) OutlinedButton(onClick = { vm.checkPending(order.id) }, modifier = Modifier.fillMaxWidth()) { Text("Nhận kết quả thử từ cổng thanh toán") }
-        if (order.refundStatus != RefundStatus.NONE) CustomerCard { AmountRow("Khoản được xử lý hoàn", order.refundDue, true); Text(order.refundStatus.label) }
     }
 }

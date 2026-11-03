@@ -21,7 +21,13 @@ internal data class OrderPolicy(val depositPercent: Int = 30, val holdMinutes: I
         .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP).longValueExact()
 }
 internal enum class PaymentPlan(val label: String) { FULL("Trả toàn bộ"), DEPOSIT("Đặt cọc") }
-internal enum class PaymentMethod(val label: String) { CARD("Thẻ ngân hàng"), WALLET("Ví điện tử") }
+// Keep CARD/WALLET names readable by previously saved preview orders.
+internal enum class PaymentMethod(val label: String, val description: String, val provider: String) {
+    VNPAY_QR("VNPAY-QR", "Ứng dụng ngân hàng hỗ trợ VNPAY", "VNPAY"),
+    WALLET("Ví MoMo", "Thanh toán bằng ứng dụng MoMo", "MoMo"),
+    CARD("Thẻ ATM nội địa", "Thẻ ngân hàng nội địa qua VNPAY", "VNPAY"),
+    INTERNATIONAL_CARD("Visa / Mastercard", "Thẻ quốc tế qua VNPAY", "VNPAY")
+}
 internal enum class OrderStatus(val label: String) {
     WAITING("Chờ thanh toán"), CONFIRMED("Đã xác nhận"), COMPLETED("Đã nhận hộp"),
     CANCELLED("Đã hủy"), EXPIRED("Hết hạn thanh toán"), VERIFY_PICKUP("Chờ xác minh nhận hàng"), NO_SHOW("Không đến nhận")
