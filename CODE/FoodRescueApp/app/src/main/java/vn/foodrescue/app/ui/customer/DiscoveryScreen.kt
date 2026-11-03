@@ -131,7 +131,8 @@ internal fun DiscoveryScreen(s: DiscoveryState, searchMode: Boolean, onSearch: (
                 Text("Món cụ thể trong hộp được giữ bí mật. Hãy xem thông tin dị ứng trước khi đặt.", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
         }
-        item { Text("Bản xem thử · Cửa hàng, tồn kho và khoảng cách là dữ liệu mẫu.", Modifier.padding(horizontal = 24.dp), fontSize = 10.sp, lineHeight = 15.sp, color = colors.onSurfaceVariant) }
+        item { Text(if (s.point != null) "Bản xem thử · Cửa hàng và tồn kho là dữ liệu mẫu. Khoảng cách đường chim bay tính từ vị trí thiết bị đến tọa độ cửa hàng mẫu; không phải quãng đường di chuyển."
+            else "Bản xem thử · Cửa hàng và tồn kho là dữ liệu mẫu. Chọn dùng vị trí hiện tại để tính khoảng cách.", Modifier.padding(horizontal = 24.dp), fontSize = 10.sp, lineHeight = 15.sp, color = colors.onSurfaceVariant) }
     }
 }
 

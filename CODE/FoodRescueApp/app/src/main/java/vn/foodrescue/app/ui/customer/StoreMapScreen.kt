@@ -50,6 +50,7 @@ internal fun StoreMapScreen(
     var load by remember { mutableStateOf(MapLoadState.LOADING) }
     var retry by remember { mutableIntStateOf(0) }
     var fit by remember { mutableIntStateOf(0) }
+    var locate by remember { mutableIntStateOf(0) }
     var topInset by remember { mutableIntStateOf(with(density) { 112.dp.roundToPx() }) }
     var bottomInset by remember { mutableIntStateOf(with(density) { 320.dp.roundToPx() }) }
     var directions by remember { mutableStateOf<StoreLocation?>(null) }
@@ -61,7 +62,7 @@ internal fun StoreMapScreen(
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.surfaceContainerLow)) {
         val cardMaxHeight = maxHeight * .52f
         NativeStoreMap(offers, selected?.id, fit, retry, topInset, bottomInset, viewport,
-            onSelect, onViewport, { load = it }, Modifier.fillMaxSize())
+            onSelect, onViewport, { load = it }, Modifier.fillMaxSize(), customerPoint = state.point, locateRequest = locate)
 
         Column(Modifier.align(Alignment.TopCenter).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(colors.background.copy(alpha = .96f), Color.Transparent)))
@@ -95,6 +96,7 @@ internal fun StoreMapScreen(
                     append("${offers.size} nơi có hộp")
                     if (offers.any { it.location?.isPreview == true }) append(" · Địa điểm mẫu")
                     if (state.query.isNotBlank()) append(" · “${state.query}”")
+                    if (state.point != null) append(" · Chấm xanh: vị trí của bạn")
                 }, Modifier.padding(horizontal = 13.dp, vertical = 7.dp), fontSize = 10.sp, lineHeight = 15.sp,
                     color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -120,7 +122,12 @@ internal fun StoreMapScreen(
             .onSizeChanged { bottomInset = it.height }
             .padding(horizontal = 16.dp).padding(bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+                Surface(onClick = { if (state.point == null) onArea() else locate++ }, shape = CircleShape, color = colors.surface, shadowElevation = 3.dp) {
+                    Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+                        CatalogGlyph(CatalogIcon.PIN, tint = colors.primary, description = "Vị trí của tôi")
+                    }
+                }
                 Surface(onClick = { fit++ }, shape = CircleShape, color = colors.surface, shadowElevation = 3.dp) {
                     Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
                         CatalogGlyph(CatalogIcon.COMPASS, tint = colors.primary, description = "Xem tất cả địa điểm")

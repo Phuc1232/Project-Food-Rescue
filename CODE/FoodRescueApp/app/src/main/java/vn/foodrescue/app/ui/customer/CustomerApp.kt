@@ -46,7 +46,7 @@ fun CustomerApp(startInPreview: Boolean = false) {
         AuthFlow(onPreview = if (BuildConfig.DEBUG) ({ preview = true }) else null)
         return
     }
-    val selected = demoBoxes.find { it.id == boxId }
+    val selected = state.catalog.find { it.id == boxId }
     val colors = MaterialTheme.colorScheme
     Scaffold(containerColor = colors.background, bottomBar = {
         if (selected == null && !mapOpen) {
@@ -102,7 +102,8 @@ fun CustomerApp(startInPreview: Boolean = false) {
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
             when (modal) {
                 "filters" -> FilterSheet(state) { vm.filters(it); modal = null }
-                "area" -> AreaSheet(state.district) { vm.district(it); modal = null }
+                "area" -> CustomerAreaSheet(state, { vm.district(it); mapViewport = emptyList(); modal = null },
+                    { vm.location(it); mapViewport = emptyList(); modal = null })
             }
         }
     }

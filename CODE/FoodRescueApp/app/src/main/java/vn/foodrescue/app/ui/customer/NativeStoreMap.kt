@@ -52,6 +52,8 @@ internal fun NativeStoreMap(
     topInset: Int, bottomInset: Int, viewport: List<Double>,
     onSelect: (Int) -> Unit, onViewport: (List<Double>) -> Unit, onLoad: (MapLoadState) -> Unit,
     modifier: Modifier = Modifier,
+    customerPoint: CustomerPoint? = null,
+    locateRequest: Int = 0,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -70,7 +72,7 @@ internal fun NativeStoreMap(
         }
     }
     AndroidView(factory = { controller.view }, modifier = modifier,
-        update = { controller.update(offers, selectedId, fitRequest, retryRequest, topInset, bottomInset) })
+        update = { controller.showPosition(customerPoint); controller.update(offers, selectedId, fitRequest, retryRequest, topInset, bottomInset); controller.locate(locateRequest) })
 }
 
 /** Owns the native renderer; composable filters never recreate the MapView. */
@@ -86,6 +88,8 @@ private class StoreMapController(
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var offers = emptyList<DemoBox>()
+    private var customerPoint: CustomerPoint? = null
+    private var locateRequest = 0
     private var selectedId: Int? = null
     private var fitRequest = 0
     private var retryRequest = 0
@@ -183,6 +187,10 @@ private class StoreMapController(
                     Expression.get("name:vi"), Expression.get("name"), Expression.get("name:latin"), Expression.get("name_en"))))
             }
             loaded.addSource(GeoJsonSource(SOURCE, FeatureCollection.fromFeatures(emptyArray<Feature>())))
+            loaded.addSource(GeoJsonSource("customer-position", FeatureCollection.fromFeatures(emptyArray<Feature>())))
+            loaded.addLayer(CircleLayer("customer-position-dot", "customer-position").withProperties(
+                circleRadius(7f), circleColor(Color.rgb(37, 99, 235)), circleStrokeWidth(3f), circleStrokeColor(Color.WHITE)))
+            updatePosition()
             loaded.addLayer(CircleLayer(DOTS, SOURCE).withProperties(
                 circleRadius(5f), circleColor(Color.rgb(0, 102, 94)), circleStrokeWidth(2f), circleStrokeColor(Color.WHITE)))
             loaded.addLayer(SymbolLayer(PINS, SOURCE).withProperties(
@@ -220,6 +228,23 @@ private class StoreMapController(
         loaded.getSourceAs<GeoJsonSource>(SOURCE)?.setGeoJson(FeatureCollection.fromFeatures(features))
         loaded.getLayerAs<SymbolLayer>(PINS)?.setFilter(Expression.neq(Expression.get("boxId"), Expression.literal(selectedId ?: -1)))
         loaded.getLayerAs<SymbolLayer>(SELECTED_PIN)?.setFilter(Expression.eq(Expression.get("boxId"), Expression.literal(selectedId ?: -1)))
+    }
+
+    fun showPosition(point: CustomerPoint?) {
+        if (customerPoint != point) { customerPoint = point; updatePosition() }
+    }
+    private fun updatePosition() {
+        val features = customerPoint?.let { listOf(Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude))) } ?: emptyList()
+        style?.getSourceAs<GeoJsonSource>("customer-position")?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+    fun locate(request: Int) {
+        if (request == locateRequest) return
+        locateRequest = request
+        val point = customerPoint ?: return
+        val bounds = LatLngBounds.Builder()
+            .include(LatLng(point.latitude + .002, point.longitude + .002))
+            .include(LatLng(point.latitude - .002, point.longitude - .002)).build()
+        move(CameraUpdateFactory.newLatLngBounds(bounds, px(50), topInset + px(40), px(50), bottomInset + px(42)))
     }
 
     private fun fitAll() {

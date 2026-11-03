@@ -78,8 +78,8 @@ data class DiscoveryFilters(val category: BoxCategory? = null, val price: PriceR
     val activeCount: Int get() = (if (category != null) 1 else 0) + (if (price != null) 1 else 0) + (if (pickup != PickupBand.ALL) 1 else 0) + (if (sort != CatalogSort.NEAREST) 1 else 0)
 }
 fun money(value: Int): String = NumberFormat.getIntegerInstance(Locale.forLanguageTag("vi-VN")).format(value) + " đ"
-fun distance(meters: Int): String = String.format(Locale.forLanguageTag("vi-VN"), "%.1f km", meters / 1000.0)
-private fun String.searchKey() = Normalizer.normalize(lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
+fun distance(meters: Int): String = if (meters < 0) "Chưa có khoảng cách" else String.format(Locale.forLanguageTag("vi-VN"), "%.1f km", meters / 1000.0)
+internal fun String.searchKey() = Normalizer.normalize(lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
     .replace("\\p{M}+".toRegex(), "")
 fun filterCatalog(query: String, district: String, filters: DiscoveryFilters, catalog: List<DemoBox> = demoBoxes): List<DemoBox> {
     val result = catalog.filter {
@@ -92,5 +92,5 @@ fun filterCatalog(query: String, district: String, filters: DiscoveryFilters, ca
             PickupBand.FROM_18 -> it.pickupStartHour >= 18
         }
     }
-    return if (filters.sort == CatalogSort.PRICE) result.sortedBy { it.price } else result.sortedBy { it.distanceMeters }
+    return if (filters.sort == CatalogSort.PRICE) result.sortedBy { it.price } else result.sortedBy { if (it.distanceMeters < 0) Int.MAX_VALUE else it.distanceMeters }
 }
