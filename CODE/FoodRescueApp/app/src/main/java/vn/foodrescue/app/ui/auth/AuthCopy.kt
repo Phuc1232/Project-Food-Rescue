@@ -2,17 +2,17 @@ package vn.foodrescue.app.ui.auth
 
 // Vietnamese copy shared by fields, request errors and the preview controls.
 internal fun AuthIssue.message(): String = when (this) {
-    AuthIssue.NAME -> "Nhập họ và tên từ 2 đến 120 ký tự."
-    AuthIssue.EMAIL -> "Nhập địa chỉ email hợp lệ, tối đa 254 ký tự."
-    AuthIssue.PASSWORD_REQUIRED -> "Vui lòng nhập mật khẩu."
+    AuthIssue.NAME -> "Họ tên cần 2–120 ký tự."
+    AuthIssue.EMAIL -> "Email chưa hợp lệ."
+    AuthIssue.PASSWORD_REQUIRED -> "Nhập mật khẩu."
     AuthIssue.PASSWORD_POLICY -> "Mật khẩu cần từ 8 đến 128 ký tự."
-    AuthIssue.CONFIRMATION -> "Mật khẩu nhập lại chưa khớp."
+    AuthIssue.CONFIRMATION -> "Mật khẩu chưa khớp."
     AuthIssue.CODE_FORMAT -> "Nhập đủ 6 chữ số của mã xác minh."
-    AuthIssue.CODE_WRONG -> "Mã chưa đúng. Kiểm tra và nhập lại nhé."
+    AuthIssue.CODE_WRONG -> "Mã chưa đúng. Nhập lại mã."
     AuthIssue.CODE_EXPIRED -> "Mã hoặc phiên xác minh đã hết hạn. Vui lòng yêu cầu mã mới."
     AuthIssue.TOO_MANY_ATTEMPTS -> "Bạn đã thử quá nhiều lần. Hãy chờ 10 phút rồi yêu cầu mã mới hoặc thử lại."
     AuthIssue.COOLDOWN -> "Vui lòng chờ trước khi yêu cầu mã mới."
-    AuthIssue.CREDENTIALS -> "Email hoặc mật khẩu chưa đúng. Vui lòng thử lại."
+    AuthIssue.CREDENTIALS -> "Email hoặc mật khẩu chưa đúng."
     AuthIssue.NETWORK -> "Chưa thể kết nối. Kiểm tra mạng rồi thử lại."
     AuthIssue.EMAIL_USED -> "Không thể tạo tài khoản với email này. Hãy đăng nhập hoặc khôi phục mật khẩu."
     AuthIssue.MAIL_UNAVAILABLE -> "Chưa gửi được email xác minh. Vui lòng thử lại sau ít phút."

@@ -93,18 +93,18 @@ private fun AuthScreen(s: AuthUiState, vm: AuthViewModel, onPreview: (() -> Unit
                             AuthPage.REGISTER, AuthPage.LOGIN, AuthPage.FORGOT -> {
                                 if (s.page == AuthPage.REGISTER) {
                                     AuthField("Họ và tên", s.name, { vm.edit(AuthFieldKey.NAME, it) }, "Tên của bạn",
-                                        s.errors[AuthFieldKey.NAME], !s.busy,
+                                        s.errors[AuthFieldKey.NAME]?.message(), !s.busy,
                                         options = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                                         actions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
-                                    Spacer(Modifier.height(18.dp))
+                                    Spacer(Modifier.height(16.dp))
                                 }
                                 AuthField("Email", s.email, { vm.edit(AuthFieldKey.EMAIL, it) }, "ban@example.com",
-                                    s.errors[AuthFieldKey.EMAIL], !s.busy,
+                                    s.errors[AuthFieldKey.EMAIL]?.message(), !s.busy,
                                     options = KeyboardOptions(keyboardType = KeyboardType.Email,
                                         imeAction = if (s.page == AuthPage.FORGOT) ImeAction.Done else ImeAction.Next),
                                     actions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }, onDone = { submit() }))
                                 if (s.page != AuthPage.FORGOT) {
-                                    Spacer(Modifier.height(18.dp))
+                                    Spacer(Modifier.height(16.dp))
                                     PasswordFields(s, vm, s.page == AuthPage.REGISTER, submit)
                                 }
                                 if (s.page == AuthPage.LOGIN) {
@@ -112,18 +112,12 @@ private fun AuthScreen(s: AuthUiState, vm: AuthViewModel, onPreview: (() -> Unit
                                         Text("Quên mật khẩu?")
                                     }
                                 }
-                                if (s.page == AuthPage.REGISTER) {
-                                    Spacer(Modifier.height(16.dp))
-                                    Text("Thông tin trước khi tạo tài khoản", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-                                    TextButton(onClick = { vm.legal(AuthPage.TERMS) }, enabled = !s.busy) { Text("Điều khoản sử dụng") }
-                                    TextButton(onClick = { vm.legal(AuthPage.PRIVACY) }, enabled = !s.busy) { Text("Chính sách quyền riêng tư") }
-                                }
                             }
                             AuthPage.VERIFY -> {
                                 Text(s.email, fontWeight = FontWeight.SemiBold, color = colors.primary)
                                 Spacer(Modifier.height(18.dp))
                                 AuthField("Mã xác minh", s.code, { vm.edit(AuthFieldKey.CODE, it) }, "6 chữ số",
-                                    s.errors[AuthFieldKey.CODE], !s.busy,
+                                    s.errors[AuthFieldKey.CODE]?.message(), !s.busy,
                                     options = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
                                     actions = KeyboardActions(onDone = { submit() }))
                                 Spacer(Modifier.height(10.dp))
@@ -143,9 +137,10 @@ private fun AuthScreen(s: AuthUiState, vm: AuthViewModel, onPreview: (() -> Unit
                                     }
                                 }
                                 Spacer(Modifier.height(20.dp))
-                                Text(if (s.loginComplete && vm.isPreview) "Bạn có thể tiếp tục xem giao diện khách hàng bằng dữ liệu mẫu."
-                                    else if (s.loginComplete) "Đăng nhập thành công. Đang mở tài khoản của bạn."
-                                    else "Bạn có thể quay lại màn hình đăng nhập để tiếp tục.", style = MaterialTheme.typography.bodyLarge)
+                                Text(if (s.loginComplete && vm.isPreview) "Tiếp tục với dữ liệu mẫu."
+                                    else if (s.loginComplete) "Đang mở tài khoản…"
+                                    else "Đăng nhập để tiếp tục.", style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.onSurfaceVariant)
                             }
                             else -> Unit
                         }
@@ -189,6 +184,19 @@ private fun AuthScreen(s: AuthUiState, vm: AuthViewModel, onPreview: (() -> Unit
                                 Spacer(Modifier.width(10.dp))
                             }
                             Text(if (s.busy) "Đang xử lý…" else mainLabel, style = MaterialTheme.typography.labelLarge)
+                        }
+                        if (s.page == AuthPage.REGISTER) {
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                TextButton(onClick = { vm.legal(AuthPage.TERMS) }, enabled = !s.busy,
+                                    modifier = Modifier.semantics { contentDescription = "Điều khoản sử dụng" }) {
+                                    Text("Điều khoản", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                                }
+                                TextButton(onClick = { vm.legal(AuthPage.PRIVACY) }, enabled = !s.busy,
+                                    modifier = Modifier.semantics { contentDescription = "Chính sách quyền riêng tư" }) {
+                                    Text("Quyền riêng tư", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                                }
+                            }
                         }
                         when (s.page) {
                             AuthPage.VERIFY -> {
@@ -234,7 +242,7 @@ private fun AuthHeader(onBack: () -> Unit) {
 private fun AuthHeading(s: AuthUiState) {
     val title = when (s.page) {
         AuthPage.REGISTER -> "Tạo tài khoản"
-        AuthPage.LOGIN -> "Chào mừng trở lại"
+        AuthPage.LOGIN -> "Đăng nhập"
         AuthPage.FORGOT -> "Quên mật khẩu?"
         AuthPage.VERIFY -> "Xác minh email"
         AuthPage.NEW_PASSWORD -> "Đặt mật khẩu mới"
@@ -248,11 +256,8 @@ private fun AuthHeading(s: AuthUiState) {
     Text(title, Modifier.semantics { heading() }, fontSize = 27.sp, lineHeight = 33.sp,
         fontWeight = FontWeight.SemiBold, letterSpacing = (-.5).sp)
     val subtitle = when (s.page) {
-        AuthPage.REGISTER -> "Bắt đầu khám phá món ngon gần bạn."
-        AuthPage.LOGIN -> "Đăng nhập để tiếp tục cùng FoodRescue."
-        AuthPage.FORGOT -> "Nhập email của tài khoản. Nếu thông tin phù hợp, bạn sẽ nhận hướng dẫn khôi phục."
-        AuthPage.VERIFY -> "Nhập mã 6 số để xác minh email bên dưới."
-        AuthPage.NEW_PASSWORD -> "Chọn mật khẩu mới để bảo vệ tài khoản của bạn."
+        AuthPage.FORGOT -> "Nhập email để nhận mã đặt lại mật khẩu."
+        AuthPage.VERIFY -> "Nhập mã 6 số đã gửi đến"
         else -> null
     }
     if (subtitle != null) {
@@ -267,48 +272,61 @@ private fun PasswordFields(s: AuthUiState, vm: AuthViewModel, confirmation: Bool
     PasswordField(if (s.page == AuthPage.NEW_PASSWORD) "Mật khẩu mới" else "Mật khẩu", s.password,
         { vm.edit(AuthFieldKey.PASSWORD, it) }, s.errors[AuthFieldKey.PASSWORD], !s.busy,
         if (confirmation) ImeAction.Next else ImeAction.Done,
-        KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }, onDone = { submit() }))
+        KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }, onDone = { submit() }),
+        hint = if (confirmation) "Tối thiểu ${AuthValidation.MIN_PASSWORD} ký tự" else null)
     if (confirmation) {
-        Spacer(Modifier.height(8.dp))
-        Text("Tối thiểu 8 ký tự.", style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(18.dp))
-        PasswordField(if (s.page == AuthPage.NEW_PASSWORD) "Nhập lại mật khẩu mới" else "Nhập lại mật khẩu", s.confirmation,
+        Spacer(Modifier.height(16.dp))
+        PasswordField("Nhập lại mật khẩu", s.confirmation,
             { vm.edit(AuthFieldKey.CONFIRMATION, it) }, s.errors[AuthFieldKey.CONFIRMATION], !s.busy,
-            ImeAction.Done, KeyboardActions(onDone = { submit() }))
+            ImeAction.Done, KeyboardActions(onDone = { submit() }), visibilityLabel = "mật khẩu nhập lại")
     }
 }
 
 @Composable
 private fun PasswordField(label: String, value: String, onChange: (String) -> Unit, issue: AuthIssue?, enabled: Boolean,
-    action: ImeAction, actions: KeyboardActions) {
+    action: ImeAction, actions: KeyboardActions, hint: String? = null, visibilityLabel: String = label.lowercase()) {
     var visible by remember { mutableStateOf(false) }
-    AuthField(label, value, onChange, "Nhập mật khẩu", issue, enabled,
+    val error = when (issue) {
+        AuthIssue.PASSWORD_POLICY -> when {
+            value.isBlank() -> "Nhập mật khẩu."
+            value.length < AuthValidation.MIN_PASSWORD -> "Tối thiểu ${AuthValidation.MIN_PASSWORD} ký tự."
+            else -> "Tối đa ${AuthValidation.MAX_PASSWORD} ký tự."
+        }
+        AuthIssue.CONFIRMATION -> if (value.isEmpty()) "Nhập lại mật khẩu." else "Mật khẩu chưa khớp."
+        else -> issue?.message()
+    }
+    AuthField(label, value, onChange, "", error, enabled,
         options = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = action), actions = actions,
+        hint = hint,
         transformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailing = {
-            TextButton(onClick = { visible = !visible }, enabled = enabled,
-                modifier = Modifier.semantics { contentDescription = if (visible) "Ẩn $label" else "Hiện $label" }) {
-                Text(if (visible) "Ẩn" else "Hiện", style = MaterialTheme.typography.labelMedium)
+            IconButton(onClick = { visible = !visible }, enabled = enabled) {
+                Icon(painterResource(if (visible) R.drawable.ic_password_hide else R.drawable.ic_password_show),
+                    contentDescription = if (visible) "Ẩn $visibilityLabel" else "Hiện $visibilityLabel",
+                    modifier = Modifier.size(22.dp))
             }
         })
 }
 
 @Composable
-private fun AuthField(label: String, value: String, onChange: (String) -> Unit, placeholder: String, issue: AuthIssue?,
+private fun AuthField(label: String, value: String, onChange: (String) -> Unit, placeholder: String, error: String?,
     enabled: Boolean, options: KeyboardOptions, actions: KeyboardActions,
-    transformation: VisualTransformation = VisualTransformation.None, trailing: (@Composable () -> Unit)? = null) {
+    transformation: VisualTransformation = VisualTransformation.None, trailing: (@Composable () -> Unit)? = null,
+    hint: String? = null) {
     val colors = MaterialTheme.colorScheme
     Text(label, style = MaterialTheme.typography.labelLarge)
     Spacer(Modifier.height(8.dp))
     OutlinedTextField(value, onChange, modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
-        enabled = enabled, placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium) },
-        singleLine = true, isError = issue != null, shape = RoundedCornerShape(12.dp),
+        enabled = enabled, placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
+        textStyle = MaterialTheme.typography.bodyLarge,
+        singleLine = true, isError = error != null, shape = RoundedCornerShape(12.dp),
         visualTransformation = transformation, trailingIcon = trailing, keyboardOptions = options, keyboardActions = actions,
         colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = colors.surface, unfocusedContainerColor = colors.surface,
             unfocusedBorderColor = colors.outlineVariant, focusedBorderColor = colors.primary))
-    if (issue != null) {
+    val supportingText = error ?: hint
+    if (supportingText != null) {
         Spacer(Modifier.height(6.dp))
-        Text(issue.message(), Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.bodySmall, color = colors.error)
+        Text(supportingText, Modifier.semantics { if (error != null) liveRegion = LiveRegionMode.Polite },
+            style = MaterialTheme.typography.bodySmall, color = if (error != null) colors.error else colors.onSurfaceVariant)
     }
 }
 
