@@ -13,3 +13,17 @@ Hiện chưa có API xác thực. Bản debug dùng `PreviewAuthGateway`; không
 Khi nối backend, thay provider trong `src/release` và giữ `AuthGateway` làm ranh giới. Máy chủ phải kiểm tra quyền, mã/chứng cứ xác minh, thời hạn, giới hạn thử và phiên; kiểm tra trong app không thay thế kiểm tra ở máy chủ.
 
 Kiểm tra tự động: `gradlew.bat :app:testDebugUnitTest :app:testReleaseUnitTest :app:lintDebug`.
+
+## Các luồng khách hàng sau màn mở đầu
+
+Trong bản debug, chọn **Xem thử**. Có thể thử trọn luồng tìm hộp → chi tiết → đặt số lượng → chọn trả toàn bộ/cọc → thanh toán thử → chi tiết đơn → hủy hoặc khiếu nại.
+
+- **Tài khoản:** sửa họ tên/số điện thoại, kiểm tra đầu vào và lưu hồ sơ thử trên thiết bị. Email là mẫu, chưa có đổi email thật. Đăng xuất xóa hồ sơ và đơn thử, trở về màn chào.
+- **Đặt hộp:** giữ 10 phút, kiểm tra lại số lượng, chốt giá và chính sách cho mỗi đơn. Đợt mẫu chuyển sang ngày tiếp theo nếu giờ nhận không còn phù hợp. Tỷ lệ cọc 30% chỉ là tham số minh họa trong `OrderPolicy`, chưa phải chính sách phát hành.
+- **Thanh toán:** chọn thẻ hoặc ví ở cổng mô phỏng; không nhập thông tin thẻ, không tạo mã chuyển khoản và không gọi cổng thu tiền. Mở **Tình huống thử thanh toán** để thử thành công, thất bại, chờ xác nhận và tiền đến muộn. Khi chưa rõ kết quả, không cho tạo lượt thanh toán thứ hai.
+- **Đơn hàng:** danh sách đang thực hiện/lịch sử, mã nhận khi đơn đã xác nhận, số tiền thực thu/còn phải trả/được hoàn/đã hoàn/khấu trừ. Hết giờ nhận chỉ chuyển chờ xác minh, không tự kết luận No-show. Có nút thêm đơn mẫu để xem hoàn tất, hủy/hoàn và No-show.
+- **Hủy:** trước giờ nhận hoàn khoản đã thu qua ứng dụng; sau giờ nhận cần xem xét, không hứa mức hoàn. Kết quả hủy và kết quả hoàn được theo dõi riêng.
+- **Khiếu nại:** chọn lý do, nội dung 20–2.000 ký tự và tối đa 5 ảnh JPG/PNG/WebP, mỗi ảnh không quá 10 MB. Ảnh lưu dưới dạng quyền đọc URI trên thiết bị; chưa tải lên máy chủ. No-show dùng mốc 48 giờ từ khi nhận thông báo; quá hạn vẫn cho gửi xem xét.
+- **Công cụ kiểm tra bản trải nghiệm** trong chi tiết đơn giả lập kết quả duyệt hủy, hoàn tiền và khiếu nại. Đây không phải quyền dành cho khách hàng khi phát hành.
+
+Hồ sơ và đơn thử dùng vùng lưu trữ `customer_preview_v1`, tách khỏi luồng xác thực. `CustomerStorage` bản release không cung cấp dữ liệu mô phỏng; `CustomerApp` chặn truy cập bản thử ngoài debug. Backend cần triển khai xác thực, giao dịch tồn kho, chính sách, webhook đã xác minh, đối soát, lưu tệp và quyền truy cập trước khi có giao dịch thật. Các thử nghiệm trạng thái nằm trong `CustomerOrdersTest`.

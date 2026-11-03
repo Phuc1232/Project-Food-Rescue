@@ -37,16 +37,57 @@ fun CustomerApp(startInPreview: Boolean = false) {
     var mapSelectedId by rememberSaveable { mutableStateOf<Int?>(null) }
     var mapViewport by rememberSaveable { mutableStateOf(emptyList<Double>()) }
     var modal by remember { mutableStateOf<String?>(null) }
+    var route by rememberSaveable { mutableStateOf("home") }
+    var orderId by rememberSaveable { mutableStateOf<String?>(null) }
     val vm: DiscoveryViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler(preview && (boxId != null || mapOpen || tab != 0)) {
+    BackHandler(preview && route == "home" && (boxId != null || mapOpen || tab != 0)) {
         if (boxId != null) boxId = null else if (mapOpen) mapOpen = false else tab = 0
     }
-    if (!preview) {
+    if (!BuildConfig.DEBUG || !preview) {
         AuthFlow(onPreview = if (BuildConfig.DEBUG) ({ preview = true }) else null)
         return
     }
+    val customerVm: CustomerViewModel = viewModel()
+    val customer by customerVm.state.collectAsStateWithLifecycle()
+    val now by customerVm.now.collectAsStateWithLifecycle()
+    val error by customerVm.error.collectAsStateWithLifecycle()
+    LaunchedEffect(customer.orders, now / 60_000) {
+        vm.stock(demoBoxes.associate { it.id to customerVm.available(it, previewPickup(it, now).first) })
+    }
     val selected = state.catalog.find { it.id == boxId }
+    val selectedOrder = customer.orders.find { it.id == orderId }
+    val toOrders: () -> Unit = { route = "home"; tab = 2; boxId = null; mapOpen = false; orderId = null }
+    val routeBack: () -> Unit = {
+        when (route) {
+            "checkout", "profile" -> route = "home"
+            "payment", "cancel", "complaint" -> route = "order"
+            else -> toOrders()
+        }
+    }
+    BackHandler(route != "home", routeBack)
+    error?.let { text -> AlertDialog(onDismissRequest = customerVm::dismissError, title = { Text("Chưa thực hiện được") },
+        text = { Text(text) }, confirmButton = { TextButton(onClick = customerVm::dismissError) { Text("Đã hiểu") } }) }
+    when {
+        route == "checkout" && selected != null -> {
+            CheckoutScreen(selected, customerVm, routeBack) { orderId = it; route = "payment" }; return
+        }
+        route == "profile" -> {
+            EditProfileScreen(customer.profile, routeBack) { name, phone -> if (customerVm.saveProfile(name, phone)) route = "home" }; return
+        }
+        selectedOrder != null && route != "home" -> {
+            when (route) {
+                "payment" -> PaymentScreen(selectedOrder, now, customerVm, routeBack) { route = "order" }
+                "cancel" -> CancelOrderScreen(selectedOrder, now, routeBack) { if (customerVm.cancel(selectedOrder.id, it)) route = "order" }
+                "complaint" -> ComplaintScreen(selectedOrder, now, routeBack) { reason, text, evidence ->
+                    if (customerVm.complain(selectedOrder.id, reason, text, evidence)) route = "order"
+                }
+                else -> OrderDetailScreen(selectedOrder, now, customerVm, toOrders,
+                    { route = "payment" }, { route = "cancel" }, { route = "complaint" })
+            }
+            return
+        }
+    }
     val colors = MaterialTheme.colorScheme
     Scaffold(containerColor = colors.background, bottomBar = {
         if (selected == null && !mapOpen) {
@@ -70,7 +111,7 @@ fun CustomerApp(startInPreview: Boolean = false) {
                     Text("Giá mỗi hộp", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     Text(money(selected.price), color = colors.primary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 }
-                Button(onClick = { modal = "booking" }, shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp)) { Text("Đặt hộp") }
+                Button(onClick = { route = "checkout" }, shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp)) { Text("Đặt hộp") }
             }
         }
     }) { padding ->
@@ -83,20 +124,16 @@ fun CustomerApp(startInPreview: Boolean = false) {
                 when (tab) {
                     0, 1 -> DiscoveryScreen(state, tab == 1, vm::search, { tab = 1 },
                         { modal = "filters" }, { modal = "area" }, { mapOpen = true }, { boxId = it }, vm::reset)
-                    2 -> CatalogEmpty("Đơn hàng của bạn", "Bản xem thử chưa có đơn hàng. Bạn có thể khám phá các hộp mẫu trước.", "Khám phá", { tab = 0 })
-                    3 -> Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        Text("Tài khoản", style = MaterialTheme.typography.headlineLarge)
-                        Text("Bạn đang xem thử giao diện. Chưa có phiên đăng nhập thật.", color = colors.onSurfaceVariant)
-                        OutlinedButton(onClick = { preview = false; tab = 0; boxId = null; vm.reset() }) { Text("Về màn hình chào") }
+                    2 -> OrdersScreen(customer.orders, { orderId = it; route = "order" }, { tab = 0 }, customerVm::addExamples)
+                    3 -> ProfileScreen(customer.profile, { route = "profile" }, { tab = 2 }) {
+                        customerVm.clearPreview(); preview = false; tab = 0; boxId = null; orderId = null
+                        mapOpen = false; mapSelectedId = null; mapViewport = emptyList(); vm.clear()
                     }
                 }
             }
         }
     }
-    if (modal == "booking") AlertDialog(onDismissRequest = { modal = null }, title = { Text("Hộp minh họa") },
-        text = { Text("Bạn đang xem thử giao diện. Chức năng tạo đơn và thanh toán sẽ được triển khai ở bước tiếp theo.") },
-        confirmButton = { TextButton(onClick = { modal = null }) { Text("Đã hiểu") } })
-    else if (modal != null) {
+    if (modal != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(onDismissRequest = { modal = null }, sheetState = sheetState, containerColor = colors.surface,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
@@ -135,7 +172,7 @@ private fun FilterSheet(state: DiscoveryState, onApply: (DiscoveryFilters) -> Un
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Button(onClick = { onApply(draft) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp).navigationBarsPadding().heightIn(min = 54.dp), shape = RoundedCornerShape(14.dp)) {
-            Text("Xem ${filterCatalog(state.query, state.district, draft).size} hộp")
+            Text("Xem ${filterCatalog(state.query, state.district, draft, state.catalog).size} hộp")
         }
     }
 }
@@ -177,17 +214,6 @@ private fun ChoiceRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AreaSheet(current: String, onSelect: (String) -> Unit) {
-    var selected by remember { mutableStateOf(current) }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).navigationBarsPadding().padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text("Bạn muốn nhận hộp ở đâu?", style = MaterialTheme.typography.headlineMedium)
-        Text("Chọn khu vực để xem những hộp đang có. Đây là các khu vực mẫu, chưa dùng vị trí thiết bị.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        listOf("Quận 1", "Quận 3", "Bình Thạnh", "TP. Hồ Chí Minh").forEach { area -> ChoiceRow(area, area == selected) { selected = area } }
-        Button(onClick = { onSelect(selected) }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp), shape = RoundedCornerShape(14.dp)) { Text("Chọn khu vực này") }
-    }
-}
-
-@Composable
 private fun BoxDetail(box: DemoBox, onBack: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -208,7 +234,7 @@ private fun BoxDetail(box: DemoBox, onBack: () -> Unit) {
             Surface(color = c.primaryContainer, shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CatalogGlyph(CatalogIcon.CLOCK, tint = c.primary)
-                    Column { Text("Nhận tại cửa hàng", fontWeight = FontWeight.SemiBold);Text("Hôm nay · ${box.pickup}", style = MaterialTheme.typography.bodyMedium) }
+                    Column { Text("Nhận tại cửa hàng", fontWeight = FontWeight.SemiBold);Text("${orderTime(previewPickup(box, System.currentTimeMillis()).first)} – ${box.pickup.substringAfter(" – ")}", style = MaterialTheme.typography.bodyMedium) }
                 }
             }
             box.location?.let { location ->
