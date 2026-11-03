@@ -20,10 +20,29 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-foodrescue}
       DB_USER: ${POSTGRES_USER:-foodrescue}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:?Set a random base64 signing key in .env}
+      AUTH_CHALLENGE_KEY: ${AUTH_CHALLENGE_KEY:?Set a separate random base64 challenge key in .env}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_MODE: ${MAIL_MODE:-sandbox}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_AUTH: ${MAIL_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_SSL: ${MAIL_SSL:-false}
+      MAIL_TEST_CONNECTION: ${MAIL_TEST_CONNECTION:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@foodrescue.test}
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
+  # Development mailbox. Never relays messages to external email addresses.
+  mailpit:
+    profiles: ["mail-preview"]
+    image: axllent/mailpit:v1.33.0
+    ports:
+      - "127.0.0.1:${MAIL_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAIL_SMTP_PORT:-1025}:1025"
 volumes:
   postgres_data:
