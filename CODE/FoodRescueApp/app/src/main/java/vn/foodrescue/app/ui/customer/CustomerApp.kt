@@ -125,10 +125,10 @@ fun CustomerApp(startInPreview: Boolean = false) {
                     0, 1 -> DiscoveryScreen(state, tab == 1, vm::search, { tab = 1 },
                         { modal = "filters" }, { modal = "area" }, { mapOpen = true }, { boxId = it }, vm::reset)
                     2 -> OrdersScreen(customer.orders, { orderId = it; route = "order" }, { tab = 0 }, customerVm::addExamples)
-                    3 -> ProfileScreen(customer.profile, { route = "profile" }, { tab = 2 }) {
+                    3 -> ProfileScreen(customer.profile, { route = "profile" }, { tab = 2 }, {
                         customerVm.clearPreview(); preview = false; tab = 0; boxId = null; orderId = null
                         mapOpen = false; mapSelectedId = null; mapViewport = emptyList(); vm.clear()
-                    }
+                    })
                 }
             }
         }

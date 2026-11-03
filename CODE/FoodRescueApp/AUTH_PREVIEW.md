@@ -1,16 +1,20 @@
-# Luồng tài khoản — bản giao diện
+# Tài khoản thật và các luồng giao diện thử
 
-Hiện chưa có API xác thực. Bản debug dùng `PreviewAuthGateway`; không gửi email, lưu tài khoản, lưu mật khẩu hoặc cấp phiên thật. Bản release luôn báo chưa kết nối dịch vụ, không chứa gateway mô phỏng.
+App mặc định dùng `AccountApp` → `RemoteAuthGateway` → API thật ở cả debug và release. Tài khoản/hồ sơ được lưu PostgreSQL; mã email gửi qua SMTP (Mailpit khi phát triển). Xem [hướng dẫn API](../FoodRescueApi/README.md) và hợp đồng OpenAPI tại đó. Release cần URL HTTPS thực tế.
+
+Sau đăng nhập, màn Tài khoản đọc/sửa hồ sơ và đăng xuất qua API. Khởi động lại app khôi phục phiên được mã hóa bằng Android Keystore. Mật khẩu và OTP không được lưu trên thiết bị. Catalog/đơn hàng/thanh toán chưa có API nên chưa mở trong phiên thật.
+
+Các ghi chú dưới đây dành riêng cho **bản giao diện thử** mở qua nút “Xem giao diện thử” trong debug. Luồng thử dùng `PreviewAuthGateway`, không tạo tài khoản hoặc gửi email; release không có đường vào bản thử.
 
 - Đăng ký: họ tên, email, mật khẩu và nhập lại mật khẩu → mã email → hoàn tất → đăng nhập.
 - Khôi phục: email → mã xác minh → mật khẩu mới và nhập lại → hoàn tất → đăng nhập.
-- Mật khẩu mới: 15–128 ký tự; không ép chữ hoa, chữ số hay ký tự đặc biệt. Backend phải áp dụng cùng chính sách khi tích hợp.
+- Mật khẩu mới: 8–128 ký tự; không ép chữ hoa, chữ số hay ký tự đặc biệt. API thật áp dụng cùng chính sách.
 - Mã thử hiện ngay dưới ô mã trong bản debug. Mã có hạn 3 phút, gửi lại sau 30 giây; mã mới thay mã cũ. Nhập sai 5 lần cần yêu cầu mã mới.
 - Mục **Tình huống thử** cuối form cho phép xem trạng thái mất mạng, sai thông tin, email chưa xác minh và email đã sử dụng. Kết quả thành công chỉ mô phỏng giao diện, không chứng minh tài khoản tồn tại.
 - Liên kết điều khoản/quyền riêng tư mở nội dung **dự thảo**, cần nhóm duyệt và hoàn thiện trước phát hành.
 - ViewModel giữ trạng thái qua xoay màn hình; không ghi thông tin xác thực vào saved state, log hoặc đĩa. Đóng tiến trình sẽ bắt đầu lại luồng.
 
-Khi nối backend, thay provider trong `src/release` và giữ `AuthGateway` làm ranh giới. Máy chủ phải kiểm tra quyền, mã/chứng cứ xác minh, thời hạn, giới hạn thử và phiên; kiểm tra trong app không thay thế kiểm tra ở máy chủ.
+API thật dùng OTP 10 phút và thời gian gửi lại 60 giây; các giá trị được nhận từ server. Thời gian 3 phút/30 giây và công cụ chọn tình huống chỉ dùng cho preview. Các provider preview/fail-closed cũ chỉ phục vụ màn thử; luồng chính được truyền `RemoteAuthGateway` trực tiếp.
 
 Kiểm tra tự động: `gradlew.bat :app:testDebugUnitTest :app:testReleaseUnitTest :app:lintDebug`.
 
@@ -26,4 +30,4 @@ Trong bản debug, chọn **Xem thử**. Có thể thử trọn luồng tìm h�
 - **Khiếu nại:** chọn lý do, nội dung 20–2.000 ký tự và tối đa 5 ảnh JPG/PNG/WebP, mỗi ảnh không quá 10 MB. Ảnh lưu dưới dạng quyền đọc URI trên thiết bị; chưa tải lên máy chủ. No-show dùng mốc 48 giờ từ khi nhận thông báo; quá hạn vẫn cho gửi xem xét.
 - **Công cụ kiểm tra bản trải nghiệm** trong chi tiết đơn giả lập kết quả duyệt hủy, hoàn tiền và khiếu nại. Đây không phải quyền dành cho khách hàng khi phát hành.
 
-Hồ sơ và đơn thử dùng vùng lưu trữ `customer_preview_v1`, tách khỏi luồng xác thực. `CustomerStorage` bản release không cung cấp dữ liệu mô phỏng; `CustomerApp` chặn truy cập bản thử ngoài debug. Backend cần triển khai xác thực, giao dịch tồn kho, chính sách, webhook đã xác minh, đối soát, lưu tệp và quyền truy cập trước khi có giao dịch thật. Các thử nghiệm trạng thái nằm trong `CustomerOrdersTest`.
+Hồ sơ và đơn thử dùng vùng lưu trữ `customer_preview_v1`, tách khỏi luồng xác thực. `CustomerStorage` bản release không cung cấp dữ liệu mô phỏng; `CustomerApp` chặn truy cập bản thử ngoài debug. Backend còn cần API catalog, giao dịch tồn kho, chính sách, webhook đã xác minh, đối soát, lưu tệp và phân quyền nghiệp vụ trước khi có giao dịch thật. Các thử nghiệm trạng thái nằm trong `CustomerOrdersTest`.

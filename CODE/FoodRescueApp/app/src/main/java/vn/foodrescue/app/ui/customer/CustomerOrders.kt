@@ -152,7 +152,7 @@ internal class CustomerOrderEngine(initial: CustomerSnapshot = CustomerSnapshot(
         }
     }
     fun updateProfile(name: String, phone: String) {
-        require(name.trim().length in 2..80) { "Họ tên cần từ 2 đến 80 ký tự." }
+        require(name.trim().length in 2..120 && !name.any(Char::isISOControl)) { "Họ tên cần từ 2 đến 120 ký tự." }
         require(phone.isBlank() || Regex("^(0[0-9]{9}|\\+84[0-9]{9})$").matches(phone.trim())) { "Nhập số điện thoại Việt Nam gồm 10 số hoặc bắt đầu bằng +84." }
         snapshot = snapshot.copy(profile = snapshot.profile.copy(name = name.trim(), phone = phone.trim()))
     }

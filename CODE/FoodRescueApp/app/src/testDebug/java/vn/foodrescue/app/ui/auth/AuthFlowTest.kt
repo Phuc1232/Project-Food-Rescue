@@ -11,7 +11,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthFlowTest {
     private val dispatcher = StandardTestDispatcher()
-    private val password = "a long demo passphrase"
+    private val password = "BanhMi24"
     @Before fun setup() { Dispatchers.setMain(dispatcher) }
     @After fun teardown() { Dispatchers.resetMain() }
 
@@ -22,6 +22,11 @@ class AuthFlowTest {
         assertEquals(AuthIssue.PASSWORD_POLICY, errors[AuthFieldKey.PASSWORD])
         assertEquals(AuthIssue.CONFIRMATION, errors[AuthFieldKey.CONFIRMATION])
         assertTrue(AuthValidation.errors(state.copy(email = "demo@example.com", password = password, confirmation = password)).isEmpty())
+        for (page in listOf(AuthPage.REGISTER, AuthPage.NEW_PASSWORD)) {
+            val form = state.copy(page = page, email = "demo@example.com", password = "BanhMi2", confirmation = "BanhMi2")
+            assertEquals(AuthIssue.PASSWORD_POLICY, AuthValidation.errors(form)[AuthFieldKey.PASSWORD])
+            assertTrue(AuthValidation.errors(form.copy(password = password, confirmation = password)).isEmpty())
+        }
     }
 
     @Test fun `old codes are invalid after resend and successful codes cannot be reused`() = runTest(dispatcher) {

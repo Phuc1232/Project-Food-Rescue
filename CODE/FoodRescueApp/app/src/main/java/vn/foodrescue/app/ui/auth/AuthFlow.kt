@@ -44,10 +44,11 @@ import vn.foodrescue.app.R
 import vn.foodrescue.app.ui.welcome.WelcomeScreen
 
 @Composable
-fun AuthFlow(onPreview: (() -> Unit)? = null) {
-    val factory = remember { viewModelFactory { initializer { AuthViewModel(createAuthGateway()) } } }
-    val vm: AuthViewModel = viewModel(factory = factory)
+fun AuthFlow(onPreview: (() -> Unit)? = null, gateway: AuthGateway? = null, instanceKey: String = "preview-auth", onAuthenticated: () -> Unit = {}) {
+    val factory = remember(gateway) { viewModelFactory { initializer { AuthViewModel(gateway ?: createAuthGateway()) } } }
+    val vm: AuthViewModel = viewModel(key = instanceKey, factory = factory)
     val s by vm.state.collectAsStateWithLifecycle()
+    LaunchedEffect(s.loginComplete) { if (s.loginComplete && !vm.isPreview) onAuthenticated() }
     BackHandler(s.page != AuthPage.WELCOME) { vm.back() }
     AnimatedContent(s.page, modifier = Modifier.fillMaxSize(), transitionSpec = {
         (fadeIn(tween(180, delayMillis = 90)) + slideInVertically(tween(240, delayMillis = 90)) { it / 60 })
@@ -142,7 +143,8 @@ private fun AuthScreen(s: AuthUiState, vm: AuthViewModel, onPreview: (() -> Unit
                                     }
                                 }
                                 Spacer(Modifier.height(20.dp))
-                                Text(if (s.loginComplete) "Bạn có thể tiếp tục xem giao diện khách hàng bằng dữ liệu mẫu."
+                                Text(if (s.loginComplete && vm.isPreview) "Bạn có thể tiếp tục xem giao diện khách hàng bằng dữ liệu mẫu."
+                                    else if (s.loginComplete) "Đăng nhập thành công. Đang mở tài khoản của bạn."
                                     else "Bạn có thể quay lại màn hình đăng nhập để tiếp tục.", style = MaterialTheme.typography.bodyLarge)
                             }
                             else -> Unit
@@ -268,7 +270,7 @@ private fun PasswordFields(s: AuthUiState, vm: AuthViewModel, confirmation: Bool
         KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }, onDone = { submit() }))
     if (confirmation) {
         Spacer(Modifier.height(8.dp))
-        Text("15–128 ký tự. Bạn có thể dùng một cụm từ dễ nhớ.", style = MaterialTheme.typography.bodySmall,
+        Text("Tối thiểu 8 ký tự.", style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(18.dp))
         PasswordField(if (s.page == AuthPage.NEW_PASSWORD) "Nhập lại mật khẩu mới" else "Nhập lại mật khẩu", s.confirmation,

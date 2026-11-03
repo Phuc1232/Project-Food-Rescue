@@ -4,7 +4,7 @@ enum class AuthPage { WELCOME, REGISTER, LOGIN, FORGOT, VERIFY, NEW_PASSWORD, CO
 enum class AuthPurpose { REGISTER, VERIFY_LOGIN, RESET_PASSWORD }
 enum class AuthFieldKey { NAME, EMAIL, PASSWORD, CONFIRMATION, CODE }
 enum class AuthIssue { NAME, EMAIL, PASSWORD_REQUIRED, PASSWORD_POLICY, CONFIRMATION, CODE_FORMAT,
-    CODE_WRONG, CODE_EXPIRED, TOO_MANY_ATTEMPTS, COOLDOWN, CREDENTIALS, NETWORK, EMAIL_USED, UNAVAILABLE }
+    CODE_WRONG, CODE_EXPIRED, TOO_MANY_ATTEMPTS, COOLDOWN, CREDENTIALS, NETWORK, EMAIL_USED, MAIL_UNAVAILABLE, UNAVAILABLE }
 enum class AuthScenario { SUCCESS, CREDENTIALS, UNVERIFIED, NETWORK, EMAIL_USED }
 data class AuthChallenge(val id: String, val email: String, val purpose: AuthPurpose,
     val expiresAt: Long, val resendAt: Long)
@@ -16,7 +16,7 @@ sealed interface AuthReply {
     data class Error(val issue: AuthIssue) : AuthReply
 }
 
-/** Replace the unavailable release gateway when real authentication endpoints exist. */
+/** Real and debug-preview authentication share the same presentation contract. */
 interface AuthGateway {
     val isPreview: Boolean get() = false
     var scenario: AuthScenario
@@ -42,13 +42,13 @@ data class AuthUiState(
 )
 
 object AuthValidation {
-    const val MIN_PASSWORD = 15
+    const val MIN_PASSWORD = 8
     const val MAX_PASSWORD = 128
     private val emailPattern = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
     fun email(value: String) = value.trim().length in 3..254 && emailPattern.matches(value.trim())
     fun password(value: String) = value.length in MIN_PASSWORD..MAX_PASSWORD && value.isNotBlank()
     fun errors(s: AuthUiState): Map<AuthFieldKey, AuthIssue> = buildMap {
-        if (s.page == AuthPage.REGISTER && (s.name.isBlank() || s.name.trim().length > 120))
+        if (s.page == AuthPage.REGISTER && (s.name.trim().length !in 2..120 || s.name.any(Char::isISOControl)))
             put(AuthFieldKey.NAME, AuthIssue.NAME)
         if (s.page in listOf(AuthPage.REGISTER, AuthPage.LOGIN, AuthPage.FORGOT) && !email(s.email))
             put(AuthFieldKey.EMAIL, AuthIssue.EMAIL)

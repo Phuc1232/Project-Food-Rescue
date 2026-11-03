@@ -35,7 +35,7 @@ Project-Food-Rescue/
 │   │       │   └── exception/  # Xử lý lỗi
 │   │       ├── main/resources/ # Cấu hình và migration SQL
 │   │       └── test/           # Kiểm thử API và cơ sở dữ liệu
-│   ├── compose.yml            # Chạy API và PostgreSQL
+│   ├── compose.yml            # API, PostgreSQL và hộp thư thử
 │   └── .env.example           # Cấu hình môi trường mẫu
 ├── DOCX/                      # Tài liệu và báo cáo
 ├── PPTX/                      # Slide thuyết trình
@@ -45,7 +45,7 @@ Project-Food-Rescue/
 
 ## Phạm vi chức năng
 
-Các chức năng dưới đây là **phạm vi dự kiến**, chưa được triển khai trong bộ khung:
+Phạm vi nghiệp vụ của hệ thống:
 
 | Người sử dụng | Chức năng chính |
 | --- | --- |
@@ -54,9 +54,9 @@ Các chức năng dưới đây là **phạm vi dự kiến**, chưa được tr
 | Nhân viên | Đóng gói, bàn giao hộp và ghi nhận khách không đến nhận |
 | Quản trị viên | Xét duyệt cửa hàng, xử lý khiếu nại, hoàn tiền và đối soát |
 
-**Đã có:** giao diện mở đầu, đăng ký, xác minh email, đăng nhập và khôi phục mật khẩu; bộ khung API → PostgreSQL, migration cơ sở dữ liệu, kiểm thử và GitHub Actions.
+**Đã có:** API tài khoản khách hàng và Android kết nối thật: đăng ký, xác minh email, đăng nhập, khôi phục mật khẩu, xem/sửa hồ sơ và đăng xuất; migration, kiểm thử và GitHub Actions.
 
-Luồng tài khoản hiện dùng dữ liệu mô phỏng trong bản debug, chưa gửi email hoặc tạo tài khoản thật. Bản release báo dịch vụ chưa sẵn sàng. Xem [hướng dẫn chạy thử](CODE/FoodRescueApp/AUTH_PREVIEW.md).
+Khám phá, bản đồ, đặt hộp, thanh toán, đơn hàng và khiếu nại đã có giao diện thử, chưa nối API nghiệp vụ. Chế độ thử chỉ có trong debug và tách khỏi tài khoản thật. Email hỗ trợ Mailpit để phát triển hoặc Gmail/SMTP thật; xem [cấu hình email](CODE/FoodRescueApi/README.md#gửi-email-thật).
 
 ## Cài đặt và chạy
 
@@ -67,10 +67,13 @@ Cài Docker Desktop và bật Linux containers. Tại thư mục dự án, chạ
 ```powershell
 cd CODE
 Copy-Item .env.example .env
+# Điền mật khẩu database và hai khóa ngẫu nhiên theo hướng dẫn API bên dưới.
 docker compose up --build -d
 ```
 
 Kiểm tra API tại `http://localhost:8080/api/v1/system/status`. Kết quả có `status: UP` và `database: UP` khi hệ thống sẵn sàng.
+
+Xem [cấu hình khóa, email và API](CODE/FoodRescueApi/README.md). Mở `http://localhost:8025` để đọc OTP trong môi trường phát triển.
 
 ### 2. Ứng dụng Android
 
@@ -78,7 +81,7 @@ Kiểm tra API tại `http://localhost:8080/api/v1/system/status`. Kết quả c
 2. Chọn Gradle JDK 21, cài Android SDK 36 và Build Tools 35.0.0.
 3. Chờ Gradle sync, chọn Android Emulator API 26 trở lên và nhấn **Run**.
 
-App mở màn hình chào và luồng tài khoản. Có thể chạy thử giao diện mà không cần bật backend. Cấu hình API mặc định cho máy ảo là `http://10.0.2.2:8080/`; luồng tài khoản chưa sử dụng API này.
+App mở luồng tài khoản kết nối API; máy ảo mặc định dùng `http://10.0.2.2:8080/`. Điện thoại thật dùng ADB reverse và URL theo hướng dẫn API. “Xem giao diện thử” trong debug vẫn dùng được khi chưa chạy backend.
 
 ## Tài liệu
 
