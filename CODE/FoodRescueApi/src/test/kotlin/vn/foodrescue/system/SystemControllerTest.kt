@@ -16,6 +16,8 @@ import vn.foodrescue.service.SystemService
 @WebMvcTest(SystemController::class)
 @Import(SecurityConfig::class)
 class SystemControllerTest @Autowired constructor(val mvc: MockMvc) {
+    @MockitoBean lateinit var jwtDecoder: org.springframework.security.oauth2.jwt.JwtDecoder
+    @MockitoBean lateinit var converter: vn.foodrescue.config.SessionAuthenticationConverter
     @MockitoBean lateinit var service: SystemService
     @Test fun `status returns documented response`() {
         given(service.status()).willReturn(SystemStatus("FoodRescue", "UP", "UP"))
