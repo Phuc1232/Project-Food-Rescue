@@ -11,6 +11,7 @@ import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.feature.order.domain.*
 import com.foodrescue.app.feature.payment.domain.PaymentStatus
 import com.foodrescue.app.feature.pickup.presentation.component.PickupCodeCard
+import com.foodrescue.app.feature.refund.presentation.component.RefundSummaryCard
 import com.foodrescue.app.feature.surprisebox.domain.CatalogBox
 
 @Composable
@@ -24,6 +25,8 @@ internal fun ReservationScreen(
     onRebook: () -> Unit,
     onPayment: () -> Unit,
     modifier: Modifier = Modifier,
+    onCancel: () -> Unit = {},
+    onRefund: () -> Unit = {},
     onComplaint: () -> Unit = {},
 ) {
     if (reservation == null) {
@@ -40,12 +43,14 @@ internal fun ReservationScreen(
     var releaseOpen by rememberSaveable(reservation.id) { mutableStateOf(false) }
     FoodRescuePage("Chi tiết đơn hàng", onBack, modifier, footer = {
         val label = when {
+            reservation.refund != null -> "Xem hoàn tiền"
             checking || reservation.isPaid -> "Xem thanh toán"
             active -> "Thanh toán bằng QR VNPAY"
             box != null -> "Đặt lại hộp này"
             else -> "Khám phá hộp"
         }
         FoodRescueButton(label, when {
+            reservation.refund != null -> onRefund
             reservation.isPaid || active -> onPayment
             box != null -> onRebook
             else -> onExplore
@@ -53,6 +58,7 @@ internal fun ReservationScreen(
     }) {
         OrderStatusBadge(status)
         if (code != null) PickupCodeCard(code)
+        reservation.refund?.let { RefundSummaryCard(it, onRefund) }
         if (status == OrderStatus.WAITING_PICKUP && nowMillis >= reservation.pickup.endMillis) {
             FoodRescueCard {
                 Text("Đã qua giờ nhận hộp", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
@@ -107,6 +113,9 @@ internal fun ReservationScreen(
             }
         }
         OrderTimeline(reservation, nowMillis)
+        if (reservation.isPaid && reservation.cancelledAtMillis == null && reservation.collectedAtMillis == null) {
+            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Hủy đơn và hoàn tiền") }
+        }
         if (reservation.payment != null) {
             TextButton(onClick = onComplaint, modifier = Modifier.fillMaxWidth()) { Text("Gửi khiếu nại") }
         }

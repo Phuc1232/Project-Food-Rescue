@@ -3,6 +3,7 @@ package com.foodrescue.app.feature.order.domain
 import com.foodrescue.app.feature.surprisebox.domain.CatalogBox
 import com.foodrescue.app.feature.payment.domain.PaymentStatus
 import com.foodrescue.app.feature.payment.domain.QrPayment
+import com.foodrescue.app.feature.refund.domain.OrderRefund
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -31,6 +32,9 @@ internal data class BoxReservation(
     val payment: QrPayment? = null,
     val cancelledAtMillis: Long? = null,
     val collectedAtMillis: Long? = null,
+    val cancellationReason: CancellationReason? = null,
+    val cancellationNote: String = "",
+    val refund: OrderRefund? = null,
 ) {
     init {
         require(id.isNotBlank() && quantity > 0)
@@ -40,6 +44,9 @@ internal data class BoxReservation(
         require(cancelledAtMillis == null || cancelledAtMillis >= createdAtMillis)
         require(collectedAtMillis == null || (isPaid && collectedAtMillis >= createdAtMillis))
         require(cancelledAtMillis == null || collectedAtMillis == null)
+        require(cancellationReason == null || cancelledAtMillis != null)
+        require(cancellationNote.length <= 500)
+        require(refund == null || (isPaid && cancelledAtMillis == refund.requestedAtMillis && refund.amount <= total))
     }
 
     val total: Long get() = bookingTotal(unitPrice, quantity)

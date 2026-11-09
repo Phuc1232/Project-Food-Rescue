@@ -11,6 +11,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.feature.order.domain.*
+import com.foodrescue.app.feature.refund.domain.RefundStatus
+import com.foodrescue.app.feature.refund.presentation.component.label
 
 internal val OrderStatus.label: String get() = when (this) {
     OrderStatus.WAITING_PAYMENT -> "Chờ thanh toán"
@@ -48,11 +50,12 @@ internal fun OrderTimeline(order: BoxReservation, nowMillis: Long, modifier: Mod
     FoodRescueCard(modifier) {
         Text("Tiến trình đơn hàng", style = MaterialTheme.typography.titleMedium)
         OrderStep("Đã đặt hộp", bookingTimestamp(order.createdAtMillis), true)
+        if (order.isPaid) OrderStep("Đã thanh toán", bookingTimestamp(requireNotNull(order.payment).updatedAtMillis), true)
         if (status == OrderStatus.CANCELLED || status == OrderStatus.EXPIRED) {
             OrderStep(status.label, bookingTimestamp(order.cancelledAtMillis ?: order.expiresAtMillis), true)
+            order.refund?.let { OrderStep(it.status.label, bookingTimestamp(it.updatedAtMillis), it.status == RefundStatus.COMPLETED) }
         } else {
-            OrderStep(if (order.isPaid) "Đã thanh toán" else "Thanh toán toàn bộ",
-                if (order.isPaid) bookingTimestamp(requireNotNull(order.payment).updatedAtMillis) else "QR VNPAY", order.isPaid)
+            if (!order.isPaid) OrderStep("Thanh toán toàn bộ", "QR VNPAY", false)
             OrderStep(if (order.collectedAtMillis != null) "Đã nhận hộp" else "Nhận tại cửa hàng",
                 order.collectedAtMillis?.let(::bookingTimestamp) ?: bookingHours(order.pickup), order.collectedAtMillis != null)
         }

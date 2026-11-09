@@ -29,6 +29,8 @@ import com.foodrescue.app.feature.order.domain.OrderFilter
 import com.foodrescue.app.feature.payment.presentation.PaymentScreen
 import com.foodrescue.app.feature.payment.presentation.PaymentUiState
 import com.foodrescue.app.feature.discovery.presentation.*
+import com.foodrescue.app.feature.refund.presentation.RefundScreen
+import com.foodrescue.app.feature.refund.presentation.RefundUiState
 import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
 
 private val NavigationSaver = Saver<CustomerNavigation, ArrayList<String>>(
@@ -76,6 +78,8 @@ internal fun CustomerRoute(
     val paymentId = navigation.current?.takeIf { it.startsWith("payment:") }?.substringAfter(':')
     val paymentReservation = bookingState.reservations.firstOrNull { it.id == paymentId && it.cancelledAtMillis == null }
     val paymentBox = bookingState.catalog.firstOrNull { it.id == paymentReservation?.boxId }
+    val cancelId = navigation.current?.takeIf { it.startsWith("cancel:") }?.substringAfter(':')
+    val refundId = navigation.current?.takeIf { it.startsWith("refund:") }?.substringAfter(':')
     val showMap: (Int) -> Unit = { id ->
         val selectedStore = state.catalog.find { it.id == id }?.storeId
         mapSelection = state.mapPresentation.boxes.firstOrNull { it.storeId == selectedStore }?.id
@@ -92,6 +96,19 @@ internal fun CustomerRoute(
             onOrders = { navigation = navigation.selectTab(2) }, modifier = modifier)
     } else if (navigation.current == "profile") {
         EditCustomerProfileScreen(profile, back) { name, phone -> if (onProfile(name, phone)) back() }
+    } else if (cancelId != null) {
+        CancelOrderScreen(bookingState, cancelId, back, booking::chooseCancellationReason, booking::changeCancellationNote,
+            onConfirm = { if (booking.cancelPaidOrder(cancelId)) navigation = navigation.back().open("refund:$cancelId") },
+            onSupport = { open("complaint-new:$cancelId") }, modifier = modifier)
+    } else if (refundId != null) {
+        val order = bookingState.reservations.firstOrNull { it.id == refundId }
+        val refundState = order?.refund?.let { refund -> RefundUiState(refund, order.reference,
+            bookingState.catalog.firstOrNull { it.id == order.boxId }?.store ?: "Đơn hàng của bạn",
+            order.quantity, order.total, bookingTimestamp(refund.requestedAtMillis), bookingTimestamp(refund.updatedAtMillis),
+            order.cancellationReason?.label ?: "Hủy trước giờ nhận") }
+        RefundScreen(refundState, back, { booking.retryRefund(refundId) },
+            { navigation = navigation.selectTab(2).open("reservation:$refundId") },
+            { open("complaint-new:$refundId") }, modifier)
     } else if (paymentId != null && paymentReservation?.payment != null && paymentBox != null) {
         PaymentScreen(PaymentUiState(paymentReservation.payment, paymentBox.store, paymentReservation.quantity,
             bookingDate(paymentReservation.pickup.startMillis) + "\n" + bookingHours(paymentReservation.pickup),
@@ -124,7 +141,8 @@ internal fun CustomerRoute(
                 }
             }, onPayment = {
                 if (booking.openPayment(reservationId)) open("payment:" + reservationId)
-            }, onComplaint = { open("complaint-new:$reservationId") }, modifier = modifier)
+            }, onCancel = { booking.prepareCancellation(reservationId); open("cancel:$reservationId") },
+            onRefund = { open("refund:$reservationId") }, onComplaint = { open("complaint-new:$reservationId") }, modifier = modifier)
     } else Scaffold(modifier = modifier.fillMaxSize().imePadding(), containerColor = colors.background, bottomBar = {
         if (navigation.current == null) {
             Surface(color = colors.surface, shadowElevation = 2.dp) {

@@ -5,6 +5,9 @@ import androidx.core.content.edit
 import com.foodrescue.app.feature.order.domain.BoxReservation
 import com.foodrescue.app.feature.order.domain.OrderHistoryStore
 import com.foodrescue.app.feature.order.domain.PickupWindow
+import com.foodrescue.app.feature.order.domain.CancellationReason
+import com.foodrescue.app.feature.refund.domain.OrderRefund
+import com.foodrescue.app.feature.refund.domain.RefundStatus
 import com.foodrescue.app.feature.payment.domain.PaymentStatus
 import com.foodrescue.app.feature.payment.domain.QrPayment
 import org.json.JSONArray
@@ -28,10 +31,16 @@ internal class LocalOrderHistoryStore(context: Context, email: String) : OrderHi
                 QrPayment(it.getString("reference"), it.getLong("amount"),
                     PaymentStatus.valueOf(it.getString("status")), it.getLong("updatedAt"))
             }
+            val refund = row.optJSONObject("refund")?.let {
+                OrderRefund(it.getLong("amount"), RefundStatus.valueOf(it.getString("status")),
+                    it.getLong("requestedAt"), it.getLong("updatedAt"))
+            }
             BoxReservation(row.getString("id"), row.getInt("boxId"), row.getInt("quantity"),
                 PickupWindow(row.getLong("pickupStart"), row.getLong("pickupEnd")),
                 row.getLong("createdAt"), row.getLong("expiresAt"), row.getInt("unitPrice"), payment,
-                row.optionalLong("cancelledAt"), row.optionalLong("collectedAt"))
+                row.optionalLong("cancelledAt"), row.optionalLong("collectedAt"),
+                row.optString("cancellationReason").takeIf(String::isNotBlank)?.let(CancellationReason::valueOf),
+                row.optString("cancellationNote"), refund)
         }.getOrNull() }.distinctBy { it.id }
     }
 
@@ -44,9 +53,14 @@ internal class LocalOrderHistoryStore(context: Context, email: String) : OrderHi
                 put("createdAt", order.createdAtMillis); put("expiresAt", order.expiresAtMillis)
                 put("unitPrice", order.unitPrice)
                 put("cancelledAt", order.cancelledAtMillis); put("collectedAt", order.collectedAtMillis)
+                put("cancellationReason", order.cancellationReason?.name); put("cancellationNote", order.cancellationNote)
                 order.payment?.let { payment -> put("payment", JSONObject().apply {
                     put("reference", payment.reference); put("amount", payment.amount)
                     put("status", payment.status.name); put("updatedAt", payment.updatedAtMillis)
+                }) }
+                order.refund?.let { refund -> put("refund", JSONObject().apply {
+                    put("amount", refund.amount); put("status", refund.status.name)
+                    put("requestedAt", refund.requestedAtMillis); put("updatedAt", refund.updatedAtMillis)
                 }) }
             })
         }

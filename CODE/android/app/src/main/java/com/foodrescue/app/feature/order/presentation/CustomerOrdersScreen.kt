@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.foodrescue.app.core.designsystem.component.FoodRescueEmptyState
 import com.foodrescue.app.core.util.money
 import com.foodrescue.app.feature.order.domain.*
+import com.foodrescue.app.feature.refund.presentation.component.label
 
 @Composable
 internal fun CustomerOrdersScreen(
@@ -57,6 +58,8 @@ internal fun CustomerOrdersScreen(
                         color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             OrderStatusBadge(status)
+                            reservation.refund?.let { Text(it.status.label + " · " + money(it.amount),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
                             Text(box?.store ?: "Hộp bất ngờ", style = MaterialTheme.typography.titleLarge)
                             Text(reservation.reference, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

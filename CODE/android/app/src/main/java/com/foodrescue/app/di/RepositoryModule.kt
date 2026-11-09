@@ -13,6 +13,7 @@ import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
 import com.foodrescue.app.feature.order.data.LocalOrderHistoryStore
 import com.foodrescue.app.feature.payment.data.LocalPaymentRepository
+import com.foodrescue.app.feature.refund.data.LocalRefundRepository
 import com.foodrescue.app.feature.complaint.data.LocalComplaintRepository
 import com.foodrescue.app.feature.complaint.data.LocalEvidenceStore
 import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
@@ -29,7 +30,7 @@ object RepositoryModule {
         initializer {
             val context = checkNotNull(this[APPLICATION_KEY])
             BookingViewModel(createSavedStateHandle(), catalogRepository,
-                LocalPaymentRepository(context), LocalOrderHistoryStore(context, email))
+                LocalPaymentRepository(context), LocalOrderHistoryStore(context, email), LocalRefundRepository(context))
         }
     }
 
