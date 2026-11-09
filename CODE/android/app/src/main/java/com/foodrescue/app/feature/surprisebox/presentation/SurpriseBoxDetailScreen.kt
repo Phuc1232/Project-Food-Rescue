@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-internal fun SurpriseBoxDetailScreen(box: CatalogBox, onBack: () -> Unit, onMap: () -> Unit) {
+internal fun SurpriseBoxDetailScreen(box: CatalogBox, onBack: () -> Unit, onMap: () -> Unit, onStore: () -> Unit) {
     val c = MaterialTheme.colorScheme
     LazyColumn(contentPadding = PaddingValues(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         item { Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -34,6 +34,7 @@ internal fun SurpriseBoxDetailScreen(box: CatalogBox, onBack: () -> Unit, onMap:
                 StoreMonogram(box)
                 Column { Text(box.store, style = MaterialTheme.typography.titleMedium);Text(box.district + if (box.distanceMeters >= 0) " · ${distance(box.distanceMeters)}" else "", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant) }
             }
+            TextButton(onClick = onStore, contentPadding = PaddingValues(0.dp)) { Text("Xem cửa hàng") }
             Text(box.name, style = MaterialTheme.typography.headlineMedium)
             Text(box.description, style = MaterialTheme.typography.bodyLarge, color = c.onSurfaceVariant)
             Surface(color = c.primaryContainer, shape = RoundedCornerShape(16.dp)) {
@@ -59,7 +60,7 @@ internal fun SurpriseBoxDetailScreen(box: CatalogBox, onBack: () -> Unit, onMap:
 }
 
 @Composable
-internal fun SurpriseBoxDetailFooter(box: CatalogBox, onStore: () -> Unit) {
+internal fun SurpriseBoxDetailFooter(box: CatalogBox, hasReservation: Boolean, onBook: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -67,8 +68,10 @@ internal fun SurpriseBoxDetailFooter(box: CatalogBox, onStore: () -> Unit) {
                     Text("Giá mỗi hộp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(money(box.price), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 }
-                Button(onClick = onStore, shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)) { Text("Xem cửa hàng") }
+                Button(onClick = onBook, enabled = hasReservation || box.isAvailable, shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)) {
+                    Text(if (hasReservation) "Xem hộp đang giữ" else if (box.isAvailable) "Đặt hộp" else "Đã hết hộp")
+                }
             }
     }
 }

@@ -2,15 +2,21 @@ package com.foodrescue.app.app.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import com.foodrescue.app.app.session.SessionViewModel
 import com.foodrescue.app.dashboard.customer.CustomerRoute
 import com.foodrescue.app.di.RepositoryModule
 import com.foodrescue.app.feature.auth.presentation.AuthRoute
 import com.foodrescue.app.feature.auth.presentation.AuthViewModel
 import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
+import com.foodrescue.app.feature.order.presentation.BookingViewModel
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -20,11 +26,21 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     val destination = RoleNavigation.destinationFor(session.role)
     if (destination == Destinations.CUSTOMER && profile != null) {
         val discovery: DiscoveryViewModel = viewModel(factory = RepositoryModule.discoveryViewModelFactory)
+        val booking: BookingViewModel = viewModel(factory = RepositoryModule.bookingViewModelFactory)
+        val lifecycleOwner = LocalLifecycleOwner.current
+        LaunchedEffect(booking, lifecycleOwner) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    booking.refreshTime()
+                    delay(1_000)
+                }
+            }
+        }
         val context = LocalContext.current
         val locationSource = remember(context) { RepositoryModule.locationSource(context) }
         CustomerRoute(profile, session::updateProfile,
-            onLogout = { discovery.clear(); auth.reset(); session.signOut() },
-            vm = discovery, locationSource = locationSource, modifier = modifier)
+            onLogout = { discovery.clear(); booking.clear(); auth.reset(); session.signOut() },
+            vm = discovery, booking = booking, locationSource = locationSource, modifier = modifier)
     } else {
         AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = session::signInCustomer)
     }

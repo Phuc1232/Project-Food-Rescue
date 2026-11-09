@@ -18,6 +18,7 @@ data class CatalogBox(
     val distanceMeters: Int, val pickupStartHour: Int, val initials: String,
     val location: PickupLocation? = null,
     val storeId: Int = id,
+    val pickupEndHour: Int = (pickupStartHour + 2) % 24,
 ) {
     val isAvailable: Boolean get() = remaining > 0
 }
