@@ -1,0 +1,32 @@
+<resources>
+    <string name="auth_login">Đăng nhập</string>
+    <string name="auth_register">Tạo tài khoản</string>
+    <string name="auth_name">Họ và tên</string>
+    <string name="auth_name_placeholder">Tên của bạn</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_email_placeholder">ban@example.com</string>
+    <string name="auth_password">Mật khẩu</string>
+    <string name="auth_confirm_password">Nhập lại mật khẩu</string>
+    <string name="auth_password_hint">Tối thiểu 8 ký tự</string>
+    <string name="auth_show_password">Hiện %1$s</string>
+    <string name="auth_hide_password">Ẩn %1$s</string>
+    <string name="auth_forgot_password">Quên mật khẩu?</string>
+    <string name="auth_forgot_description">Nhập email để nhận mã đặt lại mật khẩu.</string>
+    <string name="auth_send_reset">Gửi mã xác minh</string>
+    <string name="auth_back">Quay lại</string>
+    <string name="auth_register_prompt">Chưa có tài khoản? Đăng ký</string>
+    <string name="auth_login_prompt">Đã có tài khoản? Đăng nhập</string>
+    <string name="auth_terms">Điều khoản sử dụng</string>
+    <string name="auth_privacy">Quyền riêng tư</string>
+    <string name="auth_error_name">Nhập họ và tên.</string>
+    <string name="auth_error_email">Nhập địa chỉ email hợp lệ.</string>
+    <string name="auth_error_password_required">Nhập mật khẩu.</string>
+    <string name="auth_error_password_short">Mật khẩu cần ít nhất 8 ký tự.</string>
+    <string name="auth_error_password_long">Mật khẩu không quá 128 ký tự.</string>
+    <string name="auth_error_confirmation">Mật khẩu nhập lại chưa khớp.</string>
+    <string name="auth_preview_title">Bản xem thử giao diện</string>
+    <string name="auth_login_preview">Thông tin đã nhập hợp lệ. Bản xem thử chưa thực hiện đăng nhập.</string>
+    <string name="auth_register_preview">Thông tin đã nhập hợp lệ. Bản xem thử chưa tạo tài khoản hoặc gửi mã xác minh.</string>
+    <string name="auth_reset_preview">Email đã nhập hợp lệ. Bản xem thử chưa gửi mã đặt lại mật khẩu.</string>
+    <string name="auth_dialog_close">Đóng</string>
+</resources>

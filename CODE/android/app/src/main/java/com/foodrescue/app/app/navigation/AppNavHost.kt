@@ -2,10 +2,9 @@ package com.foodrescue.app.app.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.foodrescue.app.Greeting
+import com.foodrescue.app.feature.auth.presentation.AuthRoute
 
-/** Initial content until feature routes are implemented. */
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
-    Greeting(name = "Android", modifier = modifier)
+    AuthRoute(modifier = modifier)
 }
