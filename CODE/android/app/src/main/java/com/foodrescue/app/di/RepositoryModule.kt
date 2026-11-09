@@ -11,6 +11,7 @@ import com.foodrescue.app.feature.discovery.domain.CatalogRepository
 import com.foodrescue.app.feature.discovery.domain.LocationSource
 import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
+import com.foodrescue.app.feature.order.data.LocalOrderHistoryStore
 import com.foodrescue.app.feature.payment.data.LocalPaymentRepository
 
 /** Composition root for the customer frontend's local dependencies. */
@@ -21,10 +22,11 @@ object RepositoryModule {
         initializer { DiscoveryViewModel(createSavedStateHandle(), catalogRepository) }
     }
 
-    internal val bookingViewModelFactory = viewModelFactory {
+    internal fun bookingViewModelFactory(email: String) = viewModelFactory {
         initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
             BookingViewModel(createSavedStateHandle(), catalogRepository,
-                LocalPaymentRepository(checkNotNull(this[APPLICATION_KEY])))
+                LocalPaymentRepository(context), LocalOrderHistoryStore(context, email))
         }
     }
 

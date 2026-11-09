@@ -24,6 +24,8 @@ import com.foodrescue.app.feature.store.presentation.StoreDetailScreen
 import com.foodrescue.app.feature.surprisebox.presentation.SurpriseBoxDetailFooter
 import com.foodrescue.app.feature.surprisebox.presentation.SurpriseBoxDetailScreen
 import com.foodrescue.app.feature.order.presentation.*
+import com.foodrescue.app.feature.order.domain.pickupCode
+import com.foodrescue.app.feature.order.domain.OrderFilter
 import com.foodrescue.app.feature.payment.presentation.PaymentScreen
 import com.foodrescue.app.feature.payment.presentation.PaymentUiState
 import com.foodrescue.app.feature.discovery.presentation.*
@@ -70,7 +72,7 @@ internal fun CustomerRoute(
     val reservationId = navigation.current?.takeIf { it.startsWith("reservation:") }?.substringAfter(':')
     val reservation = bookingState.reservations.firstOrNull { it.id == reservationId }
     val paymentId = navigation.current?.takeIf { it.startsWith("payment:") }?.substringAfter(':')
-    val paymentReservation = bookingState.reservations.firstOrNull { it.id == paymentId }
+    val paymentReservation = bookingState.reservations.firstOrNull { it.id == paymentId && it.cancelledAtMillis == null }
     val paymentBox = bookingState.catalog.firstOrNull { it.id == paymentReservation?.boxId }
     val showMap: (Int) -> Unit = { id ->
         val selectedStore = state.catalog.find { it.id == id }?.storeId
@@ -85,12 +87,17 @@ internal fun CustomerRoute(
     } else if (paymentId != null && paymentReservation?.payment != null && paymentBox != null) {
         PaymentScreen(PaymentUiState(paymentReservation.payment, paymentBox.store, paymentReservation.quantity,
             bookingDate(paymentReservation.pickup.startMillis) + "\n" + bookingHours(paymentReservation.pickup),
-            paymentBox.location?.address ?: paymentBox.district, paymentReservation.remainingSeconds(bookingState.nowMillis)),
+            paymentBox.location?.address ?: paymentBox.district, paymentReservation.remainingSeconds(bookingState.nowMillis),
+            paymentReservation.pickupCode(bookingState.nowMillis)),
             back, onCheck = { booking.checkPayment(paymentId) },
-            onOrders = { navigation = navigation.selectTab(2) },
+            onOrders = {
+                booking.selectFilter(OrderFilter.ALL)
+                pages.removeState("tab:2")
+                navigation = navigation.selectTab(2)
+            },
             onRebook = {
-                booking.prepare(paymentReservation.boxId, reset = true)
-                navigation = navigation.selectTab(2).open("booking:" + paymentReservation.boxId)
+                val held = booking.prepare(paymentReservation.boxId, reset = true)
+                navigation = navigation.selectTab(2).open(if (held != null) "reservation:$held" else "booking:" + paymentReservation.boxId)
             }, modifier = modifier)
     } else if (bookingId != null) {
         BookingScreen(bookingState, back, booking::changeQuantity, booking::acceptPolicy,
@@ -101,11 +108,11 @@ internal fun CustomerRoute(
         ReservationScreen(reservation, bookingState.catalog.firstOrNull { it.id == reservation?.boxId },
             bookingState.nowMillis, back,
             onExplore = { navigation = navigation.selectTab(0) },
-            onRelease = { booking.release(reservationId); back() },
+            onRelease = { booking.release(reservationId) },
             onRebook = {
                 reservation?.let {
-                    booking.prepare(it.boxId, reset = true)
-                    navigation = navigation.back().open("booking:" + it.boxId)
+                    val held = booking.prepare(it.boxId, reset = true)
+                    navigation = navigation.back().open(if (held != null) "reservation:$held" else "booking:" + it.boxId)
                 }
             }, onPayment = {
                 if (booking.openPayment(reservationId)) open("payment:" + reservationId)
@@ -151,7 +158,7 @@ internal fun CustomerRoute(
                             { open("store:$it") })
                     }
                     navigation.tab == 2 -> CustomerOrdersScreen(bookingState,
-                        { open("reservation:" + it) }, { navigation = navigation.selectTab(0) })
+                        { open("reservation:" + it) }, { navigation = navigation.selectTab(0) }, booking::selectFilter)
                     else -> CustomerProfileScreen(profile, { open("profile") }, { navigation = navigation.selectTab(2) }, {
                         onLogout()
                     })

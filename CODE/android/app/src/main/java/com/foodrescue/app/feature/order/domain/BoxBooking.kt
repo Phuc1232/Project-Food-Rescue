@@ -29,18 +29,25 @@ internal data class BoxReservation(
     val expiresAtMillis: Long,
     val unitPrice: Int = 0,
     val payment: QrPayment? = null,
+    val cancelledAtMillis: Long? = null,
+    val collectedAtMillis: Long? = null,
 ) {
     init {
         require(id.isNotBlank() && quantity > 0)
         require(expiresAtMillis > createdAtMillis && expiresAtMillis <= pickup.startMillis)
         require(unitPrice >= 0)
         require(payment == null || payment.amount == total)
+        require(cancelledAtMillis == null || cancelledAtMillis >= createdAtMillis)
+        require(collectedAtMillis == null || (isPaid && collectedAtMillis >= createdAtMillis))
+        require(cancelledAtMillis == null || collectedAtMillis == null)
     }
 
     val total: Long get() = bookingTotal(unitPrice, quantity)
     val isPaid: Boolean get() = payment?.status == PaymentStatus.SUCCEEDED
-    fun isActive(nowMillis: Long) = !isPaid && nowMillis < expiresAtMillis
-    fun occupiesStock(nowMillis: Long) = isPaid || isActive(nowMillis)
+    val reference: String get() = payment?.reference ?: "FR" + id.replace("-", "").take(12).uppercase(java.util.Locale.ROOT)
+    fun isActive(nowMillis: Long) = cancelledAtMillis == null && !isPaid &&
+        payment?.status != PaymentStatus.EXPIRED && nowMillis < expiresAtMillis
+    fun occupiesStock(nowMillis: Long) = cancelledAtMillis == null && (isPaid || isActive(nowMillis))
     fun remainingSeconds(nowMillis: Long): Long = ((expiresAtMillis - nowMillis).coerceAtLeast(0) + 999) / 1000
 }
 

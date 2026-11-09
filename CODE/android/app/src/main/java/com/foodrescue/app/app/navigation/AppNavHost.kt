@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
+import java.util.Locale
 import com.foodrescue.app.app.session.SessionViewModel
 import com.foodrescue.app.dashboard.customer.CustomerRoute
 import com.foodrescue.app.di.RepositoryModule
@@ -26,10 +27,13 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     val destination = RoleNavigation.destinationFor(session.role)
     if (destination == Destinations.CUSTOMER && profile != null) {
         val discovery: DiscoveryViewModel = viewModel(factory = RepositoryModule.discoveryViewModelFactory)
-        val booking: BookingViewModel = viewModel(factory = RepositoryModule.bookingViewModelFactory)
+        val account = profile.email.trim().lowercase(Locale.ROOT)
+        val bookingFactory = remember(account) { RepositoryModule.bookingViewModelFactory(account) }
+        val booking: BookingViewModel = viewModel(key = "customer.orders:$account", factory = bookingFactory)
         val lifecycleOwner = LocalLifecycleOwner.current
         LaunchedEffect(booking, lifecycleOwner) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                booking.restoreHistory()
                 while (true) {
                     booking.refreshTime()
                     delay(1_000)

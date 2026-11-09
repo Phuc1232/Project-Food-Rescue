@@ -16,6 +16,7 @@ import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.core.util.money
 import com.foodrescue.app.feature.payment.domain.PaymentStatus
 import com.foodrescue.app.feature.payment.domain.QrPayment
+import com.foodrescue.app.feature.pickup.presentation.component.PickupCodeCard
 
 internal data class PaymentUiState(
     val payment: QrPayment,
@@ -24,6 +25,7 @@ internal data class PaymentUiState(
     val pickup: String,
     val address: String,
     val remainingSeconds: Long,
+    val pickupCode: String? = null,
 )
 
 @Composable
@@ -57,6 +59,7 @@ internal fun PaymentScreen(
             PaymentQrCard(payment.amount, time)
         } else {
             PaymentStatusHeader(status)
+            if (status == PaymentStatus.SUCCEEDED && state.pickupCode != null) PickupCodeCard(state.pickupCode)
             FoodRescueCard {
                 Text(if (status == PaymentStatus.SUCCEEDED) "Đã thanh toán toàn bộ" else "Số tiền thanh toán",
                     style = MaterialTheme.typography.bodyMedium)
@@ -110,7 +113,7 @@ private fun PaymentStatusHeader(status: PaymentStatus) {
         Text(when (status) {
             PaymentStatus.READY -> "Quét mã QR để thanh toán toàn bộ đơn hàng."
             PaymentStatus.PROCESSING -> "Kết quả sẽ được cập nhật tại đây và trong Đơn hàng."
-            PaymentStatus.SUCCEEDED -> "Hộp đã được xác nhận. Hẹn bạn tại cửa hàng trong khung giờ đã chọn."
+            PaymentStatus.SUCCEEDED -> "Đã thanh toán toàn bộ giá trị đơn hàng."
             PaymentStatus.FAILED -> "Kiểm tra kết nối rồi thử lại. Vui lòng xác nhận kết quả trước khi thanh toán thêm."
             PaymentStatus.EXPIRED -> "Lượt giữ hộp đã kết thúc. Bạn có thể kiểm tra số lượng còn lại và đặt lại."
         }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
