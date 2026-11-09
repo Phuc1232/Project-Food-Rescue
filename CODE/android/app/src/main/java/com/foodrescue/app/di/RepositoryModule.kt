@@ -13,6 +13,9 @@ import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
 import com.foodrescue.app.feature.order.data.LocalOrderHistoryStore
 import com.foodrescue.app.feature.payment.data.LocalPaymentRepository
+import com.foodrescue.app.feature.complaint.data.LocalComplaintRepository
+import com.foodrescue.app.feature.complaint.data.LocalEvidenceStore
+import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
 
 /** Composition root for the customer frontend's local dependencies. */
 object RepositoryModule {
@@ -27,6 +30,14 @@ object RepositoryModule {
             val context = checkNotNull(this[APPLICATION_KEY])
             BookingViewModel(createSavedStateHandle(), catalogRepository,
                 LocalPaymentRepository(context), LocalOrderHistoryStore(context, email))
+        }
+    }
+
+    internal fun complaintViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            val evidence = LocalEvidenceStore(context, email)
+            ComplaintViewModel(LocalComplaintRepository(context, email, evidence), evidence)
         }
     }
 

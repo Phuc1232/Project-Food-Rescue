@@ -18,6 +18,7 @@ import com.foodrescue.app.feature.auth.presentation.AuthRoute
 import com.foodrescue.app.feature.auth.presentation.AuthViewModel
 import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
+import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -30,10 +31,13 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val account = profile.email.trim().lowercase(Locale.ROOT)
         val bookingFactory = remember(account) { RepositoryModule.bookingViewModelFactory(account) }
         val booking: BookingViewModel = viewModel(key = "customer.orders:$account", factory = bookingFactory)
+        val complaintFactory = remember(account) { RepositoryModule.complaintViewModelFactory(account) }
+        val complaints: ComplaintViewModel = viewModel(key = "customer.complaints:$account", factory = complaintFactory)
         val lifecycleOwner = LocalLifecycleOwner.current
-        LaunchedEffect(booking, lifecycleOwner) {
+        LaunchedEffect(booking, complaints, lifecycleOwner) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 booking.restoreHistory()
+                complaints.restore()
                 while (true) {
                     booking.refreshTime()
                     delay(1_000)
@@ -43,8 +47,8 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val context = LocalContext.current
         val locationSource = remember(context) { RepositoryModule.locationSource(context) }
         CustomerRoute(profile, session::updateProfile,
-            onLogout = { discovery.clear(); booking.clear(); auth.reset(); session.signOut() },
-            vm = discovery, booking = booking, locationSource = locationSource, modifier = modifier)
+            onLogout = { discovery.clear(); booking.clear(); complaints.clear(); auth.reset(); session.signOut() },
+            vm = discovery, booking = booking, complaints = complaints, locationSource = locationSource, modifier = modifier)
     } else {
         AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = session::signInCustomer)
     }

@@ -29,6 +29,7 @@ import com.foodrescue.app.feature.order.domain.OrderFilter
 import com.foodrescue.app.feature.payment.presentation.PaymentScreen
 import com.foodrescue.app.feature.payment.presentation.PaymentUiState
 import com.foodrescue.app.feature.discovery.presentation.*
+import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
 
 private val NavigationSaver = Saver<CustomerNavigation, ArrayList<String>>(
     save = { arrayListOf(it.tab.toString()).apply { addAll(it.path) } },
@@ -43,6 +44,7 @@ internal fun CustomerRoute(
     onLogout: () -> Unit,
     vm: DiscoveryViewModel,
     booking: BookingViewModel,
+    complaints: ComplaintViewModel,
     locationSource: LocationSource,
     modifier: Modifier = Modifier,
 ) {
@@ -82,7 +84,13 @@ internal fun CustomerRoute(
     }
     BackHandler(modal == null && (navigation.current != null || navigation.tab != 0), back)
 
-    if (navigation.current == "profile") {
+    val complaintDestination = navigation.current?.takeIf { it == "complaints" || it == "complaint-new" ||
+        it.startsWith("complaint:") || it.startsWith("complaint-new:") }
+    if (complaintDestination != null) {
+        CustomerComplaintRoute(complaintDestination, complaints, bookingState, back, open,
+            onSubmitted = { navigation = navigation.back().open("complaints").open("complaint:$it") },
+            onOrders = { navigation = navigation.selectTab(2) }, modifier = modifier)
+    } else if (navigation.current == "profile") {
         EditCustomerProfileScreen(profile, back) { name, phone -> if (onProfile(name, phone)) back() }
     } else if (paymentId != null && paymentReservation?.payment != null && paymentBox != null) {
         PaymentScreen(PaymentUiState(paymentReservation.payment, paymentBox.store, paymentReservation.quantity,
@@ -116,7 +124,7 @@ internal fun CustomerRoute(
                 }
             }, onPayment = {
                 if (booking.openPayment(reservationId)) open("payment:" + reservationId)
-            }, modifier = modifier)
+            }, onComplaint = { open("complaint-new:$reservationId") }, modifier = modifier)
     } else Scaffold(modifier = modifier.fillMaxSize().imePadding(), containerColor = colors.background, bottomBar = {
         if (navigation.current == null) {
             Surface(color = colors.surface, shadowElevation = 2.dp) {
@@ -159,7 +167,7 @@ internal fun CustomerRoute(
                     }
                     navigation.tab == 2 -> CustomerOrdersScreen(bookingState,
                         { open("reservation:" + it) }, { navigation = navigation.selectTab(0) }, booking::selectFilter)
-                    else -> CustomerProfileScreen(profile, { open("profile") }, { navigation = navigation.selectTab(2) }, {
+                    else -> CustomerProfileScreen(profile, { open("profile") }, { navigation = navigation.selectTab(2) }, { open("complaints") }, {
                         onLogout()
                     })
                 }

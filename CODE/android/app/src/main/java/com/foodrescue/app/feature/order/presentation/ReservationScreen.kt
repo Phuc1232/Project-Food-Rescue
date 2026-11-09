@@ -24,6 +24,7 @@ internal fun ReservationScreen(
     onRebook: () -> Unit,
     onPayment: () -> Unit,
     modifier: Modifier = Modifier,
+    onComplaint: () -> Unit = {},
 ) {
     if (reservation == null) {
         FoodRescuePage("Chi tiết đơn hàng", onBack, modifier) {
@@ -106,6 +107,9 @@ internal fun ReservationScreen(
             }
         }
         OrderTimeline(reservation, nowMillis)
+        if (reservation.payment != null) {
+            TextButton(onClick = onComplaint, modifier = Modifier.fillMaxWidth()) { Text("Gửi khiếu nại") }
+        }
         if (active && !checking) TextButton(onClick = { releaseOpen = true }, modifier = Modifier.fillMaxWidth()) {
             Text("Thôi giữ hộp", color = MaterialTheme.colorScheme.error)
         }
