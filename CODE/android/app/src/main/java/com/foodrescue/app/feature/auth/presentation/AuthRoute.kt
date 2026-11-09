@@ -13,18 +13,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 
 @Composable
-fun AuthRoute(modifier: Modifier = Modifier, viewModel: AuthViewModel = viewModel()) {
+fun AuthRoute(
+    modifier: Modifier = Modifier,
+    viewModel: AuthViewModel = viewModel(),
+    onAuthenticated: (name: String, email: String) -> Unit = { _, _ -> },
+) {
     val state = viewModel.uiState
     val screenStates = rememberSaveableStateHolder()
     val activity = LocalActivity.current
     val window = activity?.window
+    LaunchedEffect(state.otp?.expiresAtSeconds, viewModel) {
+        if (state.otp != null) {
+            while (true) {
+                viewModel.tick()
+                delay(1_000)
+            }
+        }
+    }
     DisposableEffect(window) {
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
         val previousStatusBar = controller?.isAppearanceLightStatusBars
@@ -67,6 +81,17 @@ fun AuthRoute(modifier: Modifier = Modifier, viewModel: AuthViewModel = viewMode
                         onLogin = { viewModel.navigate(AuthPage.LOGIN) },
                         onRegister = { viewModel.navigate(AuthPage.REGISTER) },
                     )
+                    AuthPage.REGISTER_OTP, AuthPage.RESET_OTP -> AuthVerificationScreen(
+                        state = state.copy(page = page),
+                        onEdit = viewModel::edit,
+                        onSubmit = viewModel::submit,
+                        onResend = viewModel::resend,
+                        onBack = viewModel::back,
+                    )
+                    AuthPage.REGISTER_SUCCESS, AuthPage.RESET_SUCCESS -> AuthSuccessScreen(
+                        state = state.copy(page = page),
+                        onLogin = { viewModel.navigate(AuthPage.LOGIN) },
+                    )
                     else -> AuthFormScreen(
                         state = state.copy(page = page),
                         onEdit = viewModel::edit,
@@ -78,6 +103,12 @@ fun AuthRoute(modifier: Modifier = Modifier, viewModel: AuthViewModel = viewMode
                 }
             }
         }
-        state.dialog?.let { AuthPreviewDialog(dialog = it, onDismiss = viewModel::dismissDialog) }
+        state.dialog?.let {
+            AuthPreviewDialog(
+                dialog = it,
+                onDismiss = viewModel::dismissDialog,
+                onConfirm = { viewModel.enterPreview(onAuthenticated) },
+            )
+        }
     }
 }

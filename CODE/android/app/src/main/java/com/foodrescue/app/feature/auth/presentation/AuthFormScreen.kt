@@ -46,6 +46,7 @@ fun AuthFormScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val isRegister = state.page == AuthPage.REGISTER
     val isReset = state.page == AuthPage.FORGOT_PASSWORD
+    val isNewPassword = state.page == AuthPage.NEW_PASSWORD
     val submit = {
         focus.clearFocus()
         keyboard?.hide()
@@ -58,6 +59,7 @@ fun AuthFormScreen(
     val headingRes = when (state.page) {
         AuthPage.REGISTER -> R.string.auth_register
         AuthPage.FORGOT_PASSWORD -> R.string.auth_forgot_password
+        AuthPage.NEW_PASSWORD -> R.string.auth_new_password
         else -> R.string.auth_login
     }
     Box(
@@ -109,7 +111,7 @@ fun AuthFormScreen(
                 )
                 Spacer(Modifier.height(16.dp))
             }
-            FoodRescueTextField(
+            if (!isNewPassword) FoodRescueTextField(
                 label = stringResource(R.string.auth_email),
                 value = state.form.email,
                 onValueChange = { onEdit(AuthField.EMAIL, it) },
@@ -125,12 +127,12 @@ fun AuthFormScreen(
                     value = state.form.password,
                     onValueChange = { onEdit(AuthField.PASSWORD, it) },
                     error = state.errors[AuthField.PASSWORD]?.let { stringResource(it) },
-                    hint = if (isRegister) stringResource(R.string.auth_password_hint) else null,
-                    imeAction = if (isRegister) ImeAction.Next else ImeAction.Done,
+                    hint = if (isRegister || isNewPassword) stringResource(R.string.auth_password_hint) else null,
+                    imeAction = if (isRegister || isNewPassword) ImeAction.Next else ImeAction.Done,
                     keyboardActions = actions,
                 )
             }
-            if (isRegister) {
+            if (isRegister || isNewPassword) {
                 Spacer(Modifier.height(16.dp))
                 FoodRescuePasswordField(
                     label = stringResource(R.string.auth_confirm_password),
@@ -150,7 +152,11 @@ fun AuthFormScreen(
             }
             Spacer(Modifier.height(24.dp))
             FoodRescueButton(
-                text = stringResource(if (isReset) R.string.auth_send_reset else headingRes),
+                text = stringResource(when {
+                    isReset -> R.string.auth_send_reset
+                    isNewPassword -> R.string.auth_save_password
+                    else -> headingRes
+                }),
                 onClick = submit,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -173,7 +179,7 @@ fun AuthFormScreen(
                     }
                 }
             }
-            if (!isReset) {
+            if (!isReset && !isNewPassword) {
                 TextButton(
                     onClick = { onNavigate(if (isRegister) AuthPage.LOGIN else AuthPage.REGISTER) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),

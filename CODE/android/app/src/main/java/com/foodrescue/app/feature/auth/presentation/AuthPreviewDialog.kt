@@ -8,7 +8,7 @@ import androidx.compose.ui.res.stringResource
 import com.foodrescue.app.R
 
 @Composable
-internal fun AuthPreviewDialog(dialog: AuthDialog, onDismiss: () -> Unit) {
+internal fun AuthPreviewDialog(dialog: AuthDialog, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     val content = when (dialog) {
         AuthDialog.LOGIN_PREVIEW -> R.string.auth_login_preview
         AuthDialog.REGISTER_PREVIEW -> R.string.auth_register_preview
@@ -19,7 +19,10 @@ internal fun AuthPreviewDialog(dialog: AuthDialog, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.auth_preview_title)) },
         text = { Text(stringResource(content)) },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.auth_dialog_close)) }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.auth_enter_preview)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.auth_back)) }
         },
     )
 }
