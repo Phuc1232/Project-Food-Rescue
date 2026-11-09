@@ -1,0 +1,11 @@
+.gradle/
+build/
+.idea/
+*.iml
+.env
+.env.*
+
+# Local tooling and generated scratch files
+tmp/
+!.env.example
+.agents/

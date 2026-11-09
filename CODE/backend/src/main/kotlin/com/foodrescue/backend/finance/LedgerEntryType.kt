@@ -1,0 +1,3 @@
+package com.foodrescue.backend.finance
+
+enum class LedgerEntryType { PAYMENT_RECEIPT, CUSTOMER_REFUND, PLATFORM_COMMISSION, STORE_PAYABLE, NO_SHOW_COMPENSATION, ADJUSTMENT }

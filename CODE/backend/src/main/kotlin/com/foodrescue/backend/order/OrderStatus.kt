@@ -1,0 +1,3 @@
+package com.foodrescue.backend.order
+
+enum class OrderStatus { PENDING_PAYMENT, CONFIRMED, HANDOVER_IN_PROGRESS, COMPLETED, CANCELLED, EXPIRED, PENDING_NO_SHOW, NO_SHOW }

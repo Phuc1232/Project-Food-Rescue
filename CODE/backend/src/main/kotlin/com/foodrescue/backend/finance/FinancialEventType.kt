@@ -1,0 +1,3 @@
+package com.foodrescue.backend.finance
+
+enum class FinancialEventType { PAYMENT_RECEIVED, ORDER_COMPLETED, REFUND_SUCCEEDED, NO_SHOW_CONFIRMED, COMPLAINT_RESOLVED, ADJUSTMENT }

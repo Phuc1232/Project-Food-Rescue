@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine3.22  # Bản nhẹ nhất, ổn định
+    container_name: foodrescue_db_container
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER:-foodrescue}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD in your environment or .env}
+      - POSTGRES_DB=${DB_NAME:-foodrescue_db}       # Tên Database của dự án
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
