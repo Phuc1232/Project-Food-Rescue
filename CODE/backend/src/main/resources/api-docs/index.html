@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- SW-01,02,03,05: local Swagger UI; credentials are entered only by the user. -->
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FoodRescue API · Swagger UI</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="assets/swagger-ui.css">
+</head>
+<body>
+  <header>
+    <h1>FoodRescue API</h1>
+    <p>Dùng Try it out → Execute để gửi request thật tới backend hiện tại.</p>
+    <p>Login rồi copy accessToken vào Authorize (chỉ JWT, không thêm Bearer). Reload sẽ xóa authorization.</p>
+    <p>Xác minh email qua SMTP local. Refresh dùng một lần: gửi tuần tự, thay accessToken trong Authorize sau refresh;
+      dùng lại refresh token sẽ thu hồi phiên. Logout xong token cũ trả 401. Quota vẫn áp dụng.</p>
+    <p><a href="../openapi.yaml">Tải hợp đồng OpenAPI</a> · Chỉ dùng tài khoản thử; đóng tab sau khi thao tác.</p>
+  </header>
+  <div id="swagger-ui"></div>
+  <script src="assets/swagger-ui-bundle.js"></script>
+  <script src="assets/swagger-initializer.js"></script>
+</body>
+</html>

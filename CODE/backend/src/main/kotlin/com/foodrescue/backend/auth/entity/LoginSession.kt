@@ -1,3 +1,4 @@
+// AC-09,18,21: persistence support for verified accounts and controlled sessions.
 package com.foodrescue.backend.auth.entity
 
 import com.foodrescue.backend.account.entity.Account
@@ -12,8 +13,8 @@ class LoginSession(
     @field:JoinColumn(name = "account_id", nullable = false)
     var account: Account,
 
-    @field:Column(name = "token_hash", nullable = false, length = 255)
-    var tokenHash: String,
+    @field:Column(name = "token_hash", nullable = true, length = 255)
+    var tokenHash: String?,
 
     @field:Column(name = "expires_at", nullable = false)
     var expiresAt: Instant,

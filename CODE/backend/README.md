@@ -30,8 +30,8 @@ The test suite starts its own isolated PostgreSQL container and requires Docker.
 
 Empty packages are tracked with .gitkeep.
 The backend includes JPA entities, repositories, PostgreSQL/Flyway migrations and persistence tests.
-Business controllers, authentication and transactional application services are not implemented yet.
-A request to / returns 404 until controllers are added.
+Authentication API, JWT/session validation, account profile and store authorization are implemented. Business order/payment controllers are not implemented yet.
+API base path: /api/v1. See docs/auth-setup.md for required key/mail configuration.
 Secrets must be supplied through environment variables, never committed.
 
 Build configuration follows the official Kotlin Spring Boot example:
@@ -41,6 +41,23 @@ https://kotlinlang.org/docs/jvm-create-project-with-spring-boot.html
 ## PostgreSQL persistence
 
 See [persistence setup and service contracts](docs/persistence.md) and the
-[English entity/property dictionary](docs/erd-entity-implementation-plan.md#8-quy-ước-tên-tiếng-anh-và-danh-mục-thuộc-tính).
+[English entity/property dictionary](docs/erd-entity-implementation-plan.md#8-quy-Æ°á»›c-tÃªn-tiáº¿ng-anh-vÃ -danh-má»¥c-thuá»™c-tÃ­nh).
 Set DB_PASSWORD before running Compose and the backend. Tests require Docker and
 use a separate PostgreSQL Testcontainer, not the application database.
+
+## Authentication API
+
+Read [authentication setup](docs/auth-setup.md), [OpenAPI](docs/api/openapi.yaml) and
+[implementation control report](docs/specs/api-foundation-and-auth/03-implementation-control.txt).
+The application requires RSA keys and RATE_LIMIT_KEY_SECRET before startup.
+Gradle tests generate isolated keys and never send real email.
+
+## Swagger UI
+
+In dev/test, open `/docs` for interactive Swagger UI, then use **Try it out** and
+**Authorize** with the access JWT from login (without the `Bearer` prefix).
+UI assets are bundled locally. Authorization is cleared on reload; refresh is manual.
+Docs, contract and assets are denied whenever `prod` is active, including mixed profiles.
+See [Swagger setup](docs/auth-setup.md#swagger-ui-tương-tác-devtest) and
+[implementation plan](docs/specs/swagger-ui/02-plan.md) and
+[control report](docs/specs/swagger-ui/03-implementation-control.txt).

@@ -1,3 +1,4 @@
+// AC-18,23: persistence support for verified accounts and controlled sessions.
 package com.foodrescue.backend.account.entity
 
 import com.foodrescue.backend.account.AccountStatus
@@ -18,5 +19,7 @@ class Account(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "status", nullable = false, length = 50)
-    var status: AccountStatus
+    var status: AccountStatus,
+    @field:Column(name = "email_verified_at")
+    var emailVerifiedAt: java.time.Instant? = null
 ) : MutableEntity()

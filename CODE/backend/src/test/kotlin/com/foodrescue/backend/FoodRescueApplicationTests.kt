@@ -42,6 +42,7 @@ class FoodRescueApplicationTests {
         @DynamicPropertySource
         @JvmStatic
         fun database(registry: DynamicPropertyRegistry) {
+            com.foodrescue.backend.support.TestAuthKeys.configure(registry)
             registry.add("spring.datasource.url", postgres::getJdbcUrl)
             registry.add("spring.datasource.username", postgres::getUsername)
             registry.add("spring.datasource.password", postgres::getPassword)
@@ -73,6 +74,7 @@ class FoodRescueApplicationTests {
                         type.simpleName == "Attachment" && field == "complaint" -> create(Class.forName("com.foodrescue.backend.complaint.entity.Complaint").kotlin)
                         type.simpleName == "Payment" && field == "order" -> create(CustomerOrder::class)
                         type.simpleName == "FinancialEvent" && field == "payment" -> create(Class.forName("com.foodrescue.backend.payment.entity.Payment").kotlin)
+                        type.simpleName in setOf("RefreshToken","AccountActionToken") && field == "expiresAt" -> Instant.now().plusSeconds(600)
                         parameter.type.isMarkedNullable -> null
                         BaseEntity::class.java.isAssignableFrom(classifier.java) -> create(classifier)
                         classifier.java.isEnum -> classifier.java.enumConstants.first()
@@ -115,8 +117,8 @@ class FoodRescueApplicationTests {
 
     @Test
     fun `all entities persist and load against migrated PostgreSQL schema`() {
-        assertEquals(38, entityManager.metamodel.entities.size)
-        assertEquals(3, jdbc.queryForObject("select count(*) from flyway_schema_history where success", Int::class.java))
+        assertEquals(40, entityManager.metamodel.entities.size)
+        assertEquals(4, jdbc.queryForObject("select count(*) from flyway_schema_history where success", Int::class.java))
         tx {
             entityManager.clear()
             val order = entityManager.find(CustomerOrder::class.java, ids.getValue("CustomerOrder"))

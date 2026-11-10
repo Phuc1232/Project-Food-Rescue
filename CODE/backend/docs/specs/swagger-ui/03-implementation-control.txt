@@ -1,0 +1,87 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI SWAGGER UI
+Ngày: 2026-11-10 | Trạng thái: DONE
+Plan: docs/specs/swagger-ui/02-plan.md
+
+1. KẾT QUẢ
+- Swagger UI 5.34.1 tại /docs → /docs/. Chỉ dev/test không có prod; default/prod/mixed chứa prod bị chặn.
+- Dùng contract hiện có /openapi.yaml, 15 paths và Bearer JWT; tags/examples giả, không tài khoản mặc định.
+- Asset trong JAR, không CDN/online validator/runtime WebJar; không tự login/refresh hoặc persist authorization.
+- Hỗ trợ context path /foodrescue; quota và body size vẫn áp dụng dưới prefix nhờ sửa path lookup filter.
+- Không thay DB schema/migration, credential/local.properties, .env loader hay nghiệp vụ auth.
+
+2. KIỂM CHỨNG
+Baseline trước thay đổi: 39/39 PASS.
+Build cuối: 49 PASS, 1 SKIPPED (ca opt-in giữ server cho browser), 0 failures/errors.
+Command: .\gradlew.bat build --console=plain
+JAR: build/libs/foodrescue-backend.jar; HTML tests: build/reports/tests/test/index.html
+Suite | Tests | Skipped | Failures | Errors
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0
+
+Browser kiểm chứng riêng (không dùng DB ứng dụng):
+- Chrome headless 156.0.8078.81, Playwright 1.56.1 trong tmp; browser host CUA không kết nối nên dùng browser test độc lập.
+- Server profile dev, port ngẫu nhiên, context path /foodrescue, PostgreSQL Testcontainers và RecordingAuthMailSender.
+- Render 15 operations. Login 200 → Authorize JWT → me 200 → refresh 200 → thay JWT → me 200 → logout 204 → me 401.
+- Login phiên mới → refresh 200 → reuse 401. Reload mất authorization; me không JWT trả 401.
+- localStorage/sessionStorage rỗng sau reload; 0 JavaScript page errors; 0 request tới origin ngoài.
+- Không lưu token/password/trace/HAR vào báo cáo. Browser script/log sanitized và ảnh sau reload nằm trong tmp được gitignore.
+Ca hold sandbox được chạy riêng với SWAGGER_BROWSER_SMOKE=true, dừng qua file stop và PASS.
+Contract: 15 paths, 162 local references resolve; metadata không đổi required/security/responses. git diff --check PASS.
+JAR inspection PASS: HTML/init/vendor CSS/bundle/license notices/Apache license/contract; không BOOT-INF/lib/swagger-ui-*.jar.
+
+3. FILE | NEW/MODIFIED | FEATURE | RELATED AC/TEST | SHA-256
+build.gradle.kts | Modified | Configuration build-only và vendor copy path; version 5.34.1 | SW-01,05,08 | 3302bdab89bde2e3aef75a581382af4cbc123f504e300beaf38eb5397f25f02e
+src/main/kotlin/com/foodrescue/backend/config/ApiDocumentationConfiguration.kt | Modified | HTML/redirect/contract có profile gate | SW-01,04,06 | 49a0c0a989d8d47040d45761b3da392f9c00f08569f10c0e0ec08ebbb10d2b92
+src/main/kotlin/com/foodrescue/backend/config/SwaggerUiAssetController.kt | New | Asset allowlist và content type | SW-01,04,05,08 | 926e0565780f9e59f8087e26ca198424da114415adda7be147d34b32bddc106e
+src/main/kotlin/com/foodrescue/backend/middleware/SecurityConfiguration.kt | Modified | GET/HEAD docs; prod ưu tiên tắt | SW-04 | f62a12f79b0913066e2a5c51299a0143d8f246f2ba30c22e747573a901bd7d80
+src/main/kotlin/com/foodrescue/backend/middleware/ratelimit/RateLimitFilter.kt | Modified | Bỏ context prefix khi lookup API policy; không đổi quota | SW-03,06 | a0de2a6b96bd6e06fbc2898513cf3201c4da9513901b642aa72914914221ca32
+src/main/resources/api-docs/index.html | New | Swagger page và hướng dẫn thao tác | SW-01,02,03,05 | 4442d233faf7e58eb47d4ffce3915e37b0003eb5cb51fccab7757e5be302735f
+src/main/resources/api-docs/swagger-initializer.js | New | Same-origin config, authorization không persistent | SW-01,02,03,05,06 | 3bad93da97c0db49a48e6152bbea9b570d7c470d1d0faf3f642bff7ddcaeb107
+src/main/resources/api-docs/LICENSE.swagger-ui.txt | New | Nguyên văn Apache-2.0 upstream | SW-08 | cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+docs/api/openapi.yaml | Modified | Relative server, tags/summaries/examples/password metadata; 15 paths giữ nguyên | SW-01,02,03,06,07 | 5cfab81ebd35132fcd50c130b81dc67acdfaf9c6309e011816fcc3959e2634c8
+src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | New | Test resources/config ở dev và test | SW-01,02,05,07,08 | 6a2114f2a8a180e26586d00ec2e34dad2fdf217ccd14c88b45ef72fb781a8e21
+src/test/kotlin/com/foodrescue/backend/SwaggerUiProfileTests.kt | New | Prod/default/mixed, anonymous/bearer, alias paths | SW-04,07 | da7e41cfd842b9e8dee04042e89f7d3a93690622f09c5d51be330132fada4b61
+src/test/kotlin/com/foodrescue/backend/SwaggerUiContextPathTests.kt | New | Context URL, quotas/body-size và sandbox browser opt-in | SW-01..06 | 2ea7600f8aafaece3524484fe5ae9e9bc7270b329be3f599b0b719ad3e8540f1
+src/test/kotlin/com/foodrescue/backend/support/AuthTestFixtures.kt | Modified | HTTP helper thêm context path, giữ DB/mail test riêng | SW-06,07 | ea3484294244a768f0f1be1b3c7b2d2b9c8642328faa9217380ff07e4944364b
+docs/auth-setup.md | Modified | Cách Try it out/Authorize/refresh/logout và sandbox; giữ .env loader | SW-02,03,08 | 9e2d42fcd7401c0a1153ea14b491f116ce310b3f2b44dda40d2bf88bf45514d0
+README.md | Modified | Điểm vào Swagger UI và runbook | SW-08 | 97ba72956de1bc5bf1c46e9772de6070ef7b46ff124ddbdb51c7a6bf7083a7cb
+.gitignore | Modified | Whitelist spec/report Swagger; giữ ignore secrets | SW-08 | 10f172256f9d40446b9a31e3d9aac250dd0eed923a68ce3ea0c2539a4fd4e8dd
+docs/specs/swagger-ui/02-plan.md | Modified | Tiến độ, quyết định và change log | SW-01..08 | 999af3d376f0cb9f1e64d8178f5bf95e4bdfb6710238c4970124c40a9bda147e
+docs/specs/swagger-ui/03-implementation-control.txt | New | Báo cáo này | SW-08 | self
+
+4. THƯ VIỆN VÀ LICENSE
+org.webjars:swagger-ui:5.34.1; nguồn Maven Central, configuration swaggerUiAssets, không transitive dependencies.
+POM upstream khai báo Apache-2.0; nguyên văn LICENSE từ tag v5.34.1 và swagger-ui-bundle.js.LICENSE.txt được đóng gói.
+Các asset vendor được tạo trong build output, không chép bundle vào source hoặc để trong static/public.
+Không commit Playwright/node_modules; bộ công cụ headless thử nghiệm chỉ trong tmp.
+
+5. CÁCH DÙNG VÀ GIỚI HẠN
+Chạy backend như docs/auth-setup.md (DB, RSA, rate secret, mail), profile dev, mở http://localhost:8080/docs (đổi port/prefix nếu có).
+Try it out/Execute gửi request thật; dùng account thử. Login rồi dán access JWT thuần trong Authorize; không thêm Bearer.
+Refresh thủ công và thay cả access/refresh token; không retry refresh cũ. Reload xóa authorization; đóng tab để xóa response đang hiển thị.
+Production/default: anonymous 401, bearer hợp lệ 403 trên docs/spec/assets; không sửa trusted proxy/CORS để mở rộng truy cập.
+Không có auto OpenAPI generator, auto refresh, OAuth UI hoặc frontend verify/reset email trong phạm vi.
+CUA native/browser host không sẵn; kiểm chứng UI đã thay bằng Chrome headless thực chạy trong sandbox độc lập.
+
+6. DUY TRÌ VÀ ROLLBACK
+Khi đổi API: cập nhật docs/api/openapi.yaml cùng source/test. Khi nâng UI: pin version, kiểm tra license, build assets và browser smoke.
+Chạy .\gradlew.bat build --console=plain; xem test XML/HTML và đối chiếu hash bảng file.
+Rollback binary/commit Swagger phục hồi trang docs cũ và matching/build config; không rollback database hoặc thay .env.
+Báo cáo auth trước giữ nguyên như lịch sử; hash trong đó có thể khác cho những file tiếp tục được sửa ở lượt Swagger này.

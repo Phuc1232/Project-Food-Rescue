@@ -9,3 +9,17 @@ build/
 tmp/
 !.env.example
 .agents/
+local.properties
+*.pem
+
+.kotlin/
+# Keep API build inputs and implementation control documents in version control.
+!docs/
+docs/*
+!docs/api/
+!docs/auth-setup.md
+!docs/specs/
+docs/specs/*
+!docs/specs/api-foundation-and-auth/
+
+!docs/specs/swagger-ui/

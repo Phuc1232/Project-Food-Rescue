@@ -1,7 +1,26 @@
 server:
+  forward-headers-strategy: none
   error:
     include-message: never
     include-stacktrace: never
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    properties:
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+auth:
+  action-base-url: ${AUTH_ACTION_BASE_URL}
+  mail-from: ${MAIL_FROM}
+  jwt:
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
