@@ -132,8 +132,10 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **Mục tiêu:** chỉ hộp thật, đủ giá trị và an toàn mới bán được.
 - **Phạm vi:** nhân viên (`BOX_PACK`) đóng `physical_box` với `box_item` (snapshot tên/giá/cảnh báo/hạn dùng),
   tính `total_listed_value`, `safe_until` = hạn sớm nhất; trạng thái `AWAITING_INSPECTION`;
-  người kiểm (`BOX_INSPECT`, khác người đóng nếu Gate A chốt) ghi `box_inspection` PASSED → `AVAILABLE`,
+  người kiểm (`BOX_INSPECT`) ghi `box_inspection` PASSED → `AVAILABLE`,
   FAILED → `BLOCKED`; API tồn khả dụng của đợt bán.
+  **Đã chốt:** người đóng và người kiểm chỉ cần là owner hoặc staff ACTIVE của chính cửa hàng đó có quyền tương ứng;
+  cùng một người được vừa đóng vừa kiểm.
 - **AC tối thiểu:** tổng giá trị < `minimum_value` → không được PASSED; hộp hết hạn an toàn không tính tồn;
   đổi giá menu sau khi đóng không đổi giá trị hộp.
 - **Test:** tính giá trị, kiểm tra hợp lệ/không hợp lệ, tồn khả dụng chỉ đếm hộp AVAILABLE còn hạn.
