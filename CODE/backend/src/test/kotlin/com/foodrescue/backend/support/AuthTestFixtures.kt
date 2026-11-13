@@ -33,7 +33,10 @@ object TestAuthKeys {
         r.add("auth.action-base-url") { "https://example.test" }; r.add("auth.mail-from") { "test@example.test" }
         r.add("spring.mail.host") { "localhost" }; r.add("spring.mail.port") { 1025 }
         r.add("auth.jwt.key-id") { "test-key" }; r.add("auth.rate-limit-key-secret") { "test-only-secret-at-least-32-bytes-long" }
+        r.add("files.storage-dir") { fileRoot.toString() }
     }
+    /** T3.1: uploaded test files live in a throwaway directory, never in the developer's real storage. */
+    val fileRoot: java.nio.file.Path=Files.createTempDirectory("foodrescue-test-files")
 }
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -65,6 +68,23 @@ abstract class AuthTestFixtures {
         return client.send(b.build(),HttpResponse.BodyHandlers.ofString())
     }
     fun json(response: HttpResponse<String>): JsonNode = mapper.readTree(response.body())
+    /** T3.1: multipart/form-data with one part; partName=null sends a multipart body without that part. */
+    fun upload(content: ByteArray,token: String?,filename: String="file.bin",declaredType: String="application/octet-stream",partName: String?="file"): HttpResponse<String> {
+        val boundary="----foodrescue"+java.util.UUID.randomUUID().toString().replace("-","")
+        val body=java.io.ByteArrayOutputStream()
+        val head=if(partName==null) "--$boundary\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\nx\r\n"
+            else "--$boundary\r\nContent-Disposition: form-data; name=\"$partName\"; filename=\"$filename\"\r\nContent-Type: $declaredType\r\n\r\n"
+        body.write(head.toByteArray(Charsets.UTF_8)); if(partName!=null) { body.write(content); body.write("\r\n".toByteArray()) }
+        body.write("--$boundary--\r\n".toByteArray())
+        val b=HttpRequest.newBuilder(URI("http://localhost:"+port+contextPath+"/api/v1/files")).header("Content-Type","multipart/form-data; boundary=$boundary")
+        token?.let { b.header("Authorization","Bearer "+it) }
+        return client.send(b.POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build(),HttpResponse.BodyHandlers.ofString())
+    }
+    fun download(path: String,token: String?): HttpResponse<ByteArray> {
+        val b=HttpRequest.newBuilder(URI("http://localhost:"+port+contextPath+path)); token?.let { b.header("Authorization","Bearer "+it) }
+        return client.send(b.GET().build(),HttpResponse.BodyHandlers.ofByteArray())
+    }
+    fun storedFileCount(): Long = Files.walk(TestAuthKeys.fileRoot).use { s -> s.filter { Files.isRegularFile(it) }.count() }
     fun register(email: String="user@example.test",verify: Boolean=true) {
         assertEquals(201,call("/api/v1/auth/register","POST",mapOf("email" to email,"password" to password,"displayName" to "User")).statusCode())
         if(verify) assertEquals(204,call("/api/v1/auth/verify-email","POST",mapOf("token" to mail.token(email,TokenPurpose.VERIFY_EMAIL))).statusCode())

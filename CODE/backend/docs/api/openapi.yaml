@@ -1100,6 +1100,357 @@
         ],
         "summary": "Check application readiness"
       }
+    },
+    "/api/v1/files": {
+      "post": {
+        "operationId": "post_files",
+        "tags": [
+          "Files"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upload one file (JPEG, PNG, WebP or PDF)",
+        "description": "The type is detected from the file content; the declared Content-Type and file extension are ignored. Maximum size is configurable (default 10 MB). A new file is visible only to its uploader until another feature attaches it. Quota: 30 uploads per 15 minutes per account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "contentType": "image/jpeg, image/png, image/webp, application/pdf"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED on field `file` (missing, empty, unsupported type, too large) or INVALID_REQUEST",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "unsupportedType": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "file",
+                          "message": "Unsupported file type"
+                        }
+                      ]
+                    }
+                  },
+                  "tooLarge": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "file",
+                          "message": "File exceeds 10485760 bytes"
+                        }
+                      ]
+                    }
+                  },
+                  "missing": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "file",
+                          "message": "File is required"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: file storage is unavailable",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "storage": {
+                    "value": {
+                      "code": "SERVICE_UNAVAILABLE",
+                      "message": "Service unavailable",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/{id}": {
+      "get": {
+        "operationId": "get_files_id",
+        "tags": [
+          "Files"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "summary": "Get file metadata",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "description": "NOT_FOUND: the file does not exist or you may not read it (indistinguishable on purpose)",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/files/{id}/content": {
+      "get": {
+        "operationId": "get_files_id_content",
+        "tags": [
+          "Files"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "summary": "Download file content",
+        "description": "Always served as an attachment with X-Content-Type-Options: nosniff and Cache-Control: private, no-store.",
+        "responses": {
+          "200": {
+            "description": "File bytes",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename*=UTF-8''receipt.pdf"
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "nosniff"
+                  ]
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store, private"
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "description": "NOT_FOUND: the file does not exist or you may not read it (indistinguishable on purpose)",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1529,6 +1880,53 @@
             "example": 1
           }
         }
+      },
+      "FileResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "originalName",
+          "mimeType",
+          "sizeBytes",
+          "checksum",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "originalName": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "hoa-don.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "application/pdf"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 182044
+          },
+          "checksum": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "SHA-256 of the stored bytes (hex)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     },
     "responses": {
@@ -1714,6 +2112,10 @@
     },
     {
       "name": "Account"
+    },
+    {
+      "name": "Files",
+      "description": "Upload and download files (evidence, documents, images)"
     },
     {
       "name": "Health"

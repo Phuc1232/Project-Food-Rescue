@@ -45,7 +45,7 @@ lựa chọn đề xuất trong Gate A.
 | Giai đoạn | Task |
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
-| 3. Cửa hàng và nhân viên | [ ] T3.1 · [ ] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
+| 3. Cửa hàng và nhân viên | [x] T3.1 · [ ] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
@@ -82,7 +82,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 
 **Điều kiện hoàn thành giai đoạn:** luồng đăng ký đối tác → duyệt → cấp quyền nhân viên chạy được trọn vẹn.
 
-### [ ] T3.1 — Lưu trữ file
+### [x] T3.1 — Lưu trữ file
 - **Phụ thuộc:** T0.
 - **Mục tiêu:** upload/tải file an toàn cho hồ sơ đối tác, tài liệu giá, ảnh hộp, bằng chứng khiếu nại/hoàn/chi trả.
 - **Phạm vi:** port `FileStorage` + adapter local disk; `POST /api/v1/files` (multipart) tạo `stored_file`
@@ -91,6 +91,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **Dữ liệu:** `stored_file`, `attachment`.
 - **AC tối thiểu:** sai mime/quá cỡ → 400; người lạ tải file của người khác → 403/404; không path traversal;
   file chưa gắn đối tượng chỉ người upload thấy.
+- **Kết quả:** `docs/specs/t3-1-file-storage/`. Task gắn file cài `AttachmentAccessPolicy` cho loại đối tượng của mình.
 
 ### [ ] T3.2 — Đăng ký đối tác và xét duyệt
 - **Phụ thuộc:** T3.1. **Tài liệu:** UC-38, UC-39, UC-66, UC-67, BR-02, SD-01.

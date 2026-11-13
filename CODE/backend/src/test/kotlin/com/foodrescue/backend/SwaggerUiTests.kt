@@ -22,10 +22,10 @@ open class SwaggerUiTests: AuthTestFixtures() {
         assertEquals(401,call("/docs/","POST").statusCode())
     }
     @Test fun `UI uses static reviewed contract with safe configuration and examples`() {
-        val contract=json(call("/openapi.yaml")); assertEquals(15,contract["paths"].size())
+        val contract=json(call("/openapi.yaml")); assertEquals(18,contract["paths"].size())
         assertEquals(".",contract["servers"][0]["url"].asString())
         assertEquals("bearer",contract["components"]["securitySchemes"]["bearerAuth"]["scheme"].asString())
-        assertEquals(6,contract["tags"].size())
+        assertEquals(7,contract["tags"].size())
         val js=call("/docs/assets/swagger-initializer.js").body()
         for(value in listOf("persistAuthorization: false","queryConfigEnabled: false","validatorUrl: null","withCredentials: false","../openapi.yaml")) assertTrue(js.contains(value),value)
         assertFalse(js.contains("localStorage")); assertFalse(js.contains("sessionStorage"))

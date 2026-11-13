@@ -24,3 +24,6 @@ auth:
   jwt:
     issuer: ${JWT_ISSUER}
     audience: ${JWT_AUDIENCE}
+files:
+  # Required in production: a persistent volume outside the source tree (roadmap D4).
+  storage-dir: ${FILE_STORAGE_DIR}

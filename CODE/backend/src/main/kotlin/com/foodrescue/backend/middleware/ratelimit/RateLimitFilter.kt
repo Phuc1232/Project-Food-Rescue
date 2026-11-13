@@ -24,6 +24,8 @@ class RateLimitFilter(private val limits: RateLimitService,private val ips: Clie
                 else -> null
             }
             if(policy!=null) limits.check(policy,ips.resolve(request))
+            // T3.1 Q1: file uploads stream to Tomcat temp files; spring.servlet.multipart caps their size instead.
+            if(isFileUpload(request,path)) { chain.doFilter(request,response); return }
             if(request.contentLengthLong>16384) throw ApiException(413,"REQUEST_TOO_LARGE","Request too large")
             // Bound chunked bodies as well, before JSON parsing.
             val bytes=request.inputStream.readNBytes(16385)
@@ -43,4 +45,7 @@ class RateLimitFilter(private val limits: RateLimitService,private val ips: Clie
             chain.doFilter(wrapped,response)
         } catch(e: ApiException) { errors.write(request,response,e) }
     }
+    private fun isFileUpload(request: HttpServletRequest,path: String)=
+        request.method=="POST" && path=="/api/v1/files" &&
+            request.contentType?.lowercase()?.startsWith("multipart/form-data")==true
 }
