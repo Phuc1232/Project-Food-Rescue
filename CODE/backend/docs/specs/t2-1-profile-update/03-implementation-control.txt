@@ -106,6 +106,6 @@ Bước:
 6. PHÁT HIỆN NGOÀI PHẠM VI (không sửa)
 - RegisterRequest chỉ kiểm tra @NotBlank @Size(max=255) (đếm UTF-16) cho displayName, không cấm ký tự điều khiển như
   PATCH; đăng ký vẫn nhận tên có xuống dòng. Đề xuất đồng bộ quy tắc khi có task chạm đăng ký.
-- master chưa có báo cáo T0 / dấu [x] T0 (nằm ở feature/t0-baseline). Khi merge hai nhánh, dòng tiến độ
-  "| 0. Baseline |" trong roadmap và khối whitelist .gitignore có thể xung đột; kết quả đúng: "[x] T0 · [x] T2.1"
-  và giữ cả hai dòng whitelist t0-baseline và t2-1-profile-update.
+- master chưa có báo cáo T0 / dấu [x] T0 (nằm ở feature/t0-baseline). Đã merge feature/t0-baseline vào nhánh này
+  (merge commit, không rebase) và giải xung đột: roadmap "[x] T0 · [x] T2.1", .gitignore giữ cả hai dòng whitelist.
+  Build sau merge: 66 tests, 65 PASS, 1 SKIPPED, 0 failures/errors. PR của nhánh này đã bao gồm T0.
