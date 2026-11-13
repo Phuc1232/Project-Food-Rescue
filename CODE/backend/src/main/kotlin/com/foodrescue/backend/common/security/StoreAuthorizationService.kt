@@ -1,4 +1,4 @@
-// AC-10,11: StoreAuthorizationService responsibility.
+// AC-10,11 (T3.2 AC-05,10): StoreAuthorizationService responsibility.
 package com.foodrescue.backend.common.security
 
 import com.foodrescue.backend.account.dto.StoreAccessResponse
@@ -15,8 +15,9 @@ class StoreAuthorizationService(private val jdbc: JdbcTemplate,private val accou
     fun contexts(accountId: UUID): List<StoreAccessResponse> {
         val a=accounts.findById(accountId).orElse(null)
         if(a==null || a.status!=AccountStatus.ACTIVE || a.emailVerifiedAt==null) return emptyList()
-        return jdbc.query("""SELECT s.id,s.owner_id=? AS owner FROM store s WHERE s.owner_id=? OR EXISTS
-            (SELECT 1 FROM staff_assignment a WHERE a.store_id=s.id AND a.account_id=? AND a.status='ACTIVE' AND a.revoked_at IS NULL)
+        // T3.2 Q1: stores awaiting approval or closed grant no owner/staff context.
+        return jdbc.query("""SELECT s.id,s.owner_id=? AS owner FROM store s WHERE s.status NOT IN ('PENDING_APPROVAL','CLOSED') AND (s.owner_id=? OR EXISTS
+            (SELECT 1 FROM staff_assignment a WHERE a.store_id=s.id AND a.account_id=? AND a.status='ACTIVE' AND a.revoked_at IS NULL))
             ORDER BY s.id""",{ rs,_ ->
             val id=rs.getObject("id",UUID::class.java)
             val permissions=jdbc.queryForList("""SELECT p.code FROM permission p JOIN staff_permission sp ON sp.permission_id=p.id

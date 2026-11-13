@@ -45,7 +45,7 @@ lựa chọn đề xuất trong Gate A.
 | Giai đoạn | Task |
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
-| 3. Cửa hàng và nhân viên | [x] T3.1 · [ ] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
+| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
@@ -93,7 +93,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   file chưa gắn đối tượng chỉ người upload thấy.
 - **Kết quả:** `docs/specs/t3-1-file-storage/`. Task gắn file cài `AttachmentAccessPolicy` cho loại đối tượng của mình.
 
-### [ ] T3.2 — Đăng ký đối tác và xét duyệt
+### [x] T3.2 — Đăng ký đối tác và xét duyệt
 - **Phụ thuộc:** T3.1. **Tài liệu:** UC-38, UC-39, UC-66, UC-67, BR-02, SD-01.
 - **Phạm vi:** người dùng đã đăng nhập nộp hồ sơ (thông tin cửa hàng, địa chỉ, tọa độ, giờ hoạt động, giấy tờ theo
   danh mục D04) → `store` `PENDING_APPROVAL` + `partner_application` `SUBMITTED`. Đã có hồ sơ chờ → trả hồ sơ đó,
@@ -106,6 +106,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** không phải admin → 403; duyệt hai lần đồng thời chỉ một thành công, lần sau thấy kết quả đã có
   (SD-01 #32); đã sở hữu cửa hàng → không nộp/không duyệt được; hồ sơ thiếu → 400; được duyệt chưa đồng nghĩa mở bán.
 - **Test:** nộp → duyệt; nộp → bổ sung → nộp lại → duyệt; nộp → từ chối → nộp lại; đồng thời duyệt.
+- **Kết quả:** `docs/specs/t3-2-partner-application/`. Ngữ cảnh owner/staff chỉ có khi store khác PENDING_APPROVAL/CLOSED; D04 chốt ở Gate A Q4.
 
 ### [ ] T3.3 — Thông tin cửa hàng, giờ mở cửa, khóa/mở cửa hàng
 - **Phụ thuộc:** T3.2. **Tài liệu:** UC-40, UC-41, UC-77 (phần trạng thái), BR-55.
