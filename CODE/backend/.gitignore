@@ -27,3 +27,4 @@ docs/specs/*
 !docs/specs/t0-baseline/
 !docs/specs/t2-1-profile-update/
 !docs/specs/t3-1-file-storage/
+!docs/specs/t3-2-partner-application/
