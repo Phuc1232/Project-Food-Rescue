@@ -1,0 +1,130 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T3.1: LƯU TRỮ FILE
+Ngày: 2026-11-14 | Trạng thái: DONE
+Card: docs/specs/roadmap-3-9.md#t31 | Gate A: 01-business-definition.md | Plan: 02-plan.md
+Nhánh: feature/t3-1-file-storage (tách từ master e112f7e) | Tài liệu: roadmap D4, UC-23/30/38/53/67, BR-08, NFR 3.1
+
+1. KẾT QUẢ
+- Port FileStorage + adapter LocalDiskFileStorage (thư mục FILE_STORAGE_DIR, đường dẫn <root>/ab/cd/<key>, ghi file tạm
+  rồi atomic move, SHA-256 tính trong lúc ghi). Không migration.
+- POST /api/v1/files (multipart, phần "file"): nhận JPEG/PNG/WebP/PDF xác định bằng magic bytes (bỏ qua Content-Type và
+  đuôi tên do client gửi); ≤ 10 MB (FILE_MAX_SIZE); 201 + Location; metadata không lộ storage key/đường dẫn.
+- GET /api/v1/files/{id} và /{id}/content: file chưa gắn chỉ người upload thấy; file đã gắn theo AttachmentAccessPolicy
+  (chưa có policy → người upload + ADMIN). Không có quyền và không tồn tại cùng trả 404 NOT_FOUND.
+- Tải về: Content-Type đã lưu, Content-Disposition attachment (UTF-8), X-Content-Type-Options nosniff,
+  Cache-Control no-store, private.
+- Khóa lưu 256 bit ngẫu nhiên; adapter chỉ nhận key 64 hex và kiểm tra đường dẫn nằm trong root → không path traversal.
+- Lỗi DB sau khi ghi file → xóa file vừa ghi; storage lỗi → 503, không có dòng DB.
+- Quota UPLOAD_ACCOUNT 30 file / 15 phút / tài khoản → 429 RATE_LIMITED + Retry-After.
+- RateLimitFilter: riêng POST /api/v1/files multipart không còn bị giới hạn 16 KB; endpoint JSON giữ nguyên 16 KB.
+  Trần cứng multipart 12 MB/request (FILE_MAX_REQUEST_SIZE), phần upload ghi ra file tạm, không giữ trong RAM.
+- OpenAPI: tag Files, 3 path, schema FileResponse, ví dụ lỗi; upload thử được trên Swagger (nút chọn file).
+
+2. KIỂM CHỨNG
+Baseline trước thay đổi: 66 tests, 65 PASS, 1 SKIPPED.
+Build cuối: sh ./gradlew cleanTest build --console=plain → BUILD SUCCESSFUL (56s)
+Kết quả đọc từ build/test-results: 83 tests, 82 PASS, 1 SKIPPED (ca opt-in SWAGGER_BROWSER_SMOKE như baseline), 0 failures/errors.
+Suite | Tests | Skipped | Failures | Errors
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0
+FileStorageFailureTests | 1 | 0 | 0 | 0      (mới)
+FileTypeDetectorTests | 3 | 0 | 0 | 0      (mới)
+FileUploadTests | 8 | 0 | 0 | 0      (mới)
+FoodRescueApplicationTests | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 0 | 0 | 0
+LocalDiskFileStorageTests | 5 | 0 | 0 | 0      (mới)
+NoShowAmountsTests | 2 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 0 | 0 | 0
+ProfileUpdateRequestParserTests | 6 | 0 | 0 | 0
+ProfileUpdateTests | 9 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0
+Kiểm tra test có ý nghĩa: tạm bỏ nhánh cho upload đi qua trong RateLimitFilter → 5 test FileUploadTests FAILED;
+khôi phục → PASS.
+
+Smoke HTTP trên app profile dev (DB Compose + Mailpit, storage mặc định ~/.foodrescue/files, account thử
+t31-smoke-* / t31-other-*@example.test, không in token):
+GET /docs/ 200; /openapi.yaml có /api/v1/files
+Upload PNG 300 KB → 201 image/png, checksum khớp SHA-256, Location /api/v1/files/{id}
+Upload PDF 2 MB đặt tên .jpg, khai image/jpeg → 201 application/pdf
+Upload SVG khai image/png → 400 [file: Unsupported file type]
+Upload 10 MB + 8 byte → 400 [file: File exceeds 10485760 bytes]
+Metadata/tải bởi chủ → 200, byte giống hệt, Content-Disposition attachment; filename*=UTF-8''%E1%BA%A2nh%20h%E1%BB%99p.png,
+nosniff, no-store/private
+Người khác tải → 404; id không tồn tại → 404; upload không token → 401; JSON register > 16 KB → 413 (giữ nguyên)
+
+3. FILE | NEW/MODIFIED | GHI CHÚ | AC/TEST
+(đường dẫn Kotlin tương đối với src/main|test/kotlin/com/foodrescue/backend/)
+file/FileProperties.kt | New | files.storage-dir, files.max-size | AC-01,03
+file/storage/FileStorage.kt | New | Port + StoredObject, @Throws(IOException) | AC-01,07
+file/storage/LocalDiskFileStorage.kt | New | Adapter đĩa: key 64 hex, ab/cd sharding, temp + atomic move, SHA-256 | AC-01,06,07 / LocalDiskFileStorageTests
+file/storage/FileStorageConfiguration.kt | New | Bean FileStorage, bắt buộc storage-dir không rỗng | AC-07
+file/service/FileTypeDetector.kt | New | Magic bytes JPEG/PNG/WebP/PDF | AC-02 / FileTypeDetectorTests
+file/service/FileNameSanitizer.kt | New | Bỏ thư mục, ký tự điều khiển, ≤ 255 | AC-06 / FileTypeDetectorTests
+file/service/FileService.kt | New | Upload (quota, kiểm tra, ghi, bù trừ), metadata, content | AC-01..04,07,09 / FileUploadTests
+file/service/FileAccessService.kt | New | Luật đọc file chưa gắn / đã gắn | AC-04,12
+file/service/AttachmentAccessPolicy.kt | New | Điểm mở rộng cho task sau | AC-12
+file/dto/FileResponse.kt | New | Metadata, không có storage key | AC-01
+file/controller/FileController.kt | New | 3 endpoint, header tải về | AC-01..12
+file/FileUploadExceptionHandler.kt | New | MultipartException → 400, ủy quyền ApiExceptionHandler | AC-02,03
+file/repository/AttachmentRepository.kt | Modified | findAllByFileId | AC-04,12
+middleware/ratelimit/RateLimitFilter.kt | Modified | Bỏ buffer 16 KB cho upload multipart (Q1) | AC-10
+middleware/ratelimit/RateLimitPolicy.kt | Modified | UPLOAD_ACCOUNT(30) (Q5) | AC-09
+resources/application.yml | Modified | multipart 12 MB, files.* | AC-03,10
+resources/application-prod.yml | Modified | FILE_STORAGE_DIR bắt buộc | BR-T31-10
+.env.example | Modified | Biến FILE_* (storage dir để comment: giá trị rỗng không hợp lệ) | —
+docs/api/openapi.yaml | Modified | Tag Files, 3 path, FileResponse | AC-11
+test support/AuthTestFixtures.kt | Modified | Thư mục file tạm + helper upload/download (P5) | —
+test SwaggerUiTests.kt | Modified | 15 → 18 paths, 6 → 7 tags (P4) | AC-11
+test FileTypeDetectorTests.kt, LocalDiskFileStorageTests.kt, FileUploadTests.kt, FileStorageFailureTests.kt | New | Xem mục 2 | AC-01..12
+docs/specs/t3-1-file-storage/01-business-definition.md, 02-plan.md, 03-implementation-control.txt | New | Gate A/B, báo cáo | —
+docs/specs/roadmap-3-9.md | Modified | [x] T3.1, ghi chú điểm mở rộng | —
+.gitignore | Modified | Whitelist docs/specs/t3-1-file-storage/ | —
+Không đổi ApiExceptionHandler, auth, common/security, migration.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+Chuẩn bị:
+  cd CODE/backend
+  docker compose up -d db && docker start foodrescue_mailpit
+  sh ./gradlew bootRun --args="--spring.profiles.active=dev"
+  Mở http://localhost:8080/docs ; mail thử: http://localhost:8025
+  File lưu ở ~/.foodrescue/files (đặt FILE_STORAGE_DIR trong .env nếu muốn chỗ khác).
+Bước:
+ 1. Đăng ký + xác minh + đăng nhập tài khoản A như T2.1 (register → Mailpit lấy token → verify-email → login),
+    bấm Authorize, dán accessToken.
+ 2. Files › POST /api/v1/files → Try it out → chọn một ảnh JPG/PNG thật trên máy → Execute
+    → 201; ghi lại "id", kiểm "mimeType", "sizeBytes", "checksum".
+ 3. Files › GET /api/v1/files/{id} với id ở bước 2 → 200 metadata.
+ 4. Files › GET /api/v1/files/{id}/content → 200; Swagger hiện link "Download file" → mở ra đúng ảnh.
+ 5. POST /api/v1/files với một file .txt hoặc .svg (kể cả đổi đuôi thành .png) → 400, fieldErrors file "Unsupported file type".
+ 6. POST /api/v1/files với file PDF > 10 MB → 400 "File exceeds 10485760 bytes". (File > 12 MB có thể bị đóng kết nối
+    trước khi có phản hồi: hành vi chặn của trần cứng.)
+ 7. Đăng ký tài khoản B, Authorize bằng token của B, gọi GET /api/v1/files/{id} của A → 404 NOT_FOUND
+    (giống hệt khi nhập một UUID bất kỳ).
+ 8. Logout/bỏ Authorize rồi gọi lại → 401.
+
+5. GIỚI HẠN / LỆCH CÓ CHỦ ĐÍCH
+- Chưa gắn file vào đối tượng nghiệp vụ; mỗi task sau (T3.2 hồ sơ đối tác, T4.1 tài liệu giá, T4.2 ảnh bìa, T4.4/T7.x
+  ảnh và bằng chứng hộp, T6.5/T8.x bằng chứng hoàn/khiếu nại/chi trả) tạo attachment và cài AttachmentAccessPolicy.
+- Không xóa file, không dọn file chưa gắn (đề xuất job cho T9; job phải coi box_template.cover_file_id là "đã gắn").
+- Không quét virus, không xóa EXIF/GPS trong ảnh, không nén ảnh.
+- File vượt trần cứng 12 MB: Tomcat có thể đóng kết nối thay vì trả 400 (hành vi bảo vệ).
+- created_at/updated_at của stored_file dùng Instant.now() trong BaseEntity (code sẵn có, không qua Clock).
+- Smoke trên máy dev để lại 2 file thử trong ~/.foodrescue/files và các tài khoản t31-*@example.test trong DB dev.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI (không sửa)
+- ApiExceptionHandler không xử lý HttpMediaTypeNotSupportedException/MultipartException (rơi vào 500). T3.1 tự xử lý
+  phần multipart bằng FileUploadExceptionHandler; các endpoint khác nếu khai báo consumes vẫn có thể trả 500 thay vì 415.
+- @DynamicPropertySource của lớp test con không ghi đè được thuộc tính mà AuthTestFixtures đã đăng ký; test cần cấu hình
+  khác nên dùng @MockitoBean hoặc thuộc tính riêng.

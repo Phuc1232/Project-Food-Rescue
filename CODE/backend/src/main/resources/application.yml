@@ -30,6 +30,14 @@ spring:
       fail-on-unknown-properties: true
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # T3.1: hard cap per request; the per-file business limit is files.max-size.
+      max-file-size: -1
+      max-request-size: ${FILE_MAX_REQUEST_SIZE:12MB}
+files:
+  storage-dir: ${FILE_STORAGE_DIR:${user.home}/.foodrescue/files}
+  max-size: ${FILE_MAX_SIZE:10MB}
 server:
   port: ${PORT:8080}
   shutdown: graceful
