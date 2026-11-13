@@ -1,18 +1,19 @@
-// AC-08,10,11: AccountController responsibility.
+// AC-08,10,11 (T2.1 AC-01..09): AccountController responsibility.
 package com.foodrescue.backend.account.controller
 
-import com.foodrescue.backend.account.repository.*
 import com.foodrescue.backend.account.dto.AccountProfileResponse
-import com.foodrescue.backend.common.security.*
-import com.foodrescue.backend.common.exception.authenticationFailed
+import com.foodrescue.backend.account.service.AccountProfileService
+import com.foodrescue.backend.account.service.ProfileUpdateRequestParser
+import com.foodrescue.backend.common.security.CurrentAccount
 import org.springframework.web.bind.annotation.*
-import org.springframework.transaction.annotation.Transactional
+
 @RestController
 @RequestMapping("/api/v1/accounts")
-class AccountController(private val accounts: AccountRepository,private val roles: AccountRoleRepository,private val stores: StoreAuthorizationService,private val current: CurrentAccount) {
-    @GetMapping("/me") @Transactional(readOnly=true)
-    fun me(): AccountProfileResponse {
-        val id=current.get().accountId; val a=accounts.findById(id).orElse(null) ?: authenticationFailed()
-        return AccountProfileResponse(id,a.loginIdentifier,a.displayName,roles.findAllByAccountId(id).map { it.role.name },stores.contexts(id))
-    }
+class AccountController(private val profiles: AccountProfileService,private val parser: ProfileUpdateRequestParser,private val current: CurrentAccount) {
+    @GetMapping("/me")
+    fun me(): AccountProfileResponse = profiles.get(current.get().accountId)
+
+    @PatchMapping("/me")
+    fun updateMe(@RequestBody(required = false) body: Map<String, Any?>?): AccountProfileResponse =
+        profiles.update(current.get().accountId, parser.parse(body))
 }

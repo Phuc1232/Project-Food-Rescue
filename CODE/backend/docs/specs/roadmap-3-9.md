@@ -44,7 +44,7 @@ lựa chọn đề xuất trong Gate A.
 
 | Giai đoạn | Task |
 |---|---|
-| 0. Baseline | [ ] T0 · [ ] T2.1 |
+| 0. Baseline | [ ] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [ ] T3.1 · [ ] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
@@ -68,10 +68,11 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **Ngoài phạm vi:** sửa code. Chỗ thiếu chỉ ghi lại, đề xuất task bổ sung.
 - **Kết quả:** `docs/specs/t0-baseline/03-implementation-control.txt` (không cần Gate A/B).
 
-### [ ] T2.1 — Cập nhật hồ sơ cá nhân
+### [x] T2.1 — Cập nhật hồ sơ cá nhân
 - **Phụ thuộc:** T0. **Tài liệu:** UC-05, UC-06.
-- **Phạm vi:** `PATCH /api/v1/me` chỉ cho trường được phép (tên hiển thị, số điện thoại nếu Gate A chốt thêm cột);
+- **Phạm vi:** `PATCH /api/v1/accounts/me` chỉ cho trường được phép (Gate A chốt: chỉ tên hiển thị, không thêm số điện thoại);
   kiểm tra `@Version` tránh ghi đè.
+- **Kết quả:** `docs/specs/t2-1-profile-update/` (Gate A/B, `03-implementation-control.txt`).
 - **AC tối thiểu:** gửi kèm role/store/email/password → 400 hoặc bị bỏ qua có báo, không nâng quyền (UC-06 E2);
   dữ liệu sai → 400 kèm field.
 
