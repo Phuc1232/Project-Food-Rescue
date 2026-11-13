@@ -1,0 +1,135 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T3.2: ĐĂNG KÝ ĐỐI TÁC VÀ XÉT DUYỆT
+Ngày: 2026-11-14 | Trạng thái: DONE
+Card: docs/specs/roadmap-3-9.md#t32 | Gate A: 01-business-definition.md | Plan: 02-plan.md
+Nhánh: feature/t3-2-partner-application (tách từ master 10ab695) | Tài liệu: UC-38, UC-39, UC-66, UC-67, BR-02, SD-01, activity 01
+
+1. KẾT QUẢ
+- Người nộp: POST /api/v1/partner-applications (201 revision mới; 200 trả nguyên revision đang chờ), GET .../me (trạng thái,
+  lý do/nội dung cần bổ sung, lịch sử; không lộ người duyệt).
+- Admin (ROLE_ADMIN): GET /api/v1/admin/partner-applications (lọc trạng thái, phân trang, mới nhất trước), GET .../{id}
+  (store hiện hành, giờ, người nộp, tài liệu, lịch sử revision), POST .../{id}/decision APPROVE | REJECT | REQUEST_INFO.
+- Mỗi lần nộp là một revision; nội dung đã nộp (tên, địa chỉ, tọa độ, múi giờ, SĐT, mô tả, giờ, tài liệu) lưu dạng snapshot JSON
+  trong business_details; store giữ dữ liệu hiện hành. Từ chối/bổ sung → nộp lại tạo revision n+1.
+- Tài liệu D04: bắt buộc BUSINESS_REGISTRATION, FOOD_SAFETY; tùy chọn STOREFRONT_PHOTO, OTHER; file phải do người nộp upload
+  (T3.1); gắn attachment → revision. PartnerApplicationAttachmentPolicy: người nộp + ADMIN đọc được.
+- Quyết định: khóa revision rồi store; chỉ revision SUBMITTED; xử lý lần hai → 409; REJECT/REQUEST_INFO bắt buộc lý do;
+  APPROVE kiểm tra lại store còn PENDING_APPROVAL và không có store khác chưa đóng → store ACTIVE. ADMIN không tự xét (403).
+- Migration V5: trạng thái NEEDS_INFO; unique index một revision SUBMITTED/store; unique index một store chưa đóng/chủ (D8).
+- StoreAuthorizationService (Q1): ngữ cảnh owner/staff chỉ cho store khác PENDING_APPROVAL và CLOSED → người nộp không có
+  quyền owner trước khi duyệt; sau duyệt GET /me có store với owner=true.
+- audit/AuditService mới: PARTNER_APPLICATION_SUBMITTED / INFO_REQUESTED / REJECTED / APPROVED (actor, store_id, correlationId).
+- Sửa lỗi có sẵn phát hiện khi làm: store_opening_hour lưu sai giờ (Hibernate jdbc.time_zone=UTC quy đổi LocalTime theo múi
+  giờ JVM; Asia/Ho_Chi_Minh năm 1970 là +08:00 → 06:00 thành 22:00 và vi phạm CHECK). Gắn @JdbcType(LocalTimeJdbcType) cho
+  opens_at/closes_at.
+- Không gửi thông báo (T8.2). Được duyệt chưa mở bán (UC-61, giai đoạn 4).
+
+2. KIỂM CHỨNG
+Baseline trước thay đổi: 83 tests, 82 PASS, 1 SKIPPED.
+Build cuối: sh ./gradlew cleanTest build --console=plain → BUILD SUCCESSFUL (1m03s)
+Kết quả đọc từ build/test-results: 97 tests, 96 PASS, 1 SKIPPED (ca opt-in SWAGGER_BROWSER_SMOKE như baseline), 0 failures/errors.
+Suite | Tests | Skipped | Failures | Errors
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0      (4 → 5 migration)
+FileStorageFailureTests | 1 | 0 | 0 | 0
+FileTypeDetectorTests | 3 | 0 | 0 | 0
+FileUploadTests | 8 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0      (4 → 5 migration; store phụ đổi CLOSED)
+JwtSecurityTests | 1 | 0 | 0 | 0
+LocalDiskFileStorageTests | 5 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+OpeningHoursValidatorTests | 3 | 0 | 0 | 0      (mới)
+PartnerApplicationTests | 11 | 0 | 0 | 0      (mới)
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 0 | 0 | 0
+ProfileUpdateRequestParserTests | 6 | 0 | 0 | 0
+ProfileUpdateTests | 9 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0      (23 paths, 9 tags)
+Kiểm tra test có ý nghĩa: tạm bỏ @JdbcType trên StoreOpeningHour → PartnerApplicationTests AC-01 FAILED; khôi phục → PASS.
+
+Smoke HTTP trên app profile dev (DB Compose đã áp V5, Mailpit; account thử t32-applicant-*, t32-admin-*, t32-stranger-*
+@example.test; quyền ADMIN cấp bằng SQL trên DB dev; không in token):
+submit 201 PENDING_APPROVAL rev 1, 3 tài liệu, giờ 06:00–21:00 và 18:00–01:00 (closesNextDay) lưu đúng
+submit lại khi đang chờ → 200 cùng id | /me stores khi chờ = [] | thiếu FOOD_SAFETY → 400 field documents
+non-admin list → 403 | admin list SUBMITTED 200 | admin detail + tải tài liệu 200 | người lạ tải tài liệu 404
+REJECT không lý do → 400 field reason | REQUEST_INFO → NEEDS_INFO, người nộp thấy nội dung | nộp lại → rev 2, history 2
+hai quyết định đồng thời (APPROVE, REJECT) → [200, 409]; chạy 2 lần quan sát được cả hai kết quả:
+  REJECT thắng → store PENDING_APPROVAL, nộp lại 201 (rev 3);
+  APPROVE thắng → APPROVED, store ACTIVE, /me stores owner=true, nộp thêm → 409.
+/openapi.yaml có 5 path partner.
+
+3. FILE | NEW/MODIFIED | GHI CHÚ | AC/TEST
+(đường dẫn Kotlin tương đối với src/main|test/kotlin/com/foodrescue/backend/)
+resources/db/migration/V5__partner_application_review.sql | New | NEEDS_INFO, 2 unique index | AC-02,04,08 / AuthMigrationTests
+store/ApplicationStatus.kt | Modified | + NEEDS_INFO | AC-08
+store/ApplicationDecision.kt, store/ApplicationDocumentType.kt | New | Quyết định; danh mục D04 | AC-01,03,08..10
+store/entity/StoreOpeningHour.kt | Modified | @JdbcType(LocalTimeJdbcType) cho opens_at/closes_at | AC-01
+store/repository/StoreRepository.kt, PartnerApplicationRepository.kt, StoreOpeningHourRepository.kt | Modified | Truy vấn, khóa dòng | AC-01,02,07,11
+store/dto/* (15 file) | New | Request/response DTO | AC-01..13
+store/service/OpeningHoursValidator.kt | New | Ca, chồng ca, qua đêm, CN→T2 | AC-03 / OpeningHoursValidatorTests
+store/service/ApplicationDocumentValidator.kt | New | D04, sở hữu file, trùng file | AC-03
+store/service/ApplicationSnapshot.kt | New | Snapshot JSON revision | AC-08,13
+store/service/PartnerApplicationViews.kt | New | Dựng view người nộp/admin | AC-07,13
+store/service/PartnerApplicationService.kt | New | Nộp/nộp lại, xem của tôi | AC-01..04,13
+store/service/PartnerApplicationReviewService.kt | New | Danh sách, chi tiết, quyết định | AC-07..12
+store/service/PartnerApplicationAttachmentPolicy.kt | New | Quyền đọc tài liệu hồ sơ | AC-06,07
+store/controller/PartnerApplicationController.kt, AdminPartnerApplicationController.kt | New | HTTP | AC-01..13
+audit/AuditService.kt | New | Audit chung (Q7) | AC-14
+common/security/StoreAuthorizationService.kt | Modified | Bỏ store PENDING_APPROVAL/CLOSED khỏi ngữ cảnh (Q1) | AC-05,10
+docs/api/openapi.yaml | Modified | 5 path, 2 tag, 17 schema | AC-14
+test OpeningHoursValidatorTests.kt, PartnerApplicationTests.kt | New | Xem mục 2 | AC-01..14
+test AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt | Modified | Hằng số (P1, P4) và store phụ CLOSED | —
+docs/specs/t3-2-partner-application/* | New | Gate A/B, báo cáo | —
+docs/specs/roadmap-3-9.md | Modified | [x] T3.2 | —
+.gitignore | Modified | Whitelist docs/specs/t3-2-partner-application/ | —
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+Chuẩn bị:
+  cd CODE/backend
+  docker compose up -d db && docker start foodrescue_mailpit
+  sh ./gradlew bootRun --args="--spring.profiles.active=dev"
+  Mở http://localhost:8080/docs ; mail thử: http://localhost:8025
+  Cần 2 tài khoản: A (người nộp) và B (admin). Cấp ADMIN cho B (chỉ DB dev):
+    docker exec -it foodrescue_db_container sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "insert into account_role(id,created_at,updated_at,version,account_id,role) select gen_random_uuid(),now(),now(),0,id,'"'"'ADMIN'"'"' from account where login_identifier='"'"'<email B>'"'"'"'
+  (hoặc dùng lệnh bootstrap admin của dự án, xem docs/auth-setup.md).
+Bước:
+ 1. Đăng ký/xác minh/đăng nhập A, Authorize bằng token A.
+ 2. Files › POST /api/v1/files 2 lần với 2 file PDF/ảnh (giấy đăng ký kinh doanh, giấy ATTP); ghi lại 2 id.
+ 3. Partner applications › POST /api/v1/partner-applications: dùng ví dụ "submit", thay 2 fileId → 201, store PENDING_APPROVAL,
+    current.status SUBMITTED, revision 1.
+ 4. Gửi lại đúng request → 200, cùng current.id (không tạo trùng).
+ 5. Account › GET /api/v1/accounts/me → "stores": [] (chưa có quyền chủ khi chờ duyệt).
+ 6. Authorize bằng token B. Admin partner applications › GET /api/v1/admin/partner-applications?status=SUBMITTED → thấy hồ sơ A.
+ 7. GET /api/v1/admin/partner-applications/{id} → thông tin cửa hàng, giờ, tài liệu; tải tài liệu qua Files › GET .../content.
+ 8. POST .../{id}/decision ví dụ "requestInfo" → 200 NEEDS_INFO.
+ 9. Authorize lại token A: GET /api/v1/partner-applications/me → thấy NEEDS_INFO và nội dung cần bổ sung. Nộp lại (bước 3)
+    → 201 revision 2, history 2.
+10. Token B: POST .../{id revision 2}/decision ví dụ "approve" → 200 APPROVED, store ACTIVE. Gửi lại lần nữa → 409.
+11. Token A: GET /api/v1/accounts/me → stores có cửa hàng, owner: true. POST /api/v1/partner-applications → 409.
+12. Thử lỗi: token A gọi API admin → 403; decision REJECT không reason → 400 field reason.
+
+5. GIỚI HẠN / LỆCH CÓ CHỦ ĐÍCH
+- D04 là đề xuất đã duyệt ở Gate A (tài liệu nghiệp vụ chưa có văn bản); đổi danh mục chỉ cần sửa ApplicationDocumentType.
+- Loại tài liệu nằm trong snapshot JSON, không có cột trong attachment (Q5).
+- Activity 01 cho nhánh "Từ chối" kết thúc; theo card/UC-38 A2, hệ thống luôn cho nộp lại (Q3).
+- Không thông báo cho người nộp (T8.2); không rút hồ sơ; một chủ một cửa hàng (D8).
+- Danh sách admin sắp theo createdAt (= thời điểm nộp), không cho chọn sort khác.
+- Smoke để lại trên DB dev: tài khoản t32-*@example.test (2 có quyền ADMIN), 2 cửa hàng thử (1 ACTIVE), file trong ~/.foodrescue/files.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI (không sửa ngoài phần đã nêu)
+- Mọi cột kiểu time khác (nếu có ở task sau) gặp cùng lỗi quy đổi múi giờ như store_opening_hour; cần @JdbcType(LocalTimeJdbcType)
+  hoặc cấu hình chung. Các cột timestamptz/Instant không bị ảnh hưởng.
+- Kotlin: annotation trên kiểu phần tử (List<@Valid T>) không kích hoạt validation lồng nhau; dùng @field:Valid trên property.
+- PageQuery whitelist sort cứng (createdAt, expiresAt) dùng chung cho mọi entity; sort "expiresAt" trên entity không có
+  thuộc tính đó sẽ lỗi 500 nếu endpoint nào cho client chọn sort.

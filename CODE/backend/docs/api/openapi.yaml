@@ -1451,6 +1451,559 @@
           }
         }
       }
+    },
+    "/api/v1/partner-applications": {
+      "post": {
+        "operationId": "post_partner_applications",
+        "tags": [
+          "Partner applications"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Submit or resubmit a partner (store) application",
+        "description": "Upload documents first with POST /api/v1/files and reference their ids. Required document types: BUSINESS_REGISTRATION, FOOD_SAFETY (optional: STOREFRONT_PHOTO, OTHER). Returns 201 for a new revision; returns 200 with the existing revision unchanged when one is already awaiting review. Resubmission after NEEDS_INFO or REJECTED creates the next revision. A pending store grants no owner rights.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerApplicationRequest"
+              },
+              "examples": {
+                "submit": {
+                  "summary": "New application",
+                  "value": {
+                    "storeName": "Bánh mì Cô Ba",
+                    "address": "12 Lê Lợi, Quận 1, TP.HCM",
+                    "latitude": 10.7769,
+                    "longitude": 106.7009,
+                    "timezone": "Asia/Ho_Chi_Minh",
+                    "contactPhone": "0901234567",
+                    "businessDescription": "Bánh mì, bánh ngọt",
+                    "openingHours": [
+                      {
+                        "dayOfWeek": 1,
+                        "opensAt": "06:00",
+                        "closesAt": "21:00"
+                      },
+                      {
+                        "dayOfWeek": 5,
+                        "opensAt": "18:00",
+                        "closesAt": "01:00"
+                      }
+                    ],
+                    "documents": [
+                      {
+                        "type": "BUSINESS_REGISTRATION",
+                        "fileId": "00000000-0000-0000-0000-000000000001"
+                      },
+                      {
+                        "type": "FOOD_SAFETY",
+                        "fileId": "00000000-0000-0000-0000-000000000002"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "New revision submitted",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPartnerApplicationResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "A revision is already awaiting review; returned unchanged",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPartnerApplicationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED with field errors, or INVALID_REQUEST for malformed JSON",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "missingDocument": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "documents",
+                          "message": "Missing required document: FOOD_SAFETY"
+                        }
+                      ]
+                    }
+                  },
+                  "overlappingShift": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "openingHours[1]",
+                          "message": "Shift overlaps openingHours[0]"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "409": {
+            "description": "CONFLICT: the account already owns a store",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "ownsStore": {
+                    "value": {
+                      "code": "CONFLICT",
+                      "message": "Account already owns a store",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/partner-applications/me": {
+      "get": {
+        "operationId": "get_partner_applications_me",
+        "tags": [
+          "Partner applications"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "View my application status, review notes and history",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPartnerApplicationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "description": "NOT_FOUND: no application yet",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/partner-applications": {
+      "get": {
+        "operationId": "get_admin_partner_applications",
+        "tags": [
+          "Admin partner applications"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List applications (ADMIN), newest first",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ApplicationStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/partner-applications/{id}": {
+      "get": {
+        "operationId": "get_admin_partner_applications_id",
+        "tags": [
+          "Admin partner applications"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Application revision id"
+          }
+        ],
+        "summary": "Application detail with store, documents and revision history (ADMIN)",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/partner-applications/{id}/decision": {
+      "post": {
+        "operationId": "post_admin_partner_applications_id_decision",
+        "tags": [
+          "Admin partner applications"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Application revision id"
+          }
+        ],
+        "summary": "Approve, reject or request more information (ADMIN)",
+        "description": "Only a SUBMITTED revision can be decided; a second decision returns 409 (reload to see the result). `reason` is required for REJECT and REQUEST_INFO. APPROVE activates the store and makes the applicant its owner; selling still requires opening a sale batch. Admins cannot decide their own application.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              },
+              "examples": {
+                "approve": {
+                  "value": {
+                    "decision": "APPROVE"
+                  }
+                },
+                "requestInfo": {
+                  "value": {
+                    "decision": "REQUEST_INFO",
+                    "reason": "Bổ sung ảnh giấy ATTP còn hạn"
+                  }
+                },
+                "reject": {
+                  "value": {
+                    "decision": "REJECT",
+                    "reason": "Địa chỉ không khớp giấy phép"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision recorded",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (reason required) or INVALID_REQUEST",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "reasonRequired": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "reason",
+                          "message": "Reason is required"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "description": "ACCESS_DENIED: not an admin, or own application",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "CONFLICT: already decided, or the store/ownership changed",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "decided": {
+                    "value": {
+                      "code": "CONFLICT",
+                      "message": "Application has already been decided",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1927,6 +2480,660 @@
             "format": "date-time"
           }
         }
+      },
+      "ApplicationStatus": {
+        "type": "string",
+        "enum": [
+          "SUBMITTED",
+          "NEEDS_INFO",
+          "APPROVED",
+          "REJECTED"
+        ]
+      },
+      "ApplicationDocumentType": {
+        "type": "string",
+        "enum": [
+          "BUSINESS_REGISTRATION",
+          "FOOD_SAFETY",
+          "STOREFRONT_PHOTO",
+          "OTHER"
+        ]
+      },
+      "OpeningHourRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dayOfWeek",
+          "opensAt",
+          "closesAt"
+        ],
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "1 = Monday … 7 = Sunday"
+          },
+          "opensAt": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "example": "06:00"
+          },
+          "closesAt": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "example": "06:00",
+            "description": "At or before opensAt means the shift closes the next day"
+          }
+        }
+      },
+      "ApplicationDocumentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "fileId"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ApplicationDocumentType"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PartnerApplicationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "storeName",
+          "address",
+          "latitude",
+          "longitude",
+          "contactPhone",
+          "openingHours",
+          "documents"
+        ],
+        "properties": {
+          "storeName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "timezone": {
+            "type": "string",
+            "default": "Asia/Ho_Chi_Minh",
+            "description": "IANA region id"
+          },
+          "contactPhone": {
+            "type": "string",
+            "pattern": "^(0|\\+84)[35789][0-9]{8}$"
+          },
+          "businessDescription": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "openingHours": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 21,
+            "items": {
+              "$ref": "#/components/schemas/OpeningHourRequest"
+            }
+          },
+          "documents": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/ApplicationDocumentRequest"
+            }
+          }
+        }
+      },
+      "DecisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "REJECT",
+              "REQUEST_INFO"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "OpeningHourView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dayOfWeek",
+          "shiftNumber",
+          "opensAt",
+          "closesAt",
+          "closesNextDay"
+        ],
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer"
+          },
+          "shiftNumber": {
+            "type": "integer"
+          },
+          "opensAt": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "example": "06:00"
+          },
+          "closesAt": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "example": "06:00"
+          },
+          "closesNextDay": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DocumentView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fileId",
+          "type",
+          "originalName",
+          "mimeType",
+          "sizeBytes"
+        ],
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ApplicationDocumentType"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SubmissionView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "storeName",
+          "address",
+          "latitude",
+          "longitude",
+          "timezone",
+          "contactPhone",
+          "businessDescription",
+          "openingHours"
+        ],
+        "properties": {
+          "storeName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "contactPhone": {
+            "type": "string"
+          },
+          "businessDescription": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningHourView"
+            }
+          }
+        }
+      },
+      "ApplicationHistoryItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "revision",
+          "status",
+          "submittedAt",
+          "reviewedAt",
+          "reviewReason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewReason": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ApplicationView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "revision",
+          "status",
+          "submittedAt",
+          "reviewedAt",
+          "reviewReason",
+          "submission",
+          "documents"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewReason": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "submission": {
+            "$ref": "#/components/schemas/SubmissionView"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            }
+          }
+        }
+      },
+      "StoreSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_APPROVAL",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ]
+          }
+        }
+      },
+      "MyPartnerApplicationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "store",
+          "current",
+          "history"
+        ],
+        "properties": {
+          "store": {
+            "$ref": "#/components/schemas/StoreSummary"
+          },
+          "current": {
+            "$ref": "#/components/schemas/ApplicationView"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationHistoryItem"
+            }
+          }
+        }
+      },
+      "AccountSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "email",
+          "displayName"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminApplicationSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "storeId",
+          "storeName",
+          "applicant",
+          "revision",
+          "status",
+          "submittedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminApplicationPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminApplicationSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "StoreView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "name",
+          "address",
+          "latitude",
+          "longitude",
+          "timezone",
+          "openingHours"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_APPROVAL",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningHourView"
+            }
+          }
+        }
+      },
+      "AdminApplicationDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "revision",
+          "status",
+          "submittedAt",
+          "reviewedAt",
+          "reviewReason",
+          "applicant",
+          "reviewer",
+          "store",
+          "submission",
+          "documents",
+          "history"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewReason": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "reviewer": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AccountSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "store": {
+            "$ref": "#/components/schemas/StoreView"
+          },
+          "submission": {
+            "$ref": "#/components/schemas/SubmissionView"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationHistoryItem"
+            }
+          }
+        }
       }
     },
     "responses": {
@@ -2116,6 +3323,14 @@
     {
       "name": "Files",
       "description": "Upload and download files (evidence, documents, images)"
+    },
+    {
+      "name": "Partner applications",
+      "description": "Apply to become a store owner (UC-38, UC-39)"
+    },
+    {
+      "name": "Admin partner applications",
+      "description": "Review partner applications (UC-66, UC-67; ADMIN only)"
     },
     {
       "name": "Health"

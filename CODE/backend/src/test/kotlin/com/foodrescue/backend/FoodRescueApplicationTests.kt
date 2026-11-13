@@ -118,7 +118,7 @@ class FoodRescueApplicationTests {
     @Test
     fun `all entities persist and load against migrated PostgreSQL schema`() {
         assertEquals(40, entityManager.metamodel.entities.size)
-        assertEquals(4, jdbc.queryForObject("select count(*) from flyway_schema_history where success", Int::class.java))
+        assertEquals(5, jdbc.queryForObject("select count(*) from flyway_schema_history where success", Int::class.java))
         tx {
             entityManager.clear()
             val order = entityManager.find(CustomerOrder::class.java, ids.getValue("CustomerOrder"))
@@ -155,7 +155,7 @@ class FoodRescueApplicationTests {
     @Test
     fun `cross store references and duplicate transactions are rejected`() {
         val otherStore = tx {
-            Store(entityManager.find(Account::class.java, ids.getValue("Account")), "Other", "Other address", BigDecimal.ZERO, BigDecimal.ZERO, "Asia/Ho_Chi_Minh", com.foodrescue.backend.store.StoreStatus.ACTIVE).also { entityManager.persist(it) }.id
+            Store(entityManager.find(Account::class.java, ids.getValue("Account")), "Other", "Other address", BigDecimal.ZERO, BigDecimal.ZERO, "Asia/Ho_Chi_Minh", com.foodrescue.backend.store.StoreStatus.CLOSED).also { entityManager.persist(it) }.id // T3.2: CLOSED so the one-open-store-per-owner index allows it
         }!!
         assertThrows(DataIntegrityViolationException::class.java) { jdbc.update("update box_item set store_id=?", otherStore) }
         assertThrows(DataIntegrityViolationException::class.java) { jdbc.update("update sale_batch set store_id=?", otherStore) }
