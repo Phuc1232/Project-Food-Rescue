@@ -1,0 +1,79 @@
+FOODRESCUE — KIỂM SOÁT T0: BASELINE VÀ ĐỐI CHIẾU GIAI ĐOẠN 1–2
+Ngày: 2026-11-13 | Trạng thái: DONE | Không sửa source code
+Card: docs/specs/roadmap-3-9.md#t0
+
+1. KẾT QUẢ
+- Nền giai đoạn 1–2 build và chạy được trên macOS (Apple Silicon) sau khi có JDK 21.
+- Luồng xác thực chạy thật qua HTTP với PostgreSQL Compose + Mailpit: đúng như mô tả UC-01..05 (trừ UC-06).
+- Điều kiện hoàn thành giai đoạn 1–2: ĐẠT. API lỗi thống nhất (code + requestId), profile dev/test/prod tách riêng,
+  phân quyền theo cửa hàng có component + test (StoreAuthorizationTests), thu hồi staff có hiệu lực ngay.
+- Chỗ thiếu/lệch ghi ở mục 4; mỗi chỗ đã có task tương ứng hoặc đề xuất task.
+
+2. MÔI TRƯỜNG
+macOS 15.7.4 aarch64; Gradle 9.6.0 (wrapper); Docker 29.1.2.
+JDK: máy chỉ có 17/24/25; Gradle không tự tải được toolchain 21 trên macOS aarch64
+("No defined toolchain download url"). Cách xử lý trên máy này (ngoài repo):
+  brew install openjdk@21
+  echo 'org.gradle.java.installations.paths=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home' >> ~/.gradle/gradle.properties
+(Cask temurin@21 cần sudo nên không dùng.)
+
+3. KIỂM CHỨNG
+Command: sh ./gradlew build --console=plain → BUILD SUCCESSFUL (2m28s)
+Kết quả đọc từ build/test-results: 50 tests, 49 PASS, 1 SKIPPED, 0 failures, 0 errors
+(trùng số liệu báo cáo swagger-ui; ca skip là sandbox browser opt-in SWAGGER_BROWSER_SMOKE).
+Suite | Tests | Skipped | Failures | Errors
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0
+
+Chạy app profile dev (DB Compose cổng 5430, Mailpit 1025/8025): Flyway áp dụng V1..V4 trên DB trống,
+readiness UP sau ~9s. Smoke HTTP (account thử t0-smoke-*@example.test, không in token):
+GET /docs/ 200 | register 201 | login trước verify 401 | mail verify nhận trong Mailpit |
+verify-email 204 | verify lặp token 400 | login 200 (accessToken, refreshToken, expiresAt, refreshExpiresAt, tokenType) |
+GET /api/v1/accounts/me 200 (id, email, displayName, roles, stores) | me không token 401 |
+logout 204 | me bằng access cũ sau logout 401 | register sai dữ liệu 400 VALIDATION_FAILED có requestId.
+
+Seed dữ liệu tham chiếu (DB dev sau migrate): permission = 0, food_category = 0, financial_policy = 0.
+
+4. CHỖ THIẾU / LỆCH (không sửa trong T0)
+F1. Thiếu cập nhật hồ sơ cá nhân (UC-06): chỉ có GET /api/v1/accounts/me. → T2.1.
+F2. Chưa có seed permission / food_category / financial_policy. StoreAuthorizationTests tự insert permission.
+    → seed ở T3.4 (permission), T4.1 (food_category), T4.5 (financial_policy) bằng migration.
+F3. Chưa có quản trị tài khoản (UC-68..70) → T3.5.
+F4. .env.example: DB_URL dùng cổng 5432 nhưng compose.yml publish 5430; key path ví dụ dạng Windows (C:/...).
+    → đề xuất sửa .env.example + README cho macOS/Linux (task tài liệu nhỏ, hoặc gộp vào T2.1).
+F5. gradlew lưu trong git với mode 100644 (không executable) → trên macOS phải gọi `sh ./gradlew`.
+    → đề xuất `git update-index --chmod=+x CODE/backend/gradlew` (cần cả nhóm đồng ý).
+F6. Build phụ thuộc JDK 21 có sẵn trên máy; không có toolchain resolver.
+    → đề xuất thêm plugin org.gradle.toolchains.foojay-resolver-convention vào settings.gradle.kts (cần nhóm đồng ý,
+    thay đổi build).
+F7. Tài liệu chạy local chỉ có lệnh PowerShell; lệnh macOS đã ghi trong CLAUDE.md mục 9 và báo cáo này.
+
+5. FILE | NEW/MODIFIED | GHI CHÚ
+docs/specs/t0-baseline/03-implementation-control.txt | New | Báo cáo này
+docs/specs/roadmap-3-9.md | Modified | Đánh dấu T0 xong
+.gitignore | Modified | Whitelist docs/specs/t0-baseline/
+Ngoài repo (máy local, không commit): .env (gitignored, secret ngẫu nhiên), ~/.foodrescue/keys/{private,public}.pem,
+~/.gradle/gradle.properties, container foodrescue_db_container và foodrescue_mailpit.
+
+6. CÁCH DÙNG LẠI TRÊN MÁY NÀY
+cd CODE/backend
+docker compose up -d db && docker start foodrescue_mailpit
+sh ./gradlew bootRun --args="--spring.profiles.active=dev"
+Swagger: http://localhost:8080/docs | Mail thử: http://localhost:8025

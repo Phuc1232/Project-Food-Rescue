@@ -44,7 +44,7 @@ lựa chọn đề xuất trong Gate A.
 
 | Giai đoạn | Task |
 |---|---|
-| 0. Baseline | [ ] T0 · [x] T2.1 |
+| 0. Baseline | [x] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [ ] T3.1 · [ ] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
@@ -59,7 +59,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 
 ## Giai đoạn 0 — Nền
 
-### [ ] T0 — Baseline và đối chiếu giai đoạn 1–2
+### [x] T0 — Baseline và đối chiếu giai đoạn 1–2
 - **Phụ thuộc:** không.
 - **Mục tiêu:** xác nhận nền hiện tại chạy được trên macOS trước khi xây tiếp.
 - **Phạm vi:** chạy `./gradlew build`, ghi số test theo suite; chạy app profile dev, thử Swagger
