@@ -23,3 +23,5 @@ docs/specs/*
 !docs/specs/api-foundation-and-auth/
 
 !docs/specs/swagger-ui/
+!docs/specs/roadmap-3-9.md
+!docs/specs/t2-1-profile-update/

@@ -837,6 +837,154 @@
           "Account"
         ],
         "summary": "Get your account and store access"
+      },
+      "patch": {
+        "operationId": "patch_accounts_me",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED with fieldErrors (invalid displayName/version or non-editable field), or INVALID_REQUEST for malformed JSON",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "forbiddenField": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "roles",
+                          "message": "Field is not editable"
+                        }
+                      ]
+                    }
+                  },
+                  "invalidName": {
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid request",
+                      "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                      "timestamp": "2026-11-14T08:00:00Z",
+                      "fieldErrors": [
+                        {
+                          "field": "displayName",
+                          "message": "Invalid value"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "409": {
+            "description": "CONFLICT: version is stale; reload the profile and retry",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": "CONFLICT",
+                  "message": "Profile was modified; reload and retry",
+                  "requestId": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                  "timestamp": "2026-11-14T08:00:00Z",
+                  "fieldErrors": []
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "tags": [
+          "Account"
+        ],
+        "summary": "Update your profile (display name only)",
+        "description": "Only `displayName` is editable. Send the `version` returned by GET /api/v1/accounts/me; a different version returns 409 CONFLICT (reload and retry). Any other field (roles, stores, email, password, status, ...) is rejected with 400 VALIDATION_FAILED listing each field in `fieldErrors` and nothing is saved. An unchanged name returns 200 without bumping `version`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdateRequest"
+              },
+              "examples": {
+                "rename": {
+                  "summary": "Change display name",
+                  "value": {
+                    "displayName": "Nguyễn Văn A",
+                    "version": 1
+                  }
+                },
+                "forbiddenField": {
+                  "summary": "Rejected: role is not editable (400)",
+                  "value": {
+                    "displayName": "Nguyễn Văn A",
+                    "version": 1,
+                    "roles": [
+                      "ADMIN"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/actuator/health/liveness": {
@@ -1275,7 +1423,8 @@
           "email",
           "displayName",
           "roles",
-          "stores"
+          "stores",
+          "version"
         ],
         "properties": {
           "id": {
@@ -1305,6 +1454,12 @@
             "items": {
               "$ref": "#/components/schemas/StoreAccessResponse"
             }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Optimistic-lock version; send it back on PATCH /api/v1/accounts/me"
           }
         }
       },
@@ -1349,6 +1504,29 @@
           },
           "totalPages": {
             "type": "integer"
+          }
+        }
+      },
+      "ProfileUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "displayName",
+          "version"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Trimmed; 1-255 characters; no control characters",
+            "example": "Nguyễn Văn A"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 1
           }
         }
       }

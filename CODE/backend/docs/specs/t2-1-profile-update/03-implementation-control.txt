@@ -1,0 +1,111 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T2.1: CẬP NHẬT HỒ SƠ CÁ NHÂN
+Ngày: 2026-11-14 | Trạng thái: DONE
+Card: docs/specs/roadmap-3-9.md#t21 | Gate A: 01-business-definition.md | Plan: 02-plan.md
+Nhánh: feature/t2-1-profile-update (tách từ master 50a6365) | Tài liệu: UC-05, UC-06, class diagram TaiKhoan
+
+1. KẾT QUẢ
+- PATCH /api/v1/accounts/me: người dùng đã đăng nhập sửa displayName của chính mình (trim, 1–255 ký tự, không ký tự
+  điều khiển). Không thêm số điện thoại, không migration.
+- Trường không được phép (roles, stores, email, password, status, id, trường lạ) → 400 VALIDATION_FAILED, fieldErrors
+  liệt kê từng trường ("Field is not editable"); không lưu phần nào, không nâng quyền (UC-06 E2).
+- Dữ liệu sai → 400 VALIDATION_FAILED với field displayName/version (UC-06 E1); JSON hỏng → 400 INVALID_REQUEST.
+- Chống ghi đè: body bắt buộc có version (lấy từ GET /me); lệch → 409 CONFLICT. Khóa dòng account (PESSIMISTIC_WRITE)
+  trước khi so version → hai PATCH đồng thời cùng version: đúng một 200, một 409.
+- Tên không đổi → 200, version giữ nguyên, không audit. Có thay đổi → audit_log action PROFILE_UPDATED (không lưu giá trị).
+- GET /api/v1/accounts/me trả thêm "version" (thay đổi cộng thêm).
+- CORS cho phép thêm PATCH (P1 đã duyệt) để web client khác origin gọi được.
+- OpenAPI: operation patch_accounts_me (tag Account, ví dụ request/400/409), schema ProfileUpdateRequest, version trong
+  AccountProfileResponse. Số paths vẫn 15.
+
+2. KIỂM CHỨNG
+Baseline trước thay đổi (cleanTest build): 50 tests, 49 PASS, 1 SKIPPED, 0 failures/errors.
+Build cuối: sh ./gradlew cleanTest build --console=plain → BUILD SUCCESSFUL (55s)
+Kết quả đọc từ build/test-results: 66 tests, 65 PASS, 1 SKIPPED (ca opt-in SWAGGER_BROWSER_SMOKE như baseline), 0 failures/errors.
+Suite | Tests | Skipped | Failures | Errors
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 0 | 0 | 0      (mới)
+ProfileUpdateRequestParserTests | 6 | 0 | 0 | 0      (mới)
+ProfileUpdateTests | 9 | 0 | 0 | 0      (mới)
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0
+Kiểm tra test có ý nghĩa: tạm bỏ "PATCH" khỏi CORS → ProfileUpdateCorsTests FAILED; khôi phục → PASS.
+
+Smoke HTTP trên app profile dev (DB Compose + Mailpit, account thử t21-smoke-*@example.test, không in token):
+GET /docs/ 200 | register 201 | verify 204 | login 200 | GET me 200 (version 1)
+PATCH "  Nguyễn Văn A  " v1 → 200, displayName "Nguyễn Văn A", version 2
+PATCH kèm roles+email → 400 VALIDATION_FAILED fieldErrors [email, roles] "Field is not editable"
+PATCH displayName "  " → 400 VALIDATION_FAILED [displayName] | PATCH version cũ → 409 CONFLICT
+PATCH cùng tên → 200 version 2 | JSON hỏng → 400 INVALID_REQUEST | không token → 401 AUTHENTICATION_FAILED
+Hai PATCH đồng thời cùng version → [200, 409] | GET me cuối: tên của request thắng, version 3
+/openapi.yaml có operation patch và schema ProfileUpdateRequest.
+
+3. FILE | NEW/MODIFIED | GHI CHÚ | AC/TEST
+(đường dẫn Kotlin tương đối với src/main|test/kotlin/com/foodrescue/backend/)
+account/service/AccountProfileService.kt | New | Đọc hồ sơ; cập nhật: khóa dòng, so version, no-op, saveAndFlush, audit | AC-01,04..09 / ProfileUpdateTests
+account/service/ProfileUpdateRequestParser.kt | New | Body Map → ProfileUpdateCommand; gom field errors (P2) | AC-02,03 / ProfileUpdateRequestParserTests, ProfileUpdateTests
+account/dto/ProfileUpdateCommand.kt | New | Lệnh đã chuẩn hóa | AC-01,03,04
+account/dto/AccountProfileResponse.kt | Modified | Thêm version | AC-09
+account/controller/AccountController.kt | Modified | GET gọi service (hành vi giữ nguyên); thêm @PatchMapping("/me") | AC-01..09
+middleware/SecurityConfiguration.kt | Modified | CORS allowedMethods thêm PATCH (P1, đã duyệt) | AC-09 / ProfileUpdateCorsTests
+test ProfileUpdateTests.kt | New | 9 integration test AC-01..09 (gồm đồng thời) | AC-01..09
+test ProfileUpdateRequestParserTests.kt | New | 6 unit test biên độ dài/Unicode/kiểu/trường cấm | AC-02,03
+test ProfileUpdateCorsTests.kt | New | Preflight PATCH origin cho phép 200 / origin lạ 403 | AC-09
+docs/api/openapi.yaml | Modified | patch_accounts_me, ProfileUpdateRequest, version | AC-09 / ApiContractTests, SwaggerUiTests
+docs/specs/t2-1-profile-update/01-business-definition.md | New | Gate A (đã duyệt) | —
+docs/specs/t2-1-profile-update/02-plan.md | New | Gate B (đã duyệt), checkbox B1–B8 | —
+docs/specs/t2-1-profile-update/03-implementation-control.txt | New | Báo cáo này | —
+docs/specs/roadmap-3-9.md | Modified | [x] T2.1; sửa path card thành /api/v1/accounts/me | —
+.gitignore | Modified | Whitelist docs/specs/t2-1-profile-update/ | —
+Không có migration; không đổi ApiExceptionHandler, auth, common/security.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+Chuẩn bị:
+  cd CODE/backend
+  docker compose up -d db && docker start foodrescue_mailpit
+  sh ./gradlew bootRun --args="--spring.profiles.active=dev"
+  Mở http://localhost:8080/docs ; mail thử: http://localhost:8025
+Bước:
+ 1. Registration › POST /api/v1/auth/register → Try it out, email mới (vd demo-t21@example.test), mật khẩu ≥12 ký tự,
+    displayName "Demo" → 201.
+ 2. Mở Mailpit, copy giá trị token trong link xác minh → POST /api/v1/auth/verify-email {"token":"..."} → 204.
+ 3. Authentication › POST /api/v1/auth/login → 200; copy accessToken → nút Authorize, dán JWT (không thêm "Bearer").
+ 4. Account › GET /api/v1/accounts/me → 200; ghi lại "version" (vd 1).
+ 5. Account › PATCH /api/v1/accounts/me, ví dụ "rename": {"displayName":"  Nguyễn Văn A  ","version":1}
+    → 200, displayName "Nguyễn Văn A" (đã trim), version 2.
+ 6. PATCH ví dụ "forbiddenField": {"displayName":"X","version":2,"roles":["ADMIN"]}
+    → 400 VALIDATION_FAILED, fieldErrors [{"field":"roles","message":"Field is not editable"}]. GET me: roles vẫn ["CUSTOMER"].
+ 7. PATCH {"displayName":"","version":2} → 400, fieldErrors field "displayName".
+ 8. PATCH {"displayName":"Khác","version":1} (version cũ) → 409 CONFLICT. GET me: tên vẫn "Nguyễn Văn A".
+ 9. PATCH {"displayName":"Nguyễn Văn A","version":2} (không đổi) → 200, version vẫn 2.
+10. Logout (Sessions/Authentication › POST /api/v1/auth/logout) → 204; PATCH lại → 401.
+
+5. GIỚI HẠN / LỆCH CÓ CHỦ ĐÍCH
+- Endpoint này validate thủ công (ProfileUpdateRequestParser) thay vì Jakarta Validation trên DTO (P2 đã duyệt), vì
+  fail-on-unknown-properties chặn trường lạ trước khi validate và không nêu tên trường.
+- Audit ghi entity_type "AUTH" do AuthAuditService cố định giá trị này; action PROFILE_UPDATED phân biệt được.
+- updatedAt do MutableEntity.touch() đặt bằng Instant.now() (code sẵn có, không qua Clock).
+- Client (Android/web) phải gửi version khi PATCH; thiếu version → 400.
+- A1 (hủy chỉnh sửa) là hành vi phía client, không có API.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI (không sửa)
+- RegisterRequest chỉ kiểm tra @NotBlank @Size(max=255) (đếm UTF-16) cho displayName, không cấm ký tự điều khiển như
+  PATCH; đăng ký vẫn nhận tên có xuống dòng. Đề xuất đồng bộ quy tắc khi có task chạm đăng ký.
+- master chưa có báo cáo T0 / dấu [x] T0 (nằm ở feature/t0-baseline). Khi merge hai nhánh, dòng tiến độ
+  "| 0. Baseline |" trong roadmap và khối whitelist .gitignore có thể xung đột; kết quả đúng: "[x] T0 · [x] T2.1"
+  và giữ cả hai dòng whitelist t0-baseline và t2-1-profile-update.

@@ -22,7 +22,7 @@ class SecurityConfiguration {
         denied: ApiAccessDeniedHandler,limits: RateLimitService,ips: ClientIpResolver,errors: SecurityErrorWriter,
         mapper: tools.jackson.databind.ObjectMapper,env: Environment,@Value("\${auth.cors-origins:}") origins: String): SecurityFilterChain {
         val cors=CorsConfiguration().apply {
-            allowedOrigins=origins.split(',').filter { it.isNotBlank() }; allowedMethods=listOf("GET","POST","DELETE","OPTIONS")
+            allowedOrigins=origins.split(',').filter { it.isNotBlank() }; allowedMethods=listOf("GET","POST","PATCH","DELETE","OPTIONS")
             allowedHeaders=listOf("Authorization","Content-Type"); exposedHeaders=listOf("X-Request-ID","Retry-After"); allowCredentials=false
         }
         val source=UrlBasedCorsConfigurationSource(); source.registerCorsConfiguration("/**",cors)
