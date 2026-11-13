@@ -6,6 +6,15 @@ Backend Kotlin 2.3 / Spring Boot 4.1 / JDK 21 / PostgreSQL + Flyway. Package g�
 Giai đoạn 1–2 (nền API, xác thực/phân quyền) đã xong. Công việc còn lại là giai đoạn 3–9, chia thành
 task trong [docs/specs/roadmap-3-9.md](docs/specs/roadmap-3-9.md). Đọc file đó trước khi làm bất cứ việc gì.
 
+## 0. Tài liệu nghiệp vụ là nguồn sự thật
+
+- Tài liệu nghiệp vụ, class diagram, sequence, activity nằm **ngoài repo**; đường dẫn ở mục "Tài liệu nguồn" của
+  roadmap. Trước Gate A, đọc phần UC/BR/SD mà card liệt kê (PDF: dùng Read với `pages`; zip: giải nén vào scratchpad).
+- `01-business-definition.md` phải có bảng truy vết UC-xx/BR-xx/SD-xx → AC-xx. Khi tài liệu mâu thuẫn với card
+  hoặc schema, nêu ra trong Gate A, không tự chọn.
+- Lệch có chủ đích đã duyệt: hoàn tiền thủ công qua admin thay cho cổng tự hoàn (roadmap D3); các UC ngừng áp dụng
+  trong MVP (D9) không làm.
+
 ## 1. Phạm vi
 
 - **Mỗi phiên chỉ làm đúng một task** do người dùng chỉ định (ví dụ "làm T6.2"). Không làm trước task sau,
