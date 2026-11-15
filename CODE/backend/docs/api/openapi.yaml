@@ -5797,6 +5797,432 @@
           }
         }
       }
+    },
+    "/api/v1/surprise-boxes": {
+      "get": {
+        "operationId": "get_surprise_boxes",
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Search offers",
+        "description": "OPEN batches before their order deadline, of ACTIVE stores, with at least one sellable box. Paused, sold-out or expired batches never appear.",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 50,
+              "default": 5
+            }
+          },
+          {
+            "name": "categoryCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "pickupFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "pickupTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "distance",
+                "price",
+                "pickupStartsAt"
+              ]
+            },
+            "description": "Default: distance with a position, else pickupStartsAt"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Offers",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/api/v1/surprise-boxes/{batchId}": {
+      "get": {
+        "operationId": "get_surprise_boxes_batchId",
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Offer detail",
+        "description": "Visible for OPEN/PAUSED/ENDED batches of ACTIVE stores; orderable=false with a reason otherwise (UC-10 A2). DRAFT/BLOCKED -> 404.",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Offer",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/surprise-boxes/{batchId}/cover": {
+      "get": {
+        "operationId": "get_surprise_boxes_batchId_cover",
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Offer cover image",
+        "description": "Template cover of a visible offer.",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/store-search": {
+      "get": {
+        "operationId": "get_store_search",
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Search stores",
+        "description": "ACTIVE stores by name and/or position, with the number of offers on sale (UC-09).",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 50,
+              "default": 5
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stores",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCardPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/api/v1/store-map": {
+      "get": {
+        "operationId": "get_store_map",
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Stores on the map",
+        "description": "ACTIVE stores inside the bounds (at most 2 x 2 degrees, 500 pins) (UC-11).",
+        "parameters": [
+          {
+            "name": "minLat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxLat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "minLng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxLng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pins",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StorePin"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9045,6 +9471,337 @@
             "format": "date-time"
           }
         }
+      },
+      "OfferSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "storeId",
+          "storeName",
+          "boxName",
+          "categoryCode",
+          "categoryName",
+          "sellingPrice",
+          "minimumValue",
+          "available",
+          "orderDeadline",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "hasCover"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "boxName": {
+            "type": "string"
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "sellingPrice": {
+            "type": "integer"
+          },
+          "minimumValue": {
+            "type": "integer"
+          },
+          "available": {
+            "type": "integer"
+          },
+          "orderDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distanceKm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hasCover": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OfferPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfferSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "OfferDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "status",
+          "orderable",
+          "boxName",
+          "description",
+          "categoryCode",
+          "categoryName",
+          "sellingPrice",
+          "minimumValue",
+          "available",
+          "orderDeadline",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "safetyWarnings",
+          "storeId",
+          "storeName",
+          "address",
+          "latitude",
+          "longitude",
+          "timezone",
+          "directionsUrl",
+          "hasCover"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "PAUSED",
+              "ENDED"
+            ]
+          },
+          "orderable": {
+            "type": "boolean"
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "PAUSED",
+              "ENDED",
+              "SOLD_OUT",
+              "DEADLINE_PASSED",
+              null
+            ]
+          },
+          "boxName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "sellingPrice": {
+            "type": "integer"
+          },
+          "minimumValue": {
+            "type": "integer"
+          },
+          "available": {
+            "type": "integer"
+          },
+          "orderDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "safetyWarnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Batch warnings plus warnings of items in boxes that could be allocated (BR-19); items are never listed (BR-05)"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "directionsUrl": {
+            "type": "string",
+            "description": "Google Maps directions (UC-12)"
+          },
+          "hasCover": {
+            "type": "boolean"
+          }
+        }
+      },
+      "StoreCard": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "address",
+          "latitude",
+          "longitude",
+          "openOffers",
+          "directionsUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "distanceKm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "openOffers": {
+            "type": "integer"
+          },
+          "directionsUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "StoreCardPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreCard"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "StorePin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "latitude",
+          "longitude",
+          "hasOpenOffers"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "hasOpenOffers": {
+            "type": "boolean"
+          }
+        }
       }
     },
     "responses": {
@@ -9278,6 +10035,10 @@
     {
       "name": "Financial policy",
       "description": "Versioned commission, no-show retention, cancellation and refund policy (UC-84..87)"
+    },
+    {
+      "name": "Search",
+      "description": "Customer search: Surprise Box offers, offer detail, store search and map (UC-07..12; sign-in required)"
     },
     {
       "name": "Health"

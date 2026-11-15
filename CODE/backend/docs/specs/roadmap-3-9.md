@@ -47,7 +47,7 @@ lựa chọn đề xuất trong Gate A.
 | 0. Baseline | [x] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
-| 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
+| 5. Tìm kiếm và đặt hàng | [x] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
@@ -198,7 +198,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 
 **Điều kiện hoàn thành giai đoạn:** không bán trùng; giữ đủ số hộp trong một transaction; hết hạn xử lý đúng.
 
-### [ ] T5.1 — Tìm kiếm Surprise Box và cửa hàng
+### [x] T5.1 — Tìm kiếm Surprise Box và cửa hàng
 - **Phụ thuộc:** T4.4. **Tài liệu:** UC-07..12, BR-05, BR-19, D10.
 - **Phạm vi:** (khách đã đăng nhập) tìm đợt OPEN, còn hạn đặt, tồn > 0, thuộc cửa hàng ACTIVE theo vị trí + bán kính
   hoặc khu vực; lọc nhóm thực phẩm, khoảng giá, khoảng giờ nhận; tìm cửa hàng theo tên; danh sách cửa hàng cho bản đồ
