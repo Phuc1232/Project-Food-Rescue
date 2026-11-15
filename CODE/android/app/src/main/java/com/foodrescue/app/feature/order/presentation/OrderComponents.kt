@@ -18,6 +18,7 @@ internal val OrderStatus.label: String get() = when (this) {
     OrderStatus.WAITING_PAYMENT -> "Chờ thanh toán"
     OrderStatus.CHECKING_PAYMENT -> "Đang xác nhận thanh toán"
     OrderStatus.WAITING_PICKUP -> "Chờ nhận hộp"
+    OrderStatus.CANCELLATION_REQUESTED -> "Chờ xử lý hủy"
     OrderStatus.COLLECTED -> "Đã nhận hộp"
     OrderStatus.CANCELLED -> "Đã hủy"
     OrderStatus.EXPIRED -> "Hết hạn thanh toán"
@@ -54,6 +55,9 @@ internal fun OrderTimeline(order: BoxReservation, nowMillis: Long, modifier: Mod
         if (status == OrderStatus.CANCELLED || status == OrderStatus.EXPIRED) {
             OrderStep(status.label, bookingTimestamp(order.cancelledAtMillis ?: order.expiresAtMillis), true)
             order.refund?.let { OrderStep(it.status.label, bookingTimestamp(it.updatedAtMillis), it.status == RefundStatus.COMPLETED) }
+        } else if (order.ownerCancellation != null) {
+            OrderStep("Cửa hàng yêu cầu hủy", bookingTimestamp(order.ownerCancellation.requestedAtMillis), true)
+            OrderStep("Chờ xử lý yêu cầu", "Chưa phát sinh hoàn tiền", false)
         } else {
             if (!order.isPaid) OrderStep("Thanh toán toàn bộ", "QR VNPAY", false)
             OrderStep(if (order.collectedAtMillis != null) "Đã nhận hộp" else "Nhận tại cửa hàng",

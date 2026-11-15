@@ -51,7 +51,7 @@ internal fun CustomerOrdersScreen(
             LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(state.visibleOrders, key = { it.id }) { reservation ->
-                    val box = state.catalog.firstOrNull { it.id == reservation.boxId }
+                    val box = reservation.boxSnapshot ?: state.catalog.firstOrNull { it.id == reservation.boxId }
                     val status = reservation.statusAt(state.nowMillis)
                     Surface(onClick = { onReservation(reservation.id) }, shape = RoundedCornerShape(20.dp),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),

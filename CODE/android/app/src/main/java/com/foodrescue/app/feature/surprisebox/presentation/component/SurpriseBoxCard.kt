@@ -44,6 +44,7 @@ internal fun SurpriseBoxCard(box: CatalogBox, modifier: Modifier = Modifier, onC
         Column {
             CatalogPhoto(box, Modifier.fillMaxWidth().height(if (LocalDensity.current.fontScale > 1.2f) 130.dp else 174.dp), showCount = true)
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                Text(box.name, style = MaterialTheme.typography.titleMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     StoreMonogram(box)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {

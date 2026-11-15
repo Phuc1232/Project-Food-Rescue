@@ -1,7 +1,7 @@
 package com.foodrescue.app.feature.discovery.presentation
 
 import com.foodrescue.app.core.common.GeoPoint
-import com.foodrescue.app.feature.discovery.domain.LocationSource
+import com.foodrescue.app.core.common.LocationSource
 import com.foodrescue.app.core.designsystem.component.FoodRescueGlyph
 import com.foodrescue.app.core.designsystem.component.FoodRescueIcon
 import com.foodrescue.app.core.util.searchKey

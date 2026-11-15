@@ -24,6 +24,7 @@ internal val CancellationReason.label: String get() = when (this) {
 
 private val CancellationIssue.message: String get() = when (this) {
     CancellationIssue.ORDER_UNAVAILABLE -> "Không tìm thấy đơn hàng."
+    CancellationIssue.PENDING_REQUEST -> "Cửa hàng đã gửi yêu cầu hủy. Vui lòng theo dõi kết quả trong chi tiết đơn."
     CancellationIssue.NOT_PAID -> "Đơn này chưa thanh toán. Bạn có thể thôi giữ hộp trong chi tiết đơn."
     CancellationIssue.ALREADY_CANCELLED -> "Đơn này đã được hủy."
     CancellationIssue.COLLECTED -> "Đơn đã nhận hộp không thể hủy. Bạn có thể gửi khiếu nại nếu cần hỗ trợ."
@@ -52,7 +53,7 @@ internal fun CancelOrderScreen(
     }
     val quote = cancellationQuote(order, state.nowMillis)
     val draft = state.cancellationDraft?.takeIf { it.orderId == orderId }
-    val box = state.catalog.firstOrNull { it.id == order.boxId }
+    val box = order.boxSnapshot ?: state.catalog.firstOrNull { it.id == order.boxId }
     var confirmOpen by rememberSaveable(order.id) { mutableStateOf(false) }
     FoodRescuePage("Hủy đơn hàng", onBack, modifier, footer = {
         FoodRescueButton(if (quote.canCancel) "Xác nhận hủy đơn" else "Gửi khiếu nại",

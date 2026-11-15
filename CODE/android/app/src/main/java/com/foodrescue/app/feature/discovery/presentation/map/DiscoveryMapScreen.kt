@@ -7,6 +7,9 @@ import com.foodrescue.app.core.designsystem.component.FoodRescueGlyph
 import com.foodrescue.app.core.designsystem.component.FoodRescueIcon
 import com.foodrescue.app.core.designsystem.component.rememberDirectionsLauncher
 import com.foodrescue.app.core.util.money
+import com.foodrescue.app.core.common.PickupLocation
+import com.foodrescue.app.core.designsystem.component.map.*
+import com.foodrescue.app.feature.store.domain.PublicStore
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -50,7 +53,10 @@ internal fun CatalogStoreMapScreen(
     val colors = MaterialTheme.colorScheme
     val openDirections = rememberDirectionsLauncher()
     val density = LocalDensity.current
-    val offers = remember(state.boxes) { state.boxes.filter { it.location != null } }
+    val offers = remember(state.boxes, state.publicStores) {
+        state.boxes.mapNotNull { box -> box.location?.let { MapEntry(box.id, it, box = box) } } +
+            state.publicStores.map { MapEntry(it.id, it.location, store = it) }
+    }
     val selected = offers.firstOrNull { it.id == selectedId } ?: offers.firstOrNull()
     var load by remember { mutableStateOf(MapLoadState.LOADING) }
     var retry by remember { mutableIntStateOf(0) }
@@ -67,7 +73,8 @@ internal fun CatalogStoreMapScreen(
         val landscape = maxWidth > maxHeight
         val panelWidth = if (landscape) maxWidth * .44f else maxWidth
         val cardMaxHeight = if (landscape) (maxHeight - with(density) { topInset.toDp() } - 12.dp).coerceAtLeast(80.dp) else maxHeight * .52f
-        NativeCatalogMap(offers.map { StoreMapPin(it.id,it.location!!,if (it.price % 1000 == 0) "${it.price / 1000}k" else money(it.price)) }, selected?.id, fit, retry, topInset, bottomInset, viewport,
+        NativeLocationMap(offers.map { LocationMapPin(it.id, it.location, it.box?.let { box ->
+            if (box.price % 1000 == 0) "${box.price / 1000}k" else money(box.price) } ?: "Cửa hàng") }, selected?.id, fit, retry, topInset, bottomInset, viewport,
             onSelect, onViewport, { load = it }, Modifier.fillMaxSize(), customerPoint = state.point, locateRequest = locate,
             sidePanelInset = if (landscape) with(density) { panelWidth.roundToPx() } else 0)
 
@@ -100,7 +107,7 @@ internal fun CatalogStoreMapScreen(
             }
             if (!landscape) Surface(color = colors.surface.copy(alpha = .96f), shape = CircleShape, shadowElevation = 1.dp) {
                 Text(buildString {
-                    append("${offers.size} nơi có hộp")
+                    append("${offers.size} địa điểm")
                     if (state.query.isNotBlank()) append(" · “${state.query}”")
                     if (state.point != null) append(" · Chấm xanh: vị trí của bạn")
                 }, Modifier.padding(horizontal = 13.dp, vertical = 7.dp), fontSize = 10.sp, lineHeight = 15.sp,
@@ -170,13 +177,29 @@ internal fun CatalogStoreMapScreen(
                         }
                         AnimatedContent(targetState = selected, label = "store-card",
                             transitionSpec = { (fadeIn(tween(200)) + slideInHorizontally(tween(200)) { it / 12 }) togetherWith fadeOut(tween(90)) }) { box ->
-                            MapStoreCard(box, { onStore(box.storeId) }, onDirections = {
-                                box.location?.let(openDirections)
-                            }, label = "Xem cửa hàng", directionsEnabled = box.location != null)
+                            box.box?.let { offer -> MapStoreCard(offer, { onStore(offer.storeId) },
+                                { openDirections(box.location) }, label = "Xem cửa hàng") }
+                            box.store?.let { store -> PublicMapStoreCard(store, { onStore(store.id) }, { openDirections(store.location) }) }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+private data class MapEntry(val id: Int, val location: PickupLocation, val box: CatalogBox? = null, val store: PublicStore? = null)
+
+@Composable
+private fun PublicMapStoreCard(store: PublicStore, onStore: () -> Unit, onDirections: () -> Unit) {
+    Column(Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(store.category, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        Text(store.name, style = MaterialTheme.typography.titleLarge)
+        Text(store.location.address, style = MaterialTheme.typography.bodySmall)
+        Text("${store.opensAt} – ${store.closesAt} · Chưa có đợt bán", style = MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = onStore, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = PaddingValues(10.dp)) { Text("Xem cửa hàng", fontSize = 12.sp) }
+            OutlinedButton(onClick = onDirections, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = PaddingValues(10.dp)) { Text("Chỉ đường", fontSize = 12.sp) }
         }
     }
 }

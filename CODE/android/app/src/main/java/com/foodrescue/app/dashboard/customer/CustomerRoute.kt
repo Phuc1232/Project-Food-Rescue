@@ -18,9 +18,13 @@ import com.foodrescue.app.feature.account.domain.CustomerProfile
 import com.foodrescue.app.feature.account.presentation.*
 import com.foodrescue.app.core.designsystem.component.FoodRescueGlyph
 import com.foodrescue.app.core.designsystem.component.FoodRescueIcon
-import com.foodrescue.app.feature.discovery.domain.LocationSource
+import com.foodrescue.app.core.designsystem.component.FoodRescuePage
+import com.foodrescue.app.core.designsystem.component.FoodRescueButton
+import kotlinx.coroutines.launch
+import com.foodrescue.app.core.common.LocationSource
 import com.foodrescue.app.feature.discovery.presentation.map.CatalogStoreMapScreen
 import com.foodrescue.app.feature.store.presentation.StoreDetailScreen
+import com.foodrescue.app.feature.store.presentation.PublicStoreDetailScreen
 import com.foodrescue.app.feature.surprisebox.presentation.SurpriseBoxDetailFooter
 import com.foodrescue.app.feature.surprisebox.presentation.SurpriseBoxDetailScreen
 import com.foodrescue.app.feature.order.presentation.*
@@ -49,6 +53,9 @@ internal fun CustomerRoute(
     complaints: ComplaintViewModel,
     locationSource: LocationSource,
     modifier: Modifier = Modifier,
+    onPartner: () -> Unit = {},
+    isPartner: Boolean = false,
+    onStaff: (() -> Unit)? = null,
 ) {
     var navigation by rememberSaveable(stateSaver = NavigationSaver) { mutableStateOf(CustomerNavigation()) }
     var modal by rememberSaveable { mutableStateOf<String?>(null) }
@@ -59,6 +66,7 @@ internal fun CustomerRoute(
     val bookingState = booking.state
     val colors = MaterialTheme.colorScheme
     val keyboard = LocalSoftwareKeyboardController.current
+    val scope = rememberCoroutineScope()
     val window = LocalActivity.current?.window
     SideEffect {
         window?.let { WindowCompat.getInsetsController(it, it.decorView).apply {
@@ -77,7 +85,7 @@ internal fun CustomerRoute(
     val reservation = bookingState.reservations.firstOrNull { it.id == reservationId }
     val paymentId = navigation.current?.takeIf { it.startsWith("payment:") }?.substringAfter(':')
     val paymentReservation = bookingState.reservations.firstOrNull { it.id == paymentId && it.cancelledAtMillis == null }
-    val paymentBox = bookingState.catalog.firstOrNull { it.id == paymentReservation?.boxId }
+    val paymentBox = paymentReservation?.boxSnapshot ?: bookingState.catalog.firstOrNull { it.id == paymentReservation?.boxId }
     val cancelId = navigation.current?.takeIf { it.startsWith("cancel:") }?.substringAfter(':')
     val refundId = navigation.current?.takeIf { it.startsWith("refund:") }?.substringAfter(':')
     val showMap: (Int) -> Unit = { id ->
@@ -90,7 +98,15 @@ internal fun CustomerRoute(
 
     val complaintDestination = navigation.current?.takeIf { it == "complaints" || it == "complaint-new" ||
         it.startsWith("complaint:") || it.startsWith("complaint-new:") }
-    if (complaintDestination != null) {
+    val dataError = bookingState.dataError ?: state.dataError
+    if (dataError != null) {
+        FoodRescuePage("Chưa tải được dữ liệu", back, modifier) {
+            Text(dataError, color = colors.error)
+            FoodRescueButton("Thử lại", { scope.launch { booking.restoreHistory(); vm.refreshPublicStores() } })
+            if (isPartner) TextButton(onPartner) { Text("Về cửa hàng của tôi") }
+            TextButton(onLogout) { Text("Đăng xuất") }
+        }
+    } else if (complaintDestination != null) {
         CustomerComplaintRoute(complaintDestination, complaints, bookingState, back, open,
             onSubmitted = { navigation = navigation.back().open("complaints").open("complaint:$it") },
             onOrders = { navigation = navigation.selectTab(2) }, modifier = modifier)
@@ -103,7 +119,7 @@ internal fun CustomerRoute(
     } else if (refundId != null) {
         val order = bookingState.reservations.firstOrNull { it.id == refundId }
         val refundState = order?.refund?.let { refund -> RefundUiState(refund, order.reference,
-            bookingState.catalog.firstOrNull { it.id == order.boxId }?.store ?: "Đơn hàng của bạn",
+            (order.boxSnapshot ?: bookingState.catalog.firstOrNull { it.id == order.boxId })?.store ?: "Đơn hàng của bạn",
             order.quantity, order.total, bookingTimestamp(refund.requestedAtMillis), bookingTimestamp(refund.updatedAtMillis),
             order.cancellationReason?.label ?: "Hủy trước giờ nhận") }
         RefundScreen(refundState, back, { booking.retryRefund(refundId) },
@@ -130,7 +146,7 @@ internal fun CustomerRoute(
                 booking.confirm()?.let { navigation = navigation.back().open("reservation:" + it) }
             }, modifier = modifier)
     } else if (reservationId != null) {
-        ReservationScreen(reservation, bookingState.catalog.firstOrNull { it.id == reservation?.boxId },
+        ReservationScreen(reservation, reservation?.boxSnapshot ?: bookingState.catalog.firstOrNull { it.id == reservation?.boxId },
             bookingState.nowMillis, back,
             onExplore = { navigation = navigation.selectTab(0) },
             onRelease = { booking.release(reservationId) },
@@ -171,6 +187,16 @@ internal fun CustomerRoute(
                 when {
                     selectedBox != null -> SurpriseBoxDetailScreen(selectedBox, back, { showMap(selectedBox.id) },
                         { open("store:" + selectedBox.storeId) })
+                    boxId != null -> FoodRescuePage("Hộp đã ngừng mở bán", back) {
+                        Text("Đợt bán này hiện không nhận thêm đơn. Bạn có thể chọn hộp khác.")
+                        TextButton({ navigation = navigation.selectTab(0) }) { Text("Khám phá hộp") }
+                    }
+                    storeId != null && state.publicStores.any { it.id == storeId } -> PublicStoreDetailScreen(
+                        state.publicStores.first { it.id == storeId }, back, {
+                            vm.district("TP. Hồ Chí Minh"); vm.reset()
+                            mapSelection = vm.state.mapPresentation.boxes.firstOrNull { it.storeId == storeId }?.id ?: storeId
+                            viewport = emptyList(); open("map")
+                        }, state.catalog.filter { it.storeId == storeId }, { open("box:$it") })
                     storeId != null -> StoreDetailScreen(state.catalog.filter { it.storeId == storeId }, back,
                         { open("box:$it") }, { state.catalog.firstOrNull { it.storeId == storeId }?.let { showMap(it.id) } })
                     navigation.current == "map" -> CatalogStoreMapScreen(state.mapPresentation, mapSelection, viewport,
@@ -187,7 +213,7 @@ internal fun CustomerRoute(
                         { open("reservation:" + it) }, { navigation = navigation.selectTab(0) }, booking::selectFilter)
                     else -> CustomerProfileScreen(profile, { open("profile") }, { navigation = navigation.selectTab(2) }, { open("complaints") }, {
                         onLogout()
-                    })
+                    }, onPartner, isPartner, onStaff)
                 }
             }
         }

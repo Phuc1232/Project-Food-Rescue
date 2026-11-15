@@ -58,6 +58,14 @@ internal fun ReservationScreen(
     }) {
         OrderStatusBadge(status)
         if (code != null) PickupCodeCard(code)
+        reservation.ownerCancellation?.let { request ->
+            FoodRescueCard {
+                Text("Cửa hàng đã gửi yêu cầu hủy", style = MaterialTheme.typography.titleMedium)
+                Text("Đang chờ xử lý. Chưa phát sinh hoàn tiền; vui lòng theo dõi kết quả trước khi đến nhận hộp.")
+                Text(request.reason.label)
+                if (request.note.isNotBlank()) Text(request.note)
+            }
+        }
         reservation.refund?.let { RefundSummaryCard(it, onRefund) }
         if (status == OrderStatus.WAITING_PICKUP && nowMillis >= reservation.pickup.endMillis) {
             FoodRescueCard {
@@ -113,7 +121,7 @@ internal fun ReservationScreen(
             }
         }
         OrderTimeline(reservation, nowMillis)
-        if (reservation.isPaid && reservation.cancelledAtMillis == null && reservation.collectedAtMillis == null) {
+        if (reservation.isPaid && reservation.cancelledAtMillis == null && reservation.collectedAtMillis == null && reservation.ownerCancellation == null) {
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Hủy đơn và hoàn tiền") }
         }
         if (reservation.payment != null) {

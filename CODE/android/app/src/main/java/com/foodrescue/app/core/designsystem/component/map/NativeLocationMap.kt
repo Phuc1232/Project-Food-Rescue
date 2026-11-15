@@ -1,4 +1,4 @@
-package com.foodrescue.app.feature.discovery.presentation.map
+package com.foodrescue.app.core.designsystem.component.map
 
 import com.foodrescue.app.core.common.PickupLocation
 import com.foodrescue.app.core.common.GeoPoint
@@ -48,23 +48,27 @@ import org.maplibre.geojson.Point
 import kotlin.math.roundToInt
 
 internal enum class MapLoadState { LOADING, READY, ERROR }
-internal data class StoreMapPin(val id: Int, val location: PickupLocation, val priceLabel: String)
+internal enum class LocationMapMode { BROWSE, PICK }
+internal data class LocationMapPin(val id: Int, val location: PickupLocation, val priceLabel: String)
 
 @Composable
-internal fun NativeCatalogMap(
-    offers: List<StoreMapPin>, selectedId: Int?, fitRequest: Int, retryRequest: Int,
+internal fun NativeLocationMap(
+    offers: List<LocationMapPin>, selectedId: Int?, fitRequest: Int, retryRequest: Int,
     topInset: Int, bottomInset: Int, viewport: List<Double>,
     onSelect: (Int) -> Unit, onViewport: (List<Double>) -> Unit, onLoad: (MapLoadState) -> Unit,
     modifier: Modifier = Modifier, customerPoint: GeoPoint? = null, locateRequest: Int = 0,
     sidePanelInset: Int = 0,
+    mode: LocationMapMode = LocationMapMode.BROWSE,
+    onMoving: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val select = rememberUpdatedState(onSelect)
     val camera = rememberUpdatedState(onViewport)
     val load = rememberUpdatedState(onLoad)
-    val controller = remember(context) {
-        StoreMapController(context, viewport, { select.value(it) }, { camera.value(it) }, { load.value(it) })
+    val moving = rememberUpdatedState(onMoving)
+    val controller = remember(context, mode) {
+        LocationMapController(context, viewport, mode, { select.value(it) }, { camera.value(it) }, { load.value(it) }, { moving.value(it) })
     }
     DisposableEffect(controller, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> controller.lifecycle(event) }
@@ -79,18 +83,21 @@ internal fun NativeCatalogMap(
 }
 
 /** Owns the native renderer; composable filters never recreate the MapView. */
-private class StoreMapController(
+private class LocationMapController(
     private val context: Context,
     private val initialViewport: List<Double>,
+    private val mode: LocationMapMode,
     private val onSelect: (Int) -> Unit,
     private val onViewport: (List<Double>) -> Unit,
     private val onLoad: (MapLoadState) -> Unit,
+    private val onMoving: (Boolean) -> Unit,
 ) {
     private val density = context.resources.displayMetrics.density
     private fun px(dp: Int) = (dp * density).roundToInt()
     private var map: MapLibreMap? = null
     private var style: Style? = null
-    private var offers = emptyList<StoreMapPin>()
+    private var offers = emptyList<LocationMapPin>()
+    private var latestViewport = initialViewport
     private var customerPoint: GeoPoint? = null
     private var locateRequest = 0
     private var selectedId: Int? = null
@@ -134,6 +141,10 @@ private class StoreMapController(
             ready.setMaxZoomPreference(19.0)
             ready.cameraPosition = CameraPosition.Builder().target(LatLng(10.777, 106.699)).zoom(14.0).build()
             ready.addOnMapClickListener { location ->
+                if (mode == LocationMapMode.PICK) {
+                    move(CameraUpdateFactory.newLatLng(location))
+                    return@addOnMapClickListener true
+                }
                 val point = ready.projection.toScreenLocation(location)
                 val touch = RectF(point.x - px(10), point.y - px(10), point.x + px(10), point.y + px(10))
                 val feature = ready.queryRenderedFeatures(touch, SELECTED_PIN, PINS, DOTS).firstOrNull()
@@ -142,16 +153,21 @@ private class StoreMapController(
                     true
                 } else false
             }
+            ready.addOnCameraMoveStartedListener { if (!destroyed) onMoving(true) }
             ready.addOnCameraIdleListener {
+                if (!destroyed) onMoving(false)
                 if (!destroyed && positioned) ready.cameraPosition.let { camera ->
-                    camera.target?.let { onViewport(listOf(it.latitude, it.longitude, camera.zoom, if (leftInset > 0) 1.0 else 0.0)) }
+                    camera.target?.let {
+                        latestViewport = listOf(it.latitude, it.longitude, camera.zoom, if (leftInset > 0) 1.0 else 0.0)
+                        onViewport(latestViewport)
+                    }
                 }
             }
             loadStyle()
         }
     }
 
-    fun update(next: List<StoreMapPin>, selection: Int?, fit: Int, retry: Int, top: Int, bottom: Int, side: Int) {
+    fun update(next: List<LocationMapPin>, selection: Int?, fit: Int, retry: Int, top: Int, bottom: Int, side: Int) {
         if (destroyed) return
         val offersChanged = offers != next
         val selectionChanged = selectedId != selection
@@ -208,7 +224,10 @@ private class StoreMapController(
             view.post {
                 if (destroyed) return@post
                 val sameLayout = initialViewport.getOrNull(3) == if (leftInset > 0) 1.0 else 0.0
-                if (!positioned && initialViewport.size >= 3 && sameLayout) {
+                if (mode == LocationMapMode.PICK && latestViewport.size >= 3) {
+                    positioned = true
+                    ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(latestViewport[0], latestViewport[1]), latestViewport[2]))
+                } else if (!positioned && initialViewport.size >= 3 && sameLayout) {
                     ready.moveCamera(CameraUpdateFactory.newLatLngZoom(
                         LatLng(initialViewport[0], initialViewport[1]), initialViewport[2]))
                     positioned = true

@@ -17,7 +17,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
-internal enum class FoodRescueIcon { SEARCH, PIN, FILTER, MAP, COMPASS, RECEIPT, PERSON, CLOCK, CHEVRON, BACK, CLOSE, CHECK, BAG, ARROW }
+internal enum class FoodRescueIcon { SEARCH, PIN, FILTER, MAP, COMPASS, RECEIPT, PERSON, CLOCK, CHEVRON, BACK, CLOSE, CHECK, BAG, ARROW, HOME, STORE, CHART, BANK, PEOPLE, EDIT }
 @Composable
 internal fun FoodRescueGlyph(icon: FoodRescueIcon, modifier: Modifier = Modifier, tint: Color = LocalContentColor.current, description: String? = null) {
     Canvas(modifier.size(24.dp).then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)) {
@@ -40,6 +40,12 @@ internal fun FoodRescueGlyph(icon: FoodRescueIcon, modifier: Modifier = Modifier
                 FoodRescueIcon.CHECK -> {line(5f,12f,10f,17f);line(10f,17f,19f,7f)}
                 FoodRescueIcon.BAG -> { drawRoundRect(tint,Offset(4f,7f),Size(16f,15f),CornerRadius(2f),style=stroke);path {moveTo(8f,8f);lineTo(8f,6f);cubicTo(8f,0f,16f,0f,16f,6f);lineTo(16f,8f)} }
                 FoodRescueIcon.ARROW -> {line(5f,12f,19f,12f);line(14f,7f,19f,12f);line(19f,12f,14f,17f)}
+                FoodRescueIcon.HOME -> { path {moveTo(3f,10f);lineTo(12f,3f);lineTo(21f,10f);moveTo(5f,9f);lineTo(5f,21f);lineTo(19f,21f);lineTo(19f,9f);moveTo(9f,21f);lineTo(9f,14f);lineTo(15f,14f);lineTo(15f,21f)} }
+                FoodRescueIcon.STORE -> { path {moveTo(3f,9f);lineTo(5f,3f);lineTo(19f,3f);lineTo(21f,9f);close();moveTo(5f,11f);lineTo(5f,21f);lineTo(19f,21f);lineTo(19f,11f);moveTo(9f,21f);lineTo(9f,14f);lineTo(15f,14f);lineTo(15f,21f)};line(9f,3f,8f,9f);line(15f,3f,16f,9f) }
+                FoodRescueIcon.CHART -> { line(4f,3f,4f,21f);line(4f,21f,22f,21f);line(8f,16f,8f,12f);line(13f,16f,13f,8f);line(18f,16f,18f,4f) }
+                FoodRescueIcon.BANK -> { path {moveTo(3f,8f);lineTo(12f,2f);lineTo(21f,8f);close()};line(5f,11f,5f,18f);line(12f,11f,12f,18f);line(19f,11f,19f,18f);line(3f,21f,21f,21f) }
+                FoodRescueIcon.PEOPLE -> { drawCircle(tint,3.5f,Offset(9f,7f),style=stroke);path {moveTo(2f,21f);cubicTo(2f,10f,16f,10f,16f,21f)};path {moveTo(16f,4f);cubicTo(22f,4f,22f,11f,16f,11f);moveTo(18f,14f);cubicTo(22f,14f,22f,19f,22f,21f)} }
+                FoodRescueIcon.EDIT -> { path {moveTo(4f,16f);lineTo(16f,4f);lineTo(20f,8f);lineTo(8f,20f);lineTo(3f,21f);close()};line(13f,7f,17f,11f) }
             }
         }
     }

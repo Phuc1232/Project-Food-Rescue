@@ -1,4 +1,4 @@
-package com.foodrescue.app.feature.discovery.domain
+package com.foodrescue.app.core.common
 
 import com.foodrescue.app.core.common.GeoPoint
 
