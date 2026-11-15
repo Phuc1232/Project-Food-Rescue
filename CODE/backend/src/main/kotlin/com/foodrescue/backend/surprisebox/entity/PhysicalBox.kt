@@ -44,5 +44,9 @@ class PhysicalBox(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "status", nullable = false, length = 50)
-    var status: BoxStatus
+    var status: BoxStatus,
+
+    // T4.4: idempotency key of the packing request (UC-26 E3).
+    @field:Column(name = "pack_request_key", nullable = true, unique = true)
+    var packRequestKey: java.util.UUID? = null
 ) : MutableEntity()

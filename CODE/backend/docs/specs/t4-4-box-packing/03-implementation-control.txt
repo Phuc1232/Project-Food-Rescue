@@ -1,0 +1,38 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T4.4: ĐÓNG GÓI HỘP THỰC TẾ
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t4-4-box-packing (từ feature/t4-3-sale-batch 3796e4f)
+Tài liệu: UC-25, UC-26, UC-32, UC-33, BR-11..14, BR-17, BR-18, D7
+
+1. KẾT QUẢ
+- POST /api/v1/stores/{storeId}/sale-batches/{batchId}/boxes (owner hoặc staff BOX_PACK): requestKey (idempotency), items {menuItemId, quantity,
+  expiresAt, expectedUnitPrice?}, storageInstructions, inspectionPassed/inspectionNotes. Khóa dòng đợt; key đã dùng → 200 hộp cũ; giá/trạng thái
+  món hiện hành; giá kỳ vọng khác → 409 PRICE_CHANGED (fieldErrors = giá hiện hành); tổng = Σ giá × SL, safe_until = hạn sớm nhất; dưới tối thiểu
+  hoặc hết an toàn trước giờ nhận kết thúc → 400, không tạo; đạt → AVAILABLE + inspection PASSED; không đạt → BLOCKED + FAILED.
+- Mã hộp FR-XXXXXXXXXX (SecureRandom, base32 không ký tự dễ nhầm, unique). Snapshot tên/giá/cảnh báo món vào box_item; cảnh báo hộp = hợp cảnh báo món.
+- GET .../sale-batches/{batchId}/boxes (?status), GET /api/v1/stores/{storeId}/boxes/{boxId} (món, giá khi đóng, an toàn, người đóng, kiểm tra,
+  đơn phân bổ), GET .../boxes/{boxId}/prefill (món + SL + giá/trạng thái hiện hành, chỉ cùng cửa hàng).
+- V11: physical_box.pack_request_key + unique index. Audit BOX_PACKED (lịch sử cửa hàng).
+
+2. KIỂM CHỨNG
+Baseline 3796e4f: 149 tests, 148 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m44s), 158 tests, 157 PASS, 1 SKIPPED, 0 fail.
+BoxPackingTests 9 (mới, AC-01..09; đồng thời cùng requestKey ở AC-04); migration 10 → 11; Swagger 56 → 59 paths, 16 → 17 tags.
+Smoke dev (V11 áp; t44-*) 8/8: dưới tối thiểu 400; đóng 2 bánh mì + 1 bánh kem 201 (90 000); gửi lại key 200 cùng hộp; kiểm tra không đạt 201
+BLOCKED; counts packed 2 / available 1 / blocked 1; công khai 200; prefill 2 dòng; admin xem chi tiết.
+
+3. FILE
+resources/db/migration/V11__box_pack_request_key.sql · surprisebox/entity/PhysicalBox.kt (M) · surprisebox/repository/{PhysicalBox,BoxItem,BoxInspection}Repository.kt (M) ·
+surprisebox/dto/{BoxPackRequest,BoxPackItemRequest,BoxView,BoxDetail,BoxItemView,BoxInspectionView,PrefillItemView}.kt ·
+surprisebox/service/{BoxAccess,BoxPackingService,BoxQueryService,BoxViews,BoxCodeGenerator}.kt · surprisebox/controller/BoxController.kt ·
+store/service/StoreHistoryRecorder.kt (M) · openapi (3 path, tag Boxes, 8 schema) · test BoxPackingTests.kt, hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Có món menu (T4.1), mẫu (T4.2), đợt DRAFT (T4.3). Token staff BOX_PACK hoặc owner.
+ 2. Boxes › POST /api/v1/stores/{storeId}/sale-batches/{batchId}/boxes ví dụ "pack" (đổi menuItemId, expiresAt sau giờ nhận kết thúc, requestKey mới)
+    → 201; gửi lại y nguyên → 200 cùng box.id. Giảm quantity để tổng < giá trị tối thiểu → 400. expectedUnitPrice sai → 409 PRICE_CHANGED.
+ 3. GET .../box-counts (Sale batches) → available tăng; POST .../status "publish" → OPEN.
+ 4. GET /api/v1/stores/{storeId}/boxes/{boxId}/prefill → dùng làm phiếu mới.
+
+5. GIỚI HẠN
+- Đánh dấu hộp không đạt sau khi đóng (UC-34) → T7.5; kiểm tra lại hộp no-show → T7.4.
+- Khóa dòng đợt tuần tự hóa việc đóng hộp của một đợt (đủ cho quy mô cửa hàng).
+- Smoke để lại trên DB dev: t44-*, store "T44 Bánh", đợt OPEN với 1 hộp AVAILABLE + 1 BLOCKED.

@@ -9,6 +9,10 @@ import org.springframework.data.repository.query.Param
 import java.util.UUID
 
 interface PhysicalBoxRepository : JpaRepository<PhysicalBox, UUID> {
+    fun findByPackRequestKey(key: UUID): PhysicalBox?
+    fun existsByBoxCode(code: String): Boolean
+    fun findAllByCurrentBatchIdOrderByPackedAtDesc(batchId: UUID): List<PhysicalBox>
+
     /** Must be called inside the same transaction as the dependent validation and writes. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select entity from PhysicalBox entity where entity.id = :id")

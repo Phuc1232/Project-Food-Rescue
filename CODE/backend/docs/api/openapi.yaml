@@ -5292,6 +5292,347 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/sale-batches/{batchId}/boxes": {
+      "get": {
+        "operationId": "get_stores_storeId_sale_batches_batchId_boxes",
+        "tags": [
+          "Boxes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List boxes of a batch",
+        "description": "Owner, staff with BOX_PACK/BOX_MANAGE, or ADMIN (UC-32).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/BoxStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Boxes",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BoxView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_stores_storeId_sale_batches_batchId_boxes",
+        "tags": [
+          "Boxes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Pack a box (owner or staff BOX_PACK)",
+        "description": "Prices and statuses come from the current menu; total = sum(price x quantity), safeUntil = earliest expiry. Below the batch minimum value or unsafe before the end of pickup -> 400 and no box (BR-12, BR-18). Passed inspection -> AVAILABLE; failed -> BLOCKED. Resending the requestKey returns the same box with 200 (UC-26 E3).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxPackRequest"
+              },
+              "examples": {
+                "pack": {
+                  "value": {
+                    "requestKey": "3f2c1a9e-0b7d-4e6a-9c1f-2d8e5b4a7c60",
+                    "items": [
+                      {
+                        "menuItemId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f",
+                        "quantity": 2,
+                        "expiresAt": "2026-11-16T13:00:00Z",
+                        "expectedUnitPrice": 25000
+                      }
+                    ],
+                    "storageInstructions": "Ngăn mát 4°C",
+                    "inspectionPassed": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Packed",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxDetail"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Same requestKey: existing box",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "PRICE_CHANGED (fieldErrors items[i].expectedUnitPrice = current price), or CONFLICT (batch not packable / key used for another batch)",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/boxes/{boxId}": {
+      "get": {
+        "operationId": "get_stores_storeId_boxes_boxId",
+        "tags": [
+          "Boxes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Box detail",
+        "description": "Items with packing-time prices, safety data, packer, inspections, allocation (UC-33). Owner, staff BOX_PACK/BOX_MANAGE, ADMIN.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "boxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Box id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Box",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/boxes/{boxId}/prefill": {
+      "get": {
+        "operationId": "get_stores_storeId_boxes_boxId_prefill",
+        "tags": [
+          "Boxes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Quick-fill from a packed box (owner or staff BOX_PACK)",
+        "description": "Items and quantities of a box of the same store, with current prices and statuses; the packer adjusts them before packing.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "boxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Box id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lines",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrefillItemView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8147,6 +8488,272 @@
             "format": "date-time"
           }
         }
+      },
+      "BoxStatus": {
+        "type": "string",
+        "enum": [
+          "AVAILABLE",
+          "RESERVED",
+          "ALLOCATED",
+          "DELIVERED",
+          "BLOCKED",
+          "AWAITING_INSPECTION"
+        ]
+      },
+      "BoxPackItemRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "menuItemId",
+          "quantity",
+          "expiresAt"
+        ],
+        "properties": {
+          "menuItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expectedUnitPrice": {
+            "type": "integer",
+            "description": "Price the packer saw; a different current price returns 409 PRICE_CHANGED"
+          }
+        }
+      },
+      "BoxPackRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestKey",
+          "items",
+          "storageInstructions",
+          "inspectionPassed"
+        ],
+        "properties": {
+          "requestKey": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Client-generated per packing; resending returns the same box (200)"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "items": {
+              "$ref": "#/components/schemas/BoxPackItemRequest"
+            }
+          },
+          "storageInstructions": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "inspectionPassed": {
+            "type": "boolean",
+            "description": "Packer confirms food, expiry and storage were checked (BR-17); false records a BLOCKED box"
+          },
+          "inspectionNotes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Required when inspectionPassed is false"
+          }
+        }
+      },
+      "BoxView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "boxCode",
+          "batchId",
+          "status",
+          "totalListedValue",
+          "safeUntil",
+          "packedAt",
+          "packedById",
+          "meetsBatchTerms"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "boxCode": {
+            "type": "string"
+          },
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BoxStatus"
+          },
+          "totalListedValue": {
+            "type": "integer"
+          },
+          "safeUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "packedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "packedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meetsBatchTerms": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BoxItemView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "menuItemId",
+          "name",
+          "quantity",
+          "unitPrice",
+          "safetyWarnings",
+          "expiresAt"
+        ],
+        "properties": {
+          "menuItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unitPrice": {
+            "type": "integer",
+            "description": "Listed price when packed"
+          },
+          "safetyWarnings": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BoxInspectionView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "result",
+          "inspectorId",
+          "inspectedAt",
+          "safeUntil",
+          "notes"
+        ],
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "PASSED",
+              "FAILED"
+            ]
+          },
+          "inspectorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "safeUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "BoxDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "box",
+          "storageInstructions",
+          "safetyWarnings",
+          "items",
+          "inspections"
+        ],
+        "properties": {
+          "box": {
+            "$ref": "#/components/schemas/BoxView"
+          },
+          "storageInstructions": {
+            "type": "string"
+          },
+          "safetyWarnings": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoxItemView"
+            }
+          },
+          "inspections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoxInspectionView"
+            }
+          },
+          "allocatedOrderId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "PrefillItemView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "menuItemId",
+          "name",
+          "quantity",
+          "currentUnitPrice",
+          "status"
+        ],
+        "properties": {
+          "menuItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "currentUnitPrice": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MenuItemStatus"
+          }
+        }
       }
     },
     "responses": {
@@ -8372,6 +8979,10 @@
     {
       "name": "Sale batches",
       "description": "Sale batches: commercial terms, publishing and box counts (UC-59..62); admin block"
+    },
+    {
+      "name": "Boxes",
+      "description": "Packing physical Surprise Boxes, box list and detail (UC-25, UC-26, UC-32, UC-33)"
     },
     {
       "name": "Health"
