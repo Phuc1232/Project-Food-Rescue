@@ -16,6 +16,8 @@ import com.foodrescue.app.dashboard.customer.CustomerRoute
 import com.foodrescue.app.dashboard.owner.OwnerRoute
 import com.foodrescue.app.dashboard.owner.OwnerOverviewUiState
 import com.foodrescue.app.feature.store.presentation.StoreManagementViewModel
+import com.foodrescue.app.feature.menu.presentation.MenuRoute
+import com.foodrescue.app.feature.menu.presentation.MenuViewModel
 import com.foodrescue.app.di.RepositoryModule
 import com.foodrescue.app.feature.auth.presentation.AuthRoute
 import com.foodrescue.app.feature.auth.presentation.AuthViewModel
@@ -58,10 +60,13 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val account = profile.email.trim().lowercase(Locale.ROOT)
         val factory = remember(account) { RepositoryModule.storeViewModelFactory(account) }
         val store: StoreManagementViewModel = viewModel(key = "owner.store:$account", factory = factory)
+        val menuFactory = remember(account) { RepositoryModule.menuViewModelFactory(account) }
+        val menu: MenuViewModel = viewModel(key = "owner.menu:$account", factory = menuFactory)
         OwnerRoute(account, store,
             locationSource = remember(context) { RepositoryModule.locationSource(context) },
-            onCustomer = { store.clearTransient(); session.switchToCustomer() },
-            onLogout = { store.clearTransient(); auth.reset(); session.signOut() }, modifier = modifier,
+            onCustomer = { store.clearTransient(); menu.clearTransient(); session.switchToCustomer() },
+            onLogout = { store.clearTransient(); menu.clearTransient(); auth.reset(); session.signOut() }, modifier = modifier,
+            menuContent = { name, back -> MenuRoute(name, menu, back) },
             summary = OwnerOverviewUiState())
     } else {
         AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = { name, email ->
