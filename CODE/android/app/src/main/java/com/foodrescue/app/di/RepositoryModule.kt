@@ -31,6 +31,11 @@ import com.foodrescue.app.feature.menu.data.LocalMenuRepository
 import com.foodrescue.app.feature.menu.presentation.MenuViewModel
 import com.foodrescue.app.feature.surprisebox.data.LocalOwnerBoxRepository
 import com.foodrescue.app.feature.surprisebox.presentation.OwnerBoxesViewModel
+import com.foodrescue.app.feature.staff.data.LocalEmployeeDirectory
+import com.foodrescue.app.feature.staff.data.LocalEmployeeRepository
+import com.foodrescue.app.feature.staff.domain.StaffAccessRepository
+import com.foodrescue.app.feature.staff.presentation.EmployeeViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffAccessViewModel
 
 /** Composition root for frontend local dependencies. */
 object RepositoryModule {
@@ -107,6 +112,19 @@ object RepositoryModule {
             OwnerOrdersViewModel(createSavedStateHandle(), LocalOwnerOrderRepository(LocalOrderLedger(context),
                 storeId, LocalOwnerStoreRepository(context, email)))
         }
+    }
+
+    internal fun employeesViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            val storeId = LocalPublicStoreRepository(context).register(LocalOrderLedger.accountKey(email))
+            EmployeeViewModel(createSavedStateHandle(), LocalEmployeeRepository(email, storeId,
+                LocalOwnerStoreRepository(context, email), LocalEmployeeDirectory(context)))
+        }
+    }
+    internal fun staffAccessRepository(context: Context): StaffAccessRepository = LocalEmployeeDirectory(context)
+    internal fun staffAccessViewModelFactory(email: String) = viewModelFactory {
+        initializer { StaffAccessViewModel(email, staffAccessRepository(checkNotNull(this[APPLICATION_KEY]))) }
     }
 
 }

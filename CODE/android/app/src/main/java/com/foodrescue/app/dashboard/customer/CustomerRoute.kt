@@ -55,6 +55,7 @@ internal fun CustomerRoute(
     modifier: Modifier = Modifier,
     onPartner: () -> Unit = {},
     isPartner: Boolean = false,
+    onStaff: (() -> Unit)? = null,
 ) {
     var navigation by rememberSaveable(stateSaver = NavigationSaver) { mutableStateOf(CustomerNavigation()) }
     var modal by rememberSaveable { mutableStateOf<String?>(null) }
@@ -212,7 +213,7 @@ internal fun CustomerRoute(
                         { open("reservation:" + it) }, { navigation = navigation.selectTab(0) }, booking::selectFilter)
                     else -> CustomerProfileScreen(profile, { open("profile") }, { navigation = navigation.selectTab(2) }, { open("complaints") }, {
                         onLogout()
-                    }, onPartner, isPartner)
+                    }, onPartner, isPartner, onStaff)
                 }
             }
         }

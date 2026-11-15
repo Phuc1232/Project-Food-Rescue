@@ -29,6 +29,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
     boxesFullscreen: Boolean = false,
     ordersContent: @Composable (String) -> Unit = {},
     ordersFullscreen: Boolean = false,
+    employeesContent: @Composable (String, () -> Unit) -> Unit = { _, _ -> },
     summary: OwnerOverviewUiState = OwnerOverviewUiState()) {
     val state = vm.state
     var tab by rememberSaveable { mutableStateOf(OwnerTab.OVERVIEW) }
@@ -108,9 +109,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
             page == OwnerPage.ROOT && tab == OwnerTab.BOXES && boxesFullscreen ->
                 boxesContent(store.profile.name, { tab = OwnerTab.OVERVIEW }, { page = OwnerPage.MENU })
             page == OwnerPage.ROOT && tab == OwnerTab.ORDERS && ordersFullscreen -> ordersContent(store.profile.name)
-            page == OwnerPage.STAFF -> FoodRescuePage("Nhân viên", back) {
-                StoreEmptyPanel(FoodRescueIcon.PEOPLE, "Chưa có nhân viên", "Tài khoản nhân viên được quản lý riêng và truy cập cửa hàng theo quyền được cấp.")
-            }
+            page == OwnerPage.STAFF -> employeesContent(store.profile.name, back)
             else -> Scaffold(
                 containerColor = MaterialTheme.colorScheme.background,
                 topBar = {
