@@ -1,4 +1,4 @@
-package com.foodrescue.app.feature.discovery.data
+package com.foodrescue.app.core.util
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -12,7 +12,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import com.foodrescue.app.core.common.GeoPoint
-import com.foodrescue.app.feature.discovery.domain.LocationSource
+import com.foodrescue.app.core.common.LocationSource
 
 internal class AndroidLocationSource(private val context: Context) : LocationSource {
     override fun isEnabled() = LocationManagerCompat.isLocationEnabled(context.getSystemService(LocationManager::class.java))

@@ -134,11 +134,14 @@ internal fun CatalogDiscoveryScreen(s: DiscoveryListUiState, searchMode: Boolean
 private fun StoreResult(box: DiscoveryShop, onClick: () -> Unit) {
     Surface(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(categoryPhoto(box.category)), null, Modifier.size(68.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+            if (box.count == 0L) Surface(Modifier.size(68.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Box(contentAlignment = Alignment.Center) { FoodRescueGlyph(FoodRescueIcon.STORE, Modifier.size(30.dp), MaterialTheme.colorScheme.primary) }
+            } else Image(painterResource(categoryPhoto(box.category)), null, Modifier.size(68.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(box.name, style = MaterialTheme.typography.titleSmall)
                 Text(box.area + if (box.distanceMeters >= 0) " · ${distance(box.distanceMeters)}" else "", style = MaterialTheme.typography.bodySmall)
-                Text("${box.count} lựa chọn · Từ ${money(box.fromPrice)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(if (box.count == 0L) "Chưa có đợt bán" else "${box.count} lựa chọn · Từ ${money(box.fromPrice)}",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
         }
     }

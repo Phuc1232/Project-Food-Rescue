@@ -5,10 +5,10 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.foodrescue.app.feature.discovery.data.AndroidLocationSource
+import com.foodrescue.app.core.util.AndroidLocationSource
 import com.foodrescue.app.feature.discovery.data.LocalCatalogRepository
 import com.foodrescue.app.feature.discovery.domain.CatalogRepository
-import com.foodrescue.app.feature.discovery.domain.LocationSource
+import com.foodrescue.app.core.common.LocationSource
 import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
 import com.foodrescue.app.feature.order.data.LocalOrderHistoryStore
@@ -17,13 +17,20 @@ import com.foodrescue.app.feature.refund.data.LocalRefundRepository
 import com.foodrescue.app.feature.complaint.data.LocalComplaintRepository
 import com.foodrescue.app.feature.complaint.data.LocalEvidenceStore
 import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
+import com.foodrescue.app.feature.store.data.LocalOwnerStoreRepository
+import com.foodrescue.app.feature.store.data.LocalPublicStoreRepository
+import com.foodrescue.app.feature.store.data.LocalPayoutBanks
+import com.foodrescue.app.feature.store.presentation.StoreManagementViewModel
 
-/** Composition root for the customer frontend's local dependencies. */
+/** Composition root for frontend local dependencies. */
 object RepositoryModule {
+    // Temporary frontend behavior requested by the user. Set false to restore application review.
+    private const val AUTO_APPROVE_STORE_APPLICATIONS = true
     private val catalogRepository: CatalogRepository = LocalCatalogRepository()
 
     internal val discoveryViewModelFactory = viewModelFactory {
-        initializer { DiscoveryViewModel(createSavedStateHandle(), catalogRepository) }
+        initializer { DiscoveryViewModel(createSavedStateHandle(), catalogRepository,
+            LocalPublicStoreRepository(checkNotNull(this[APPLICATION_KEY]))) }
     }
 
     internal fun bookingViewModelFactory(email: String) = viewModelFactory {
@@ -44,4 +51,19 @@ object RepositoryModule {
 
     internal fun locationSource(context: Context): LocationSource =
         AndroidLocationSource(context.applicationContext)
+
+    internal fun isStoreOwner(context: Context, email: String): Boolean =
+        LocalOwnerStoreRepository(context, email).hasApplication()
+
+    internal fun storeViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            StoreManagementViewModel(createSavedStateHandle(), LocalOwnerStoreRepository(context, email,
+                autoApproveSubmittedApplications = AUTO_APPROVE_STORE_APPLICATIONS), LocalPayoutBanks.all)
+        }
+    }
+
+
+
+
 }

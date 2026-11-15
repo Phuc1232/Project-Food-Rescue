@@ -24,7 +24,8 @@ import androidx.compose.ui.unit.sp
 
 
 @Composable
-internal fun CustomerProfileScreen(profile: CustomerProfile, onEdit: () -> Unit, onOrders: () -> Unit, onComplaints: () -> Unit, onLogout: () -> Unit) {
+internal fun CustomerProfileScreen(profile: CustomerProfile, onEdit: () -> Unit, onOrders: () -> Unit, onComplaints: () -> Unit,
+    onLogout: () -> Unit, onPartner: () -> Unit = {}, isPartner: Boolean = false) {
     var confirm by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         Text("Tài khoản", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
@@ -49,6 +50,10 @@ internal fun CustomerProfileScreen(profile: CustomerProfile, onEdit: () -> Unit,
         FoodRescueCard {
             Text("Khiếu nại của tôi", style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = onComplaints) { Text("Xem khiếu nại") }
+        }
+        FoodRescueCard {
+            Text("Đối tác FoodRescue", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = onPartner) { Text(if (isPartner) "Vào khu vực cửa hàng" else "Đăng ký đối tác") }
         }
         OutlinedButton(onClick = { confirm = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Text("Đăng xuất") }
     }

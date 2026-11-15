@@ -9,9 +9,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.foodrescue.app.feature.store.domain.PublicStoreRepository
+import kotlinx.coroutines.CancellationException
 
 /** Catalog state survives activity recreation; credentials never enter saved state. */
-internal class DiscoveryViewModel(private val saved: SavedStateHandle, private val repository: CatalogRepository) : ViewModel() {
+internal class DiscoveryViewModel(private val saved: SavedStateHandle, private val repository: CatalogRepository,
+    private val publicStores: PublicStoreRepository? = null) : ViewModel() {
     var state by mutableStateOf(DiscoveryUiState(
         source = repository.getBoxes(),
         query = saved["query"] ?: "",
@@ -44,6 +47,15 @@ internal class DiscoveryViewModel(private val saved: SavedStateHandle, private v
     fun district(value: String) = update(state.copy(district = value, point = null))
     fun location(value: GeoPoint) = update(state.copy(point = value, district = "TP. Hồ Chí Minh"))
     fun clearLocation() = update(state.copy(point = null))
+    suspend fun refreshPublicStores() {
+        val directory = publicStores ?: return
+        try {
+            val stores = directory.getStores()
+            state = state.copy(publicStores = stores)
+        }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { /* Keep the last readable directory; catalog browsing remains available. */ }
+    }
     fun reset() = update(state.copy(query = "", filters = DiscoveryFilters()))
     fun clear() = update(DiscoveryUiState(source = repository.getBoxes()))
 }

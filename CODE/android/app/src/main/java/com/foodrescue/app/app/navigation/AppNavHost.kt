@@ -38,6 +38,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 booking.restoreHistory()
                 complaints.restore()
+                discovery.refreshPublicStores()
                 while (true) {
                     booking.refreshTime()
                     delay(1_000)

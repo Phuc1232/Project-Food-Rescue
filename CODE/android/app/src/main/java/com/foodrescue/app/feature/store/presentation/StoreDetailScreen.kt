@@ -20,7 +20,15 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun StoreDetailScreen(offers: List<CatalogBox>, onBack: () -> Unit, onBox: (Int) -> Unit, onMap: () -> Unit) {
-    val store = offers.firstOrNull() ?: return
+    val store = offers.firstOrNull()
+    if (store == null) {
+        com.foodrescue.app.core.designsystem.component.FoodRescuePage("Cửa hàng", onBack) {
+            Text("Chưa có thông tin cửa hàng", style = MaterialTheme.typography.titleMedium)
+            Text("Quay lại bản đồ để chọn cửa hàng khác.")
+            TextButton(onClick = onBack) { Text("Quay lại") }
+        }
+        return
+    }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -18,9 +18,10 @@ import com.foodrescue.app.feature.account.domain.CustomerProfile
 import com.foodrescue.app.feature.account.presentation.*
 import com.foodrescue.app.core.designsystem.component.FoodRescueGlyph
 import com.foodrescue.app.core.designsystem.component.FoodRescueIcon
-import com.foodrescue.app.feature.discovery.domain.LocationSource
+import com.foodrescue.app.core.common.LocationSource
 import com.foodrescue.app.feature.discovery.presentation.map.CatalogStoreMapScreen
 import com.foodrescue.app.feature.store.presentation.StoreDetailScreen
+import com.foodrescue.app.feature.store.presentation.PublicStoreDetailScreen
 import com.foodrescue.app.feature.surprisebox.presentation.SurpriseBoxDetailFooter
 import com.foodrescue.app.feature.surprisebox.presentation.SurpriseBoxDetailScreen
 import com.foodrescue.app.feature.order.presentation.*
@@ -49,6 +50,8 @@ internal fun CustomerRoute(
     complaints: ComplaintViewModel,
     locationSource: LocationSource,
     modifier: Modifier = Modifier,
+    onPartner: () -> Unit = {},
+    isPartner: Boolean = false,
 ) {
     var navigation by rememberSaveable(stateSaver = NavigationSaver) { mutableStateOf(CustomerNavigation()) }
     var modal by rememberSaveable { mutableStateOf<String?>(null) }
@@ -171,6 +174,10 @@ internal fun CustomerRoute(
                 when {
                     selectedBox != null -> SurpriseBoxDetailScreen(selectedBox, back, { showMap(selectedBox.id) },
                         { open("store:" + selectedBox.storeId) })
+                    storeId != null && state.publicStores.any { it.id == storeId } -> PublicStoreDetailScreen(
+                        state.publicStores.first { it.id == storeId }, back, {
+                            vm.district("TP. Hồ Chí Minh"); vm.reset(); mapSelection = storeId; viewport = emptyList(); open("map")
+                        })
                     storeId != null -> StoreDetailScreen(state.catalog.filter { it.storeId == storeId }, back,
                         { open("box:$it") }, { state.catalog.firstOrNull { it.storeId == storeId }?.let { showMap(it.id) } })
                     navigation.current == "map" -> CatalogStoreMapScreen(state.mapPresentation, mapSelection, viewport,
@@ -187,7 +194,7 @@ internal fun CustomerRoute(
                         { open("reservation:" + it) }, { navigation = navigation.selectTab(0) }, booking::selectFilter)
                     else -> CustomerProfileScreen(profile, { open("profile") }, { navigation = navigation.selectTab(2) }, { open("complaints") }, {
                         onLogout()
-                    })
+                    }, onPartner, isPartner)
                 }
             }
         }
