@@ -24,8 +24,10 @@ docs/specs/*
 
 !docs/specs/swagger-ui/
 !docs/specs/roadmap-3-9.md
+!docs/specs/progress.md
 !docs/specs/t0-baseline/
 !docs/specs/t2-1-profile-update/
 !docs/specs/t3-1-file-storage/
 !docs/specs/t3-2-partner-application/
 !docs/specs/t3-3-store-profile/
+!docs/specs/t3-4-staff-management/
