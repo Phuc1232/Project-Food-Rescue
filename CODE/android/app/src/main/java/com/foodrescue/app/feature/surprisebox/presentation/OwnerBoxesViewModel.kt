@@ -43,6 +43,12 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
             } finally { state = state.copy(busy = false) }
         }
     }
+    suspend fun refreshStock() {
+        if (state.busy) return
+        try { state = state.copy(catalog = repository.load()) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { state = state.copy(error = "Chưa cập nhật được số lượng hộp. Vui lòng tải lại.") }
+    }
     fun refreshTime() { state = state.copy(now = clock()) }
     fun section(value: OwnerBoxSection) { if (state.busy) return; state = state.copy(section = value, query = ""); saved["boxes.section"] = value.name; saved["boxes.query"] = "" }
     fun search(value: String) { state = state.copy(query = value.take(100)); saved["boxes.query"] = state.query }

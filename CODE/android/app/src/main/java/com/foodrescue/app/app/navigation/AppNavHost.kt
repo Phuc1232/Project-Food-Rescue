@@ -26,6 +26,10 @@ import com.foodrescue.app.feature.auth.presentation.AuthRoute
 import com.foodrescue.app.feature.auth.presentation.AuthViewModel
 import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
+import com.foodrescue.app.feature.order.presentation.OwnerOrdersViewModel
+import com.foodrescue.app.feature.order.presentation.OwnerOrdersRoute
+import com.foodrescue.app.feature.order.presentation.OwnerOrderPage
+import com.foodrescue.app.feature.order.domain.OwnerOrderFilter
 import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
 
 @Composable
@@ -48,8 +52,10 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 booking.restoreHistory()
                 complaints.restore()
                 discovery.refreshPublicStores()
+                var tick = 0
                 while (true) {
                     booking.refreshTime()
+                    if (++tick % 5 == 0) { booking.restoreHistory(); discovery.refreshPublicStores() }
                     delay(1_000)
                 }
             }
@@ -67,21 +73,33 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val menu: MenuViewModel = viewModel(key = "owner.menu:$account", factory = menuFactory)
         val boxesFactory = remember(account) { RepositoryModule.ownerBoxesViewModelFactory(account) }
         val boxes: OwnerBoxesViewModel = viewModel(key = "owner.boxes:$account", factory = boxesFactory)
+        val ordersFactory = remember(account) { RepositoryModule.ownerOrdersViewModelFactory(account) }
+        val orders: OwnerOrdersViewModel = viewModel(key = "owner.orders:$account", factory = ordersFactory)
         val ownerLifecycle = LocalLifecycleOwner.current
-        LaunchedEffect(boxes, ownerLifecycle) {
+        LaunchedEffect(boxes, orders, ownerLifecycle) {
             ownerLifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 boxes.load()
-                while (true) { boxes.refreshTime(); delay(1_000) }
+                orders.refresh()
+                var tick = 0
+                while (true) {
+                    boxes.refreshTime(); orders.tick()
+                    if (++tick % 5 == 0) { orders.refresh(); boxes.refreshStock() }
+                    delay(1_000)
+                }
             }
         }
         OwnerRoute(account, store,
             locationSource = remember(context) { RepositoryModule.locationSource(context) },
-            onCustomer = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); session.switchToCustomer() },
-            onLogout = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); auth.reset(); session.signOut() }, modifier = modifier,
+            onCustomer = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); session.switchToCustomer() },
+            onLogout = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); auth.reset(); session.signOut() }, modifier = modifier,
             menuContent = { name, back -> MenuRoute(name, menu, back) },
             boxesContent = { name, back, onMenu -> OwnerBoxesRoute(name, boxes, back, onMenu) },
             boxesFullscreen = boxes.state.page != OwnerBoxPage.LIST,
-            summary = OwnerOverviewUiState(available = boxes.state.available))
+            ordersContent = { name -> OwnerOrdersRoute(name, orders) },
+            ordersFullscreen = orders.state.page != OwnerOrderPage.LIST,
+            summary = OwnerOverviewUiState(sold = orders.state.paidToday.sumOf { it.quantity },
+                available = boxes.state.available, awaitingPickup = orders.state.count(OwnerOrderFilter.AWAITING_PICKUP),
+                revenue = orders.state.paidToday.sumOf { it.total }))
     } else {
         AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = { name, email ->
             if (RepositoryModule.isStoreOwner(context, email)) session.signInOwner(name, email)

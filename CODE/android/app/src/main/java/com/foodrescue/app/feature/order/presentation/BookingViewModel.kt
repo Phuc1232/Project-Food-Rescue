@@ -23,6 +23,7 @@ internal data class BookingUiState(
     val orderFilter: OrderFilter = OrderFilter.ALL,
     val cancellationDraft: CancellationDraft? = null,
     val cancellationIssue: CancellationIssue? = null,
+    val dataError: String? = null,
 ) {
     val visibleOrders: List<BoxReservation> get() = orderFilter.select(reservations, nowMillis)
     val box: CatalogBox? get() = catalog.firstOrNull { it.id == draft?.boxId }
@@ -30,7 +31,7 @@ internal data class BookingUiState(
         box?.let { availableQuantity(it, draft.pickup, reservations, nowMillis) }
     } ?: 0
     val total: Long get() = bookingTotal(box?.price ?: 0, draft?.quantity ?: 0)
-    val canConfirm: Boolean get() = draft?.let { bookingIssue(it, box, reservations, nowMillis) == null } == true
+    val canConfirm: Boolean get() = dataError == null && draft?.let { bookingIssue(it, box, reservations, nowMillis) == null } == true
     fun activeFor(boxId: Int) = reservations.firstOrNull { it.boxId == boxId && it.isActive(nowMillis) }
 }
 
@@ -43,21 +44,23 @@ internal class BookingViewModel(
     private val refunds: RefundRepository = RefundRepository { RefundResult.UNAVAILABLE },
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
+    private var initialError: String? = null
     var state by mutableStateOf(BookingUiState(
-        catalog = catalog.getBoxes(),
+        catalog = try { catalog.getBoxes() } catch (_: Exception) { initialError = READ_ERROR; emptyList() },
         nowMillis = clock(),
         draft = saved.get<ArrayList<String>>(DRAFT)?.let(::restoreDraft),
-        reservations = initialReservations(),
+        reservations = try { initialReservations() } catch (_: Exception) { initialError = READ_ERROR; emptyList() },
         orderFilter = saved.get<String>(FILTER)?.let { runCatching { OrderFilter.valueOf(it) }.getOrNull() } ?: OrderFilter.ALL,
         cancellationDraft = saved.get<ArrayList<String>>(CANCEL_DRAFT)?.let { parts -> runCatching {
             require(parts.size == 3)
             CancellationDraft(parts[0], parts[1].takeIf(String::isNotBlank)?.let(CancellationReason::valueOf), parts[2])
         }.getOrNull() },
+        dataError = initialError,
     ))
         private set
 
     fun prepare(boxId: Int, reset: Boolean = false): String? {
-        refreshCatalog()
+        if (!refreshCatalog()) return null
         state.activeFor(boxId)?.let { return it.id }
         val box = state.catalog.firstOrNull { it.id == boxId }
         if (box == null) {
@@ -72,7 +75,7 @@ internal class BookingViewModel(
     }
 
     fun changeQuantity(delta: Int) {
-        refreshCatalog()
+        if (!refreshCatalog()) return
         val draft = state.draft ?: return
         val quantity = (draft.quantity + delta.coerceIn(-1, 1)).coerceIn(1, state.available.coerceAtLeast(1))
         update(state.copy(draft = draft.copy(quantity = quantity), issue = null))
@@ -89,7 +92,7 @@ internal class BookingViewModel(
     }
 
     fun confirm(): String? {
-        refreshCatalog()
+        if (!refreshCatalog()) return null
         val draft = state.draft ?: return null
         state.activeFor(draft.boxId)?.let { return it.id }
         val issue = bookingIssue(draft, state.box, state.reservations, state.nowMillis)
@@ -100,14 +103,23 @@ internal class BookingViewModel(
         val reservation = BoxReservation(
             UUID.randomUUID().toString(), draft.boxId, draft.quantity, draft.pickup,
             state.nowMillis, holdDeadline(state.nowMillis, draft.pickup),
-            unitPrice = requireNotNull(state.box).price,
+            unitPrice = requireNotNull(state.box).price, boxSnapshot = state.box?.takeIf { it.batchId != null },
         )
-        update(state.copy(reservations = listOf(reservation) + state.reservations, issue = null))
-        return reservation.id
+        val reserved = try { history?.reserve(reservation) != false } catch (_: Exception) {
+            state = state.copy(dataError = WRITE_ERROR)
+            return null
+        }
+        if (!reserved) {
+            refreshCatalog()
+            update(state.copy(issue = BookingIssue.QUANTITY))
+            return null
+        }
+        return reservation.id.takeIf { update(state.copy(reservations = listOf(reservation) + state.reservations, issue = null)) }
     }
 
     fun release(id: String) {
         refreshTime()
+        if (state.dataError != null) return
         val reservation = state.reservations.firstOrNull { it.id == id } ?: return
         if (!reservation.isActive(state.nowMillis) || reservation.payment?.status == PaymentStatus.PROCESSING) return
         update(state.copy(
@@ -119,20 +131,21 @@ internal class BookingViewModel(
 
     fun openPayment(id: String): Boolean {
         refreshTime()
+        if (state.dataError != null) return false
         val reservation = state.reservations.firstOrNull { it.id == id } ?: return false
         if (reservation.cancelledAtMillis != null) return false
         if (reservation.payment != null) return true
         if (reservation.total <= 0) return false
-        replace(reservation.copy(payment = QrPayment(
+        return replace(reservation.copy(payment = QrPayment(
             reservation.reference, reservation.total,
             if (reservation.isActive(state.nowMillis)) PaymentStatus.READY else PaymentStatus.EXPIRED,
             state.nowMillis,
         )))
-        return true
     }
 
     fun checkPayment(id: String) {
         refreshTime()
+        if (state.dataError != null) return
         val reservation = state.reservations.firstOrNull { it.id == id } ?: return
         val payment = reservation.payment ?: return
         if (!reservation.isActive(state.nowMillis) || payment.status !in listOf(PaymentStatus.READY, PaymentStatus.FAILED)) return
@@ -156,7 +169,8 @@ internal class BookingViewModel(
     }
 
     fun cancelPaidOrder(id: String): Boolean {
-        refreshTime()
+        restoreHistory()
+        if (state.dataError != null) return false
         val order = state.reservations.firstOrNull { it.id == id }
         val draft = state.cancellationDraft?.takeIf { it.orderId == id }
         val quote = order?.let { cancellationQuote(it, state.nowMillis) }
@@ -174,13 +188,14 @@ internal class BookingViewModel(
         val cancelled = requireNotNull(order).copy(cancelledAtMillis = state.nowMillis,
             cancellationReason = requireNotNull(draft).reason, cancellationNote = draft.note.trim(),
             refund = OrderRefund(requireNotNull(quote).amount, RefundStatus.PROCESSING, state.nowMillis, state.nowMillis))
-        update(state.copy(reservations = state.reservations.map { if (it.id == id) cancelled else it },
+        val stored = update(state.copy(reservations = state.reservations.map { if (it.id == id) cancelled else it },
             cancellationDraft = null, cancellationIssue = null))
-        return true
+        return stored && state.reservations.any { it.id == id && it.cancelledAtMillis != null && it.refund != null }
     }
 
     fun retryRefund(id: String) {
         refreshTime()
+        if (state.dataError != null) return
         val order = state.reservations.firstOrNull { it.id == id } ?: return
         val refund = order.refund ?: return
         if (refund.status != RefundStatus.FAILED) return
@@ -188,6 +203,7 @@ internal class BookingViewModel(
     }
 
     fun refreshTime() {
+        if (state.dataError != null) return
         val now = clock()
         val reservations = state.reservations.map { reservation ->
             if (reservation.cancelledAtMillis != null) return@map reservation
@@ -217,10 +233,14 @@ internal class BookingViewModel(
         if (reservations == state.reservations) state = next else update(next)
     }
 
-    private fun replace(reservation: BoxReservation) {
+    private fun replace(reservation: BoxReservation): Boolean =
         update(state.copy(reservations = state.reservations.map { if (it.id == reservation.id) reservation else it }))
+
+    private fun refreshCatalog(): Boolean {
+        if (state.dataError != null) return false
+        return try { state = state.copy(catalog = catalog.getBoxes(), nowMillis = clock()); true }
+        catch (_: Exception) { state = state.copy(dataError = READ_ERROR); false }
     }
-    private fun refreshCatalog() { state = state.copy(catalog = catalog.getBoxes(), nowMillis = clock()) }
 
     fun selectFilter(filter: OrderFilter) {
         state = state.copy(orderFilter = filter)
@@ -228,7 +248,11 @@ internal class BookingViewModel(
     }
 
     fun restoreHistory() {
-        history?.let { state = state.copy(reservations = it.load()) }
+        try {
+            val boxes = catalog.getBoxes()
+            val orders = history?.load() ?: state.reservations
+            state = state.copy(catalog = boxes, reservations = orders, dataError = null)
+        } catch (_: Exception) { state = state.copy(dataError = READ_ERROR); return }
         refreshTime()
     }
 
@@ -246,12 +270,15 @@ internal class BookingViewModel(
         saved.remove<ArrayList<String>>(HOLDS)
         saved.remove<String>(FILTER)
         saved.remove<ArrayList<String>>(CANCEL_DRAFT)
-        state = BookingUiState(catalog.getBoxes(), clock())
+        state = BookingUiState(state.catalog, clock())
     }
 
-    private fun update(next: BookingUiState) {
-        if (next.reservations != state.reservations) history?.save(next.reservations)
-        state = next
+    private fun update(next: BookingUiState): Boolean {
+        if (state.dataError != null) return false
+        try {
+            if (next.reservations != state.reservations) history?.save(next.reservations)
+            state = if (next.reservations != state.reservations && history != null) next.copy(reservations = history.load()) else next
+        } catch (_: Exception) { state = state.copy(dataError = WRITE_ERROR); return false }
         if (next.cancellationDraft == null) saved.remove<ArrayList<String>>(CANCEL_DRAFT)
         else saved[CANCEL_DRAFT] = next.cancellationDraft.let { arrayListOf(it.orderId, it.reason?.name.orEmpty(), it.note) }
         if (next.draft == null) saved.remove<ArrayList<String>>(DRAFT)
@@ -259,7 +286,8 @@ internal class BookingViewModel(
             arrayListOf(it.boxId.toString(), it.quantity.toString(), it.pickup.startMillis.toString(),
                 it.pickup.endMillis.toString(), it.accepted.toString())
         }
-        saved[HOLDS] = ArrayList(next.reservations.map {
+        // Dynamic orders restore only from durable history, which owns their immutable snapshots.
+        saved[HOLDS] = ArrayList(state.reservations.filter { it.boxSnapshot?.batchId == null }.map {
             (listOf(it.id, it.boxId, it.quantity, it.pickup.startMillis, it.pickup.endMillis,
                 it.createdAtMillis, it.expiresAtMillis, it.unitPrice) +
                 (it.payment?.let { payment -> listOf(payment.reference, payment.amount, payment.status.name, payment.updatedAtMillis) }
@@ -269,9 +297,12 @@ internal class BookingViewModel(
                 (it.refund?.let { refund -> listOf(refund.amount, refund.status.name, refund.requestedAtMillis, refund.updatedAtMillis) }
                     ?: listOf("", "", "", ""))).joinToString("|")
         })
+        return true
     }
 
     private companion object {
+        const val READ_ERROR = "Chưa đọc được dữ liệu đặt hộp. Vui lòng thử lại."
+        const val WRITE_ERROR = "Chưa lưu được thay đổi. Vui lòng tải lại để kiểm tra trạng thái đơn."
         const val DRAFT = "booking.draft.v1"
         const val HOLDS = "booking.holds.v1"
         const val FILTER = "orders.filter.v1"
@@ -283,6 +314,7 @@ internal class BookingViewModel(
         fun restoreReservation(row: String, boxes: List<CatalogBox>): BoxReservation? = runCatching {
             val parts = row.split('|')
             require(parts.size in listOf(7, 12, 14, 20))
+            require(parts[1].toInt() >= 0) // Negative IDs belong to durable, batch-backed orders.
             val price = if (parts.size == 7) boxes.firstOrNull { it.id == parts[1].toInt() }?.price ?: 0 else parts[7].toInt()
             val payment = if (parts.size >= 12 && parts[8].isNotBlank()) {
                 QrPayment(parts[8], parts[9].toLong(), PaymentStatus.valueOf(parts[10]), parts[11].toLong())

@@ -27,6 +27,8 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
     menuContent: @Composable (String, () -> Unit) -> Unit = { _, _ -> },
     boxesContent: @Composable (String, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> },
     boxesFullscreen: Boolean = false,
+    ordersContent: @Composable (String) -> Unit = {},
+    ordersFullscreen: Boolean = false,
     summary: OwnerOverviewUiState = OwnerOverviewUiState()) {
     val state = vm.state
     var tab by rememberSaveable { mutableStateOf(OwnerTab.OVERVIEW) }
@@ -105,6 +107,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
             page == OwnerPage.MENU -> menuContent(store.profile.name, back)
             page == OwnerPage.ROOT && tab == OwnerTab.BOXES && boxesFullscreen ->
                 boxesContent(store.profile.name, { tab = OwnerTab.OVERVIEW }, { page = OwnerPage.MENU })
+            page == OwnerPage.ROOT && tab == OwnerTab.ORDERS && ordersFullscreen -> ordersContent(store.profile.name)
             page == OwnerPage.STAFF -> FoodRescuePage("Nhân viên", back) {
                 StoreEmptyPanel(FoodRescueIcon.PEOPLE, "Chưa có nhân viên", "Tài khoản nhân viên được quản lý riêng và truy cập cửa hàng theo quyền được cấp.")
             }
@@ -136,6 +139,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
                             OwnerTab.STORE -> OwnerStoreHubScreen(store, email, { page = OwnerPage.PROFILE }, { page = OwnerPage.REVIEW },
                                 payout, { page = OwnerPage.STAFF }, onCustomer, onLogout, onMenu = { page = OwnerPage.MENU })
                             OwnerTab.BOXES -> boxesContent(store.profile.name, { tab = OwnerTab.OVERVIEW }, { page = OwnerPage.MENU })
+                            OwnerTab.ORDERS -> ordersContent(store.profile.name)
                             else -> StoreEmptyPanel(tab.icon, tab.label, "Chưa có dữ liệu")
                         }
                     }

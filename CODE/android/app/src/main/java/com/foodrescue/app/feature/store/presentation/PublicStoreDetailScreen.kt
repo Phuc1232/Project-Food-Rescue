@@ -8,9 +8,12 @@ import androidx.compose.ui.unit.dp
 import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.feature.store.domain.PublicStore
 import com.foodrescue.app.feature.store.presentation.component.*
+import com.foodrescue.app.feature.surprisebox.domain.CatalogBox
+import com.foodrescue.app.feature.surprisebox.presentation.component.SurpriseBoxCard
 
 @Composable
-internal fun PublicStoreDetailScreen(store: PublicStore, onBack: () -> Unit, onMap: () -> Unit) {
+internal fun PublicStoreDetailScreen(store: PublicStore, onBack: () -> Unit, onMap: () -> Unit,
+    offers: List<CatalogBox>, onBox: (Int) -> Unit) {
     FoodRescuePage("Thông tin cửa hàng", onBack) {
         Text(store.category, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         Text(store.name, style = MaterialTheme.typography.headlineMedium)
@@ -25,6 +28,11 @@ internal fun PublicStoreDetailScreen(store: PublicStore, onBack: () -> Unit, onM
             }
             PickupDirectionsButton(store.location, Modifier.fillMaxWidth())
         }
-        StoreEmptyPanel(FoodRescueIcon.BAG, "Chưa có đợt bán", "Cửa hàng chưa mở bán hộp. Hãy quay lại sau để xem các hộp mới.")
+        if (offers.isEmpty()) {
+            StoreEmptyPanel(FoodRescueIcon.BAG, "Chưa có đợt bán", "Cửa hàng chưa mở bán hộp. Hãy quay lại sau để xem các hộp mới.")
+        } else {
+            Text("Hộp đang mở bán", style = MaterialTheme.typography.titleLarge)
+            offers.forEach { offer -> SurpriseBoxCard(offer, Modifier.fillMaxWidth()) { onBox(offer.id) } }
+        }
     }
 }

@@ -35,6 +35,8 @@ internal data class BoxReservation(
     val cancellationReason: CancellationReason? = null,
     val cancellationNote: String = "",
     val refund: OrderRefund? = null,
+    val boxSnapshot: CatalogBox? = null,
+    val ownerCancellation: OwnerCancellationRequest? = null,
 ) {
     init {
         require(id.isNotBlank() && quantity > 0)
@@ -64,6 +66,7 @@ internal fun bookingTotal(unitPrice: Int, quantity: Int): Long = unitPrice.toLon
 
 /** Daily local catalog windows, always labelled with their date in the UI. */
 internal fun pickupWindowFor(box: CatalogBox, nowMillis: Long): PickupWindow {
+    if (box.pickupStartMillis != null && box.pickupEndMillis != null) return PickupWindow(box.pickupStartMillis, box.pickupEndMillis)
     val start = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh")).apply {
         timeInMillis = nowMillis
         set(Calendar.HOUR_OF_DAY, box.pickupStartHour)
@@ -83,6 +86,7 @@ internal fun holdDeadline(nowMillis: Long, pickup: PickupWindow): Long =
     minOf(nowMillis + HOLD_MILLIS, pickup.startMillis)
 
 internal fun availableQuantity(box: CatalogBox, pickup: PickupWindow, reservations: List<BoxReservation>, nowMillis: Long): Int {
+    if (box.batchId != null) return box.remaining.coerceAtLeast(0)
     val held = reservations.filter {
         it.boxId == box.id && it.pickup.startMillis == pickup.startMillis && it.occupiesStock(nowMillis)
     }.sumOf { it.quantity.toLong() }
@@ -91,6 +95,8 @@ internal fun availableQuantity(box: CatalogBox, pickup: PickupWindow, reservatio
 
 internal fun bookingIssue(draft: BookingDraft, box: CatalogBox?, reservations: List<BoxReservation>, nowMillis: Long): BookingIssue? {
     if (box == null || box.id != draft.boxId || box.price <= 0) return BookingIssue.BOX_UNAVAILABLE
+    if (box.batchId != null && (nowMillis < (box.salesStartMillis ?: Long.MAX_VALUE) ||
+            nowMillis >= (box.salesEndMillis ?: 0) || draft.pickup != pickupWindowFor(box, nowMillis))) return BookingIssue.BOX_UNAVAILABLE
     if (nowMillis >= draft.pickup.startMillis) return BookingIssue.PICKUP_STARTED
     val available = availableQuantity(box, draft.pickup, reservations, nowMillis)
     if (available == 0) return BookingIssue.SOLD_OUT

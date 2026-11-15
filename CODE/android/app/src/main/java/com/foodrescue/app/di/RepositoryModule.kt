@@ -12,6 +12,11 @@ import com.foodrescue.app.core.common.LocationSource
 import com.foodrescue.app.feature.discovery.presentation.DiscoveryViewModel
 import com.foodrescue.app.feature.order.presentation.BookingViewModel
 import com.foodrescue.app.feature.order.data.LocalOrderHistoryStore
+import com.foodrescue.app.feature.order.data.LocalOrderLedger
+import com.foodrescue.app.feature.order.data.SharedOrderHistoryStore
+import com.foodrescue.app.feature.order.data.LocalOwnerOrderRepository
+import com.foodrescue.app.feature.order.presentation.OwnerOrdersViewModel
+import com.foodrescue.app.feature.surprisebox.data.LocalSaleCatalogRepository
 import com.foodrescue.app.feature.payment.data.LocalPaymentRepository
 import com.foodrescue.app.feature.refund.data.LocalRefundRepository
 import com.foodrescue.app.feature.complaint.data.LocalComplaintRepository
@@ -31,18 +36,27 @@ import com.foodrescue.app.feature.surprisebox.presentation.OwnerBoxesViewModel
 object RepositoryModule {
     // Temporary frontend behavior requested by the user. Set false to restore application review.
     private const val AUTO_APPROVE_STORE_APPLICATIONS = true
-    private val catalogRepository: CatalogRepository = LocalCatalogRepository()
+    private fun catalogRepository(context: Context): CatalogRepository {
+        val directory = LocalPublicStoreRepository(context)
+        val published = LocalSaleCatalogRepository(context, directory::readStores, LocalOrderLedger(context))
+        val fixtures = LocalCatalogRepository()
+        return object : CatalogRepository {
+            override fun getBoxes() = fixtures.getBoxes() + published.getBoxes()
+        }
+    }
 
     internal val discoveryViewModelFactory = viewModelFactory {
-        initializer { DiscoveryViewModel(createSavedStateHandle(), catalogRepository,
+        initializer { DiscoveryViewModel(createSavedStateHandle(), catalogRepository(checkNotNull(this[APPLICATION_KEY])),
             LocalPublicStoreRepository(checkNotNull(this[APPLICATION_KEY]))) }
     }
 
     internal fun bookingViewModelFactory(email: String) = viewModelFactory {
         initializer {
             val context = checkNotNull(this[APPLICATION_KEY])
-            BookingViewModel(createSavedStateHandle(), catalogRepository,
-                LocalPaymentRepository(context), LocalOrderHistoryStore(context, email), LocalRefundRepository(context))
+            val catalog = catalogRepository(context)
+            BookingViewModel(createSavedStateHandle(), catalog,
+                LocalPaymentRepository(context), SharedOrderHistoryStore(email, LocalOrderLedger(context),
+                    LocalOrderHistoryStore(context, email), catalog), LocalRefundRepository(context))
         }
     }
 
@@ -81,8 +95,18 @@ object RepositoryModule {
         initializer {
             val context = checkNotNull(this[APPLICATION_KEY])
             val owner = LocalOwnerStoreRepository(context, email)
-            OwnerBoxesViewModel(createSavedStateHandle(), LocalOwnerBoxRepository(context, email, owner),
+            OwnerBoxesViewModel(createSavedStateHandle(), LocalOwnerBoxRepository(context, email, owner, LocalOrderLedger(context),
+                LocalPublicStoreRepository(context).register(LocalOrderLedger.accountKey(email))),
                 LocalMenuRepository(context, email, owner, LocalMenuAssetStore(context, email)))
         }
     }
+    internal fun ownerOrdersViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            val storeId = LocalPublicStoreRepository(context).register(LocalOrderLedger.accountKey(email))
+            OwnerOrdersViewModel(createSavedStateHandle(), LocalOwnerOrderRepository(LocalOrderLedger(context),
+                storeId, LocalOwnerStoreRepository(context, email)))
+        }
+    }
+
 }

@@ -15,8 +15,9 @@ import kotlinx.coroutines.CancellationException
 /** Catalog state survives activity recreation; credentials never enter saved state. */
 internal class DiscoveryViewModel(private val saved: SavedStateHandle, private val repository: CatalogRepository,
     private val publicStores: PublicStoreRepository? = null) : ViewModel() {
+    private var initialError: String? = null
     var state by mutableStateOf(DiscoveryUiState(
-        source = repository.getBoxes(),
+        source = try { repository.getBoxes() } catch (_: Exception) { initialError = READ_ERROR; emptyList() },
         query = saved["query"] ?: "",
         district = saved["district"] ?: "Quận 1",
         storeResults = saved["stores"] ?: false,
@@ -27,6 +28,7 @@ internal class DiscoveryViewModel(private val saved: SavedStateHandle, private v
             sort = saved.get<String>("sort")?.let(CatalogSort::valueOf) ?: CatalogSort.NEAREST,
         ),
         point = saved.get<DoubleArray>("point")?.let { GeoPoint(it[0], it[1], it[2].toFloat()) },
+        dataError = initialError,
     ))
         private set
 
@@ -48,14 +50,16 @@ internal class DiscoveryViewModel(private val saved: SavedStateHandle, private v
     fun location(value: GeoPoint) = update(state.copy(point = value, district = "TP. Hồ Chí Minh"))
     fun clearLocation() = update(state.copy(point = null))
     suspend fun refreshPublicStores() {
-        val directory = publicStores ?: return
         try {
-            val stores = directory.getStores()
-            state = state.copy(publicStores = stores)
+            val boxes = repository.getBoxes()
+            val stores = publicStores?.getStores() ?: state.publicStores
+            state = state.copy(source = boxes, publicStores = stores, dataError = null)
         }
         catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { /* Keep the last readable directory; catalog browsing remains available. */ }
+        catch (_: Exception) { state = state.copy(dataError = READ_ERROR) }
     }
     fun reset() = update(state.copy(query = "", filters = DiscoveryFilters()))
-    fun clear() = update(DiscoveryUiState(source = repository.getBoxes()))
+    fun clear() = update(try { DiscoveryUiState(source = repository.getBoxes()) }
+        catch (_: Exception) { DiscoveryUiState(source = emptyList(), dataError = READ_ERROR) })
+    private companion object { const val READ_ERROR = "Chưa tải được danh sách hộp và cửa hàng. Vui lòng thử lại." }
 }

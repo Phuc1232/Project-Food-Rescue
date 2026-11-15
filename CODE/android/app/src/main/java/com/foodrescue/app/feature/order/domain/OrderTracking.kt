@@ -2,11 +2,12 @@ package com.foodrescue.app.feature.order.domain
 
 import com.foodrescue.app.feature.payment.domain.PaymentStatus
 
-internal enum class OrderStatus { WAITING_PAYMENT, CHECKING_PAYMENT, WAITING_PICKUP, COLLECTED, CANCELLED, EXPIRED }
+internal enum class OrderStatus { WAITING_PAYMENT, CHECKING_PAYMENT, WAITING_PICKUP, CANCELLATION_REQUESTED, COLLECTED, CANCELLED, EXPIRED }
 
 internal fun BoxReservation.statusAt(nowMillis: Long): OrderStatus = when {
     cancelledAtMillis != null -> OrderStatus.CANCELLED
     collectedAtMillis != null -> OrderStatus.COLLECTED
+    ownerCancellation != null -> OrderStatus.CANCELLATION_REQUESTED
     isPaid -> OrderStatus.WAITING_PICKUP
     !isActive(nowMillis) -> OrderStatus.EXPIRED
     payment?.status == PaymentStatus.PROCESSING -> OrderStatus.CHECKING_PAYMENT
