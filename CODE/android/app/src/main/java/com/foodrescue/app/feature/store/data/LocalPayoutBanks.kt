@@ -1,0 +1,57 @@
+package com.foodrescue.app.feature.store.data
+
+import com.foodrescue.app.feature.store.domain.PayoutBank
+
+/** Public bank catalog and logo metadata: https://api.vietqr.io/v2/banks, retrieved 2026-11-10.
+ * Wallets and finance companies are excluded; logos identify banks, not account verification. */
+internal object LocalPayoutBanks {
+    val all: List<PayoutBank> = listOf(
+        PayoutBank("ICB", "VietinBank", "Ngân hàng TMCP Công thương Việt Nam", listOf("VietinBank", "ICB")),
+        PayoutBank("VCB", "Vietcombank", "Ngân hàng TMCP Ngoại Thương Việt Nam", listOf("Vietcombank", "VCB")),
+        PayoutBank("BIDV", "BIDV", "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam", listOf("BIDV")),
+        PayoutBank("VBA", "Agribank", "Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam", listOf("Agribank", "VBA")),
+        PayoutBank("OCB", "OCB", "Ngân hàng TMCP Phương Đông", listOf("OCB")),
+        PayoutBank("MB", "MBBank", "Ngân hàng TMCP Quân đội", listOf("MBBank", "MB")),
+        PayoutBank("TCB", "Techcombank", "Ngân hàng TMCP Kỹ thương Việt Nam", listOf("Techcombank", "TCB")),
+        PayoutBank("ACB", "ACB", "Ngân hàng TMCP Á Châu", listOf("ACB")),
+        PayoutBank("VPB", "VPBank", "Ngân hàng TMCP Việt Nam Thịnh Vượng", listOf("VPBank", "VPB")),
+        PayoutBank("TPB", "TPBank", "Ngân hàng TMCP Tiên Phong", listOf("TPBank", "TPB")),
+        PayoutBank("STB", "Sacombank", "Ngân hàng TMCP Sài Gòn Tài Lộc", listOf("Sacombank", "STB")),
+        PayoutBank("HDB", "HDBank", "Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh", listOf("HDBank", "HDB")),
+        PayoutBank("VCCB", "BVBank", "Ngân hàng TMCP Bản Việt", listOf("VietCapitalBank", "VCCB")),
+        PayoutBank("SCB", "SCB", "Ngân hàng TMCP Sài Gòn", listOf("SCB")),
+        PayoutBank("VIB", "VIB", "Ngân hàng TMCP Quốc tế Việt Nam", listOf("VIB")),
+        PayoutBank("SHB", "SHB", "Ngân hàng TMCP Sài Gòn - Hà Nội", listOf("SHB")),
+        PayoutBank("EIB", "Eximbank", "Ngân hàng TMCP Xuất Nhập khẩu Việt Nam", listOf("Eximbank", "EIB")),
+        PayoutBank("MSB", "MSB", "Ngân hàng TMCP Hàng Hải", listOf("MSB")),
+        PayoutBank("SGICB", "Saigonbank", "Ngân hàng TMCP Sài Gòn Công Thương", listOf("SaigonBank", "SGICB")),
+        PayoutBank("BAB", "Bac A Bank", "Ngân hàng TMCP Bắc Á", listOf("BacABank", "BAB")),
+        PayoutBank("PVCB", "PVcomBank", "Ngân hàng TMCP Đại Chúng Việt Nam", listOf("PVcomBank", "PVCB")),
+        PayoutBank("MBV", "MBV", "Ngân hàng TNHH MTV Việt Nam Hiện Đại", listOf("MBV")),
+        PayoutBank("NCB", "NCB", "Ngân hàng TMCP Quốc Dân", listOf("NCB")),
+        PayoutBank("SHBVN", "Shinhan Bank", "Ngân hàng TNHH MTV Shinhan Việt Nam", listOf("ShinhanBank", "SHBVN")),
+        PayoutBank("ABB", "ABBANK", "Ngân hàng TMCP An Bình", listOf("ABBANK", "ABB")),
+        PayoutBank("VAB", "VietABank", "Ngân hàng TMCP Việt Á", listOf("VietABank", "VAB")),
+        PayoutBank("NAB", "Nam A Bank", "Ngân hàng TMCP Nam Á", listOf("NamABank", "NAB")),
+        PayoutBank("PGB", "PGBank", "Ngân hàng TMCP Thịnh vượng và Phát triển", listOf("PGBank", "PGB")),
+        PayoutBank("VIETBANK", "VietBank", "Ngân hàng TMCP Việt Nam Thương Tín", listOf("VietBank", "VIETBANK")),
+        PayoutBank("BVB", "BaoViet Bank", "Ngân hàng TMCP Bảo Việt", listOf("BaoVietBank", "BVB")),
+        PayoutBank("SEAB", "SeABank", "Ngân hàng TMCP Đông Nam Á", listOf("SeABank", "SEAB")),
+        PayoutBank("COOPBANK", "Co-opBank", "Ngân hàng Hợp tác xã Việt Nam", listOf("COOPBANK")),
+        PayoutBank("LPB", "LPBank", "Ngân hàng TMCP Lộc Phát Việt Nam", listOf("LPBank", "LPB")),
+        PayoutBank("KLB", "KienlongBank", "Ngân hàng TMCP Kiên Long", listOf("KienLongBank", "KLB")),
+        PayoutBank("HSBC", "HSBC", "Ngân hàng TNHH MTV HSBC (Việt Nam)", listOf("HSBC")),
+        PayoutBank("HLBVN", "Hong Leong Bank", "Ngân hàng TNHH MTV Hong Leong Việt Nam", listOf("HongLeong", "HLBVN")),
+        PayoutBank("IVB", "Indovina Bank", "Ngân hàng TNHH Indovina", listOf("IndovinaBank", "IVB")),
+        PayoutBank("Vikki", "Vikki", "Ngân hàng TNHH Một thành viên số Vikki", listOf("Vikki")),
+        PayoutBank("PBVN", "Public Bank", "Ngân hàng TNHH MTV Public Việt Nam", listOf("PublicBank", "PBVN")),
+        PayoutBank("SCVN", "Standard Chartered", "Ngân hàng TNHH MTV Standard Chartered Bank Việt Nam", listOf("StandardChartered", "SCVN")),
+        PayoutBank("CIMB", "CIMB", "Ngân hàng TNHH MTV CIMB Việt Nam", listOf("CIMB")),
+        PayoutBank("UOB", "UOB", "Ngân hàng United Overseas - Chi nhánh TP. Hồ Chí Minh", listOf("UnitedOverseas", "UOB")),
+        PayoutBank("CBB", "VCBNeo", "Ngân hàng Thương mại trách nhiệm hữu hạn một thành viên Ngoại thương Công nghệ số (Vietcombank Neo Limited)", listOf("CBBank", "CBB")),
+        PayoutBank("GPB", "GPBank", "Ngân hàng Thương mại TNHH MTV Dầu Khí Toàn Cầu", listOf("GPBank", "GPB")),
+        PayoutBank("VRB", "VRB", "Ngân hàng Liên doanh Việt - Nga", listOf("VRB")),
+        PayoutBank("WVN", "Woori Bank", "Ngân hàng TNHH MTV Woori Việt Nam", listOf("Woori", "WVN")),
+        PayoutBank("KBank", "KBank", "Ngân hàng Đại chúng TNHH Kasikornbank", listOf("KBank")),
+    )
+}
