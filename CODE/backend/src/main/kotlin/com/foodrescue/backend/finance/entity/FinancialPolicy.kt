@@ -35,7 +35,12 @@ class FinancialPolicy(
     @field:Column(name = "refund_terms", nullable = false, columnDefinition = "text")
     val refundTerms: String,
 
-    @field:ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @field:JoinColumn(name = "created_by_id", nullable = false)
-    val createdBy: Account
+    /** Null for the system seed (T4.5 V12). */
+    @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @field:JoinColumn(name = "created_by_id", nullable = true)
+    val createdBy: Account?,
+
+    // T4.5: why this version was created (UC-84..87 step 3).
+    @field:Column(name = "reason", nullable = true, columnDefinition = "text")
+    val reason: String? = null
 ) : BaseEntity()
