@@ -15,12 +15,6 @@ class MenuTests : StoreTestFixtures() {
     private fun setup(): Triple<String, String, String> {
         val owner = user("owner@example.test"); val admin = makeAdmin("admin@example.test"); return Triple(owner, admin, store(owner, admin))
     }
-    private fun staffWith(storeId: String, owner: String, email: String, permissions: List<String>): String {
-        val token = user(email)
-        val a = json(call("/api/v1/stores/$storeId/staff", "POST", mapOf("email" to email, "permissions" to permissions), owner))["assignmentId"].asString()
-        assertEquals(200, call("/api/v1/staff/assignments/$a/accept", "POST", token = token).statusCode()); return token
-    }
-
     @Test fun `AC-01 owner creates an item with its initial price version`() {
         val (owner, _, id) = setup()
         val r = create(id, owner); assertEquals(201, r.statusCode(), r.body())

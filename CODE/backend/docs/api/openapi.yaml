@@ -4360,6 +4360,391 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/box-templates": {
+      "get": {
+        "operationId": "get_stores_storeId_box_templates",
+        "tags": [
+          "Box templates"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List templates",
+        "description": "Owner, staff with BOX_PACK or BOX_MANAGE, or ADMIN.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Templates",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BoxTemplateView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_stores_storeId_box_templates",
+        "tags": [
+          "Box templates"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create a template (owner)",
+        "description": "Creates no sale batch and no stock (UC-57).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxTemplateCreateRequest"
+              },
+              "examples": {
+                "bakery": {
+                  "value": {
+                    "name": "Hộp bánh cuối ngày",
+                    "categoryCode": "BAKERY",
+                    "description": "Các loại bánh mì, bánh ngọt trong ngày",
+                    "safetyWarnings": "Có gluten, trứng, sữa",
+                    "defaultSellingPrice": 30000,
+                    "defaultMinimumValue": 60000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxTemplateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/box-templates/{templateId}": {
+      "get": {
+        "operationId": "get_stores_storeId_box_templates_templateId",
+        "tags": [
+          "Box templates"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Template detail",
+        "description": "Owner, staff with BOX_PACK or BOX_MANAGE, or ADMIN.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Template id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxTemplateView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch_stores_storeId_box_templates_templateId",
+        "tags": [
+          "Box templates"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update a template (owner)",
+        "description": "Requires the current version (stale -> 409). Safety warnings cannot be emptied. Existing sale batches keep their own warnings and prices (UC-58).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Template id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxTemplateUpdateRequest"
+              },
+              "examples": {
+                "warnings": {
+                  "value": {
+                    "version": 0,
+                    "safetyWarnings": "Có gluten, trứng, sữa, đậu phộng"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxTemplateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/box-templates/{templateId}/status": {
+      "post": {
+        "operationId": "post_stores_storeId_box_templates_templateId_status",
+        "tags": [
+          "Box templates"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Deactivate or reactivate (owner)",
+        "description": "Templates are never deleted; inactive templates cannot start new sale batches.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Template id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxTemplateStatusRequest"
+              },
+              "examples": {
+                "stop": {
+                  "value": {
+                    "version": 1,
+                    "active": false,
+                    "reason": "Tạm ngừng loại hộp này"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxTemplateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6799,6 +7184,175 @@
             "format": "uuid"
           }
         }
+      },
+      "BoxTemplateCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "categoryCode",
+          "description",
+          "safetyWarnings",
+          "defaultSellingPrice",
+          "defaultMinimumValue"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Expected content; do not list the actual items (BR-05)"
+          },
+          "safetyWarnings": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "defaultSellingPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "description": "Suggested batch selling price, whole VND"
+          },
+          "defaultMinimumValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "description": "Suggested minimum listed value per box; >= defaultSellingPrice"
+          },
+          "coverFileId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Image uploaded through POST /api/v1/files"
+          }
+        }
+      },
+      "BoxTemplateUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "safetyWarnings": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "defaultSellingPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "defaultMinimumValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "coverFileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "BoxTemplateStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "active",
+          "reason"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      },
+      "BoxTemplateView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "categoryCode",
+          "categoryName",
+          "description",
+          "safetyWarnings",
+          "defaultSellingPrice",
+          "defaultMinimumValue",
+          "active",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "safetyWarnings": {
+            "type": "string"
+          },
+          "defaultSellingPrice": {
+            "type": "integer"
+          },
+          "defaultMinimumValue": {
+            "type": "integer"
+          },
+          "coverFileId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       }
     },
     "responses": {
@@ -7016,6 +7570,10 @@
     {
       "name": "Menu",
       "description": "Internal menu, listed prices with history and price reference documents (UC-24, UC-50..53, UC-75)"
+    },
+    {
+      "name": "Box templates",
+      "description": "Surprise Box templates: general box information and default prices for sale batches (UC-57, UC-58)"
     },
     {
       "name": "Health"

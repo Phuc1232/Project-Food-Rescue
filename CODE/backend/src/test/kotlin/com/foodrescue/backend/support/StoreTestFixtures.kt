@@ -30,6 +30,16 @@ abstract class StoreTestFixtures : AuthTestFixtures() {
         val r = upload(pdf, token, name); assertEquals(201, r.statusCode(), r.body()); return json(r)["id"].asString()
     }
 
+    val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A) + ByteArray(256)
+    fun imageId(token: String): String { val r = upload(png, token, "cover.png"); assertEquals(201, r.statusCode(), r.body()); return json(r)["id"].asString() }
+
+    /** Owner + store-scoped staff account that accepted an invitation with [permissions]. */
+    fun staffWith(storeId: String, owner: String, email: String, permissions: List<String>): String {
+        val token = user(email)
+        val a = json(call("/api/v1/stores/$storeId/staff", "POST", mapOf("email" to email, "permissions" to permissions), owner))["assignmentId"].asString()
+        assertEquals(200, call("/api/v1/staff/assignments/$a/accept", "POST", token = token).statusCode()); return token
+    }
+
     /** Submits a partner application; approve=true lets [adminToken] approve it (store ACTIVE). Returns the store id. */
     fun store(ownerToken: String, adminToken: String?, name: String = "Bánh mì Cô Ba"): String {
         val r = call("/api/v1/partner-applications", "POST", mapOf(
