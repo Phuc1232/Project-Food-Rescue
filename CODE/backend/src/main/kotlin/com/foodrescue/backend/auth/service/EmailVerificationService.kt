@@ -28,7 +28,8 @@ class EmailVerificationService(private val accounts: AccountRepository,private v
         tokens.findAllByAccountIdAndPurposeAndConsumedAtIsNull(account.id!!,purpose).forEach { it.consumedAt=now }
         tokens.flush()
         val raw=credentials.generate()
-        val ttl=if(purpose==TokenPurpose.VERIFY_EMAIL) properties.verifyTtl else properties.resetTtl
+        val ttl=when(purpose) { TokenPurpose.VERIFY_EMAIL -> properties.verifyTtl; TokenPurpose.RESET_PASSWORD -> properties.resetTtl
+            TokenPurpose.SET_PASSWORD -> properties.setupTtl }
         tokens.save(AccountActionToken(account,purpose,credentials.hash(raw),now.plus(ttl)))
         val email=account.loginIdentifier
         TransactionSynchronizationManager.registerSynchronization(object: TransactionSynchronization {

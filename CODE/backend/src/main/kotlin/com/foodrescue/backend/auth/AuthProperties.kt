@@ -12,11 +12,13 @@ class AuthProperties {
     var sessionTtl: Duration = Duration.ofDays(7)
     var resetTtl: Duration = Duration.ofMinutes(15)
     var verifyTtl: Duration = Duration.ofHours(24)
+    /** T3.4: lifetime of the staff account setup link. */
+    var setupTtl: Duration = Duration.ofHours(72)
     var actionBaseUrl: String = "http://localhost:3000"
     @jakarta.annotation.PostConstruct
     fun validate() {
         if(environment.activeProfiles.contains("prod")) require(actionBaseUrl.startsWith("https://")) { "HTTPS action base URL required in production" }
-        require(!sessionTtl.isNegative && !sessionTtl.isZero && !resetTtl.isNegative && !resetTtl.isZero && !verifyTtl.isNegative && !verifyTtl.isZero)
+        require(!sessionTtl.isNegative && !sessionTtl.isZero && !resetTtl.isNegative && !resetTtl.isZero && !verifyTtl.isNegative && !verifyTtl.isZero && !setupTtl.isNegative && !setupTtl.isZero)
     }
     var mailFrom: String = "noreply@foodrescue.local"
 }

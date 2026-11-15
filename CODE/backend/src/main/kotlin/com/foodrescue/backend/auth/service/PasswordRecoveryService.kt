@@ -27,8 +27,16 @@ class PasswordRecoveryService(private val accounts: AccountRepository,private va
         validatePassword(password)
         val token=tokens.findByTokenHash(credentials.hash(raw)) ?: invalid()
         val a=accounts.findForUpdate(token.account.id!!) ?: invalid(); em.refresh(token)
-        if(token.purpose!=TokenPurpose.RESET_PASSWORD || token.consumedAt!=null || !token.expiresAt.isAfter(clock.instant()) ||
-            a.status!=AccountStatus.ACTIVE || a.emailVerifiedAt==null) invalid()
+        if(token.consumedAt!=null || !token.expiresAt.isAfter(clock.instant())) invalid()
+        when(token.purpose) {
+            TokenPurpose.RESET_PASSWORD -> if(a.status!=AccountStatus.ACTIVE || a.emailVerifiedAt==null) invalid()
+            // T3.4 (D01): a staff account created by an owner proves its email by using the setup link.
+            TokenPurpose.SET_PASSWORD -> {
+                if(a.status!=AccountStatus.PENDING_VERIFICATION && !(a.status==AccountStatus.ACTIVE && a.emailVerifiedAt==null)) invalid()
+                a.status=AccountStatus.ACTIVE; a.emailVerifiedAt=clock.instant()
+            }
+            else -> invalid()
+        }
         token.consumedAt=clock.instant(); a.passwordHash=requireNotNull(encoder.encode(password)); sessions.revokeAll(a,"PASSWORD_RESET")
     }
     private fun invalid(): Nothing = throw ApiException(400,"INVALID_ACTION_TOKEN","Invalid or expired token")

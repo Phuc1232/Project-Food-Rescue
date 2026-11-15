@@ -43,6 +43,8 @@ object TestAuthKeys {
 @Import(MailTestConfiguration::class)
 abstract class AuthTestFixtures {
     companion object {
+        /** Tables holding migration-seeded reference data; never truncated. */
+        val REFERENCE_TABLES=setOf("permission")
         private val postgres=PostgreSQLContainer("postgres:16-alpine").apply { start() }
         @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) {
             r.add("spring.datasource.url",postgres::getJdbcUrl); r.add("spring.datasource.username",postgres::getUsername)
@@ -57,7 +59,9 @@ abstract class AuthTestFixtures {
     private val client=HttpClient.newHttpClient()
     val password="Long-password-123!"
     @BeforeEach fun clearDatabase() {
+        // Reference data seeded by migrations (T3.4+) survives between tests.
         val tables=jdbc.queryForList("select tablename from pg_tables where schemaname='public' and tablename <> 'flyway_schema_history'",String::class.java).filterNotNull()
+            .filter { it !in REFERENCE_TABLES }
         jdbc.execute("TRUNCATE "+tables.joinToString(",") { "\""+it+"\"" }+" CASCADE")
         mail.messages.clear(); mail.fail=false
     }
