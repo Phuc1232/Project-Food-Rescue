@@ -13,6 +13,9 @@ import kotlinx.coroutines.delay
 import java.util.Locale
 import com.foodrescue.app.app.session.SessionViewModel
 import com.foodrescue.app.dashboard.customer.CustomerRoute
+import com.foodrescue.app.dashboard.owner.OwnerRoute
+import com.foodrescue.app.dashboard.owner.OwnerOverviewUiState
+import com.foodrescue.app.feature.store.presentation.StoreManagementViewModel
 import com.foodrescue.app.di.RepositoryModule
 import com.foodrescue.app.feature.auth.presentation.AuthRoute
 import com.foodrescue.app.feature.auth.presentation.AuthViewModel
@@ -26,6 +29,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     val auth: AuthViewModel = viewModel()
     val profile = session.profile
     val destination = RoleNavigation.destinationFor(session.role)
+    val context = LocalContext.current
     if (destination == Destinations.CUSTOMER && profile != null) {
         val discovery: DiscoveryViewModel = viewModel(factory = RepositoryModule.discoveryViewModelFactory)
         val account = profile.email.trim().lowercase(Locale.ROOT)
@@ -45,12 +49,24 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
             }
         }
-        val context = LocalContext.current
         val locationSource = remember(context) { RepositoryModule.locationSource(context) }
         CustomerRoute(profile, session::updateProfile,
             onLogout = { discovery.clear(); booking.clear(); complaints.clear(); auth.reset(); session.signOut() },
-            vm = discovery, booking = booking, complaints = complaints, locationSource = locationSource, modifier = modifier)
+            vm = discovery, booking = booking, complaints = complaints, locationSource = locationSource, modifier = modifier,
+            onPartner = session::switchToOwner, isPartner = RepositoryModule.isStoreOwner(context, account))
+    } else if (destination == Destinations.OWNER && profile != null) {
+        val account = profile.email.trim().lowercase(Locale.ROOT)
+        val factory = remember(account) { RepositoryModule.storeViewModelFactory(account) }
+        val store: StoreManagementViewModel = viewModel(key = "owner.store:$account", factory = factory)
+        OwnerRoute(account, store,
+            locationSource = remember(context) { RepositoryModule.locationSource(context) },
+            onCustomer = { store.clearTransient(); session.switchToCustomer() },
+            onLogout = { store.clearTransient(); auth.reset(); session.signOut() }, modifier = modifier,
+            summary = OwnerOverviewUiState())
     } else {
-        AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = session::signInCustomer)
+        AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = { name, email ->
+            if (RepositoryModule.isStoreOwner(context, email)) session.signInOwner(name, email)
+            else session.signInCustomer(name, email)
+        })
     }
 }
