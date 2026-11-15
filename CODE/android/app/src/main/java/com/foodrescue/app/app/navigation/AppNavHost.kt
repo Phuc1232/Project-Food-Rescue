@@ -39,6 +39,9 @@ import com.foodrescue.app.feature.staff.presentation.EmployeeViewModel
 import com.foodrescue.app.feature.staff.presentation.EmployeeRoute
 import com.foodrescue.app.feature.staff.presentation.StaffAccessViewModel
 import com.foodrescue.app.feature.staff.presentation.StaffAccessScreen
+import com.foodrescue.app.feature.finance.presentation.RevenueViewModel
+import com.foodrescue.app.feature.finance.presentation.RevenueRoute
+import com.foodrescue.app.feature.finance.presentation.RevenuePage
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -87,6 +90,8 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val orders: OwnerOrdersViewModel = viewModel(key = "owner.orders:$account", factory = ordersFactory)
         val employeesFactory = remember(account) { RepositoryModule.employeesViewModelFactory(account) }
         val employees: EmployeeViewModel = viewModel(key = "owner.employees:$account", factory = employeesFactory)
+        val revenueFactory = remember(account) { RepositoryModule.revenueViewModelFactory(account) }
+        val revenue: RevenueViewModel = viewModel(key = "owner.revenue:$account", factory = revenueFactory)
         val ownerLifecycle = LocalLifecycleOwner.current
         LaunchedEffect(boxes, orders, ownerLifecycle) {
             ownerLifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -102,14 +107,16 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         }
         OwnerRoute(account, store,
             locationSource = remember(context) { RepositoryModule.locationSource(context) },
-            onCustomer = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); employees.clear(); session.switchToCustomer() },
-            onLogout = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); employees.clear(); auth.reset(); session.signOut() }, modifier = modifier,
+            onCustomer = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); employees.clear(); revenue.clear(); session.switchToCustomer() },
+            onLogout = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); employees.clear(); revenue.clear(); auth.reset(); session.signOut() }, modifier = modifier,
             menuContent = { name, back -> MenuRoute(name, menu, back) },
             boxesContent = { name, back, onMenu -> OwnerBoxesRoute(name, boxes, back, onMenu) },
             boxesFullscreen = boxes.state.page != OwnerBoxPage.LIST,
             ordersContent = { name -> OwnerOrdersRoute(name, orders) },
             ordersFullscreen = orders.state.page != OwnerOrderPage.LIST,
             employeesContent = { name, back -> EmployeeRoute(name, employees, back) },
+            revenueContent = { name, payout -> RevenueRoute(name, revenue, store.state.banks, payout) },
+            revenueFullscreen = revenue.state.page != RevenuePage.OVERVIEW,
             summary = OwnerOverviewUiState(sold = orders.state.paidToday.sumOf { it.quantity },
                 available = boxes.state.available, awaitingPickup = orders.state.count(OwnerOrderFilter.AWAITING_PICKUP),
                 revenue = orders.state.paidToday.sumOf { it.total }))

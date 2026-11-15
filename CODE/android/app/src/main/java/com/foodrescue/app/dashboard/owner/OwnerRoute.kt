@@ -30,11 +30,14 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
     ordersContent: @Composable (String) -> Unit = {},
     ordersFullscreen: Boolean = false,
     employeesContent: @Composable (String, () -> Unit) -> Unit = { _, _ -> },
+    revenueContent: @Composable (String, () -> Unit) -> Unit = { _, _ -> },
+    revenueFullscreen: Boolean = false,
     summary: OwnerOverviewUiState = OwnerOverviewUiState()) {
     val state = vm.state
     var tab by rememberSaveable { mutableStateOf(OwnerTab.OVERVIEW) }
     var page by rememberSaveable { mutableStateOf(OwnerPage.ROOT) }
     var locationReturn by rememberSaveable { mutableStateOf(OwnerPage.REGISTER) }
+    var payoutReturn by rememberSaveable { mutableStateOf(OwnerTab.STORE) }
     val chooseLocation: () -> Unit = { locationReturn = page; page = OwnerPage.LOCATION }
     var confirmExit by rememberSaveable { mutableStateOf(false) }
     val pages = rememberSaveableStateHolder()
@@ -55,7 +58,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
                 tab = OwnerTab.OVERVIEW
             }
             StoreSaved.PROFILE -> { page = OwnerPage.PROFILE; scope.launch { snackbar.showSnackbar("Đã cập nhật thông tin cửa hàng") } }
-            StoreSaved.PAYOUT -> { page = OwnerPage.ROOT; tab = OwnerTab.STORE; scope.launch { snackbar.showSnackbar("Đã lưu tài khoản nhận tiền") } }
+            StoreSaved.PAYOUT -> { page = OwnerPage.ROOT; tab = payoutReturn; scope.launch { snackbar.showSnackbar("Đã lưu tài khoản nhận tiền") } }
         }
     }
     val store = state.store
@@ -85,7 +88,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
         }
     }
     BackHandler(enabled = !approved || page != OwnerPage.ROOT || tab != OwnerTab.OVERVIEW, onBack = back)
-    val payout: () -> Unit = { vm.beginPayoutEdit(); page = OwnerPage.PAYOUT }
+    val payout: () -> Unit = { payoutReturn = tab; vm.beginPayoutEdit(); page = OwnerPage.PAYOUT }
     Box(modifier.fillMaxSize()) {
         when {
             state.loading || store == null -> Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,
@@ -109,6 +112,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
             page == OwnerPage.ROOT && tab == OwnerTab.BOXES && boxesFullscreen ->
                 boxesContent(store.profile.name, { tab = OwnerTab.OVERVIEW }, { page = OwnerPage.MENU })
             page == OwnerPage.ROOT && tab == OwnerTab.ORDERS && ordersFullscreen -> ordersContent(store.profile.name)
+            page == OwnerPage.ROOT && tab == OwnerTab.REVENUE && revenueFullscreen -> revenueContent(store.profile.name, payout)
             page == OwnerPage.STAFF -> employeesContent(store.profile.name, back)
             else -> Scaffold(
                 containerColor = MaterialTheme.colorScheme.background,
@@ -139,7 +143,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
                                 payout, { page = OwnerPage.STAFF }, onCustomer, onLogout, onMenu = { page = OwnerPage.MENU })
                             OwnerTab.BOXES -> boxesContent(store.profile.name, { tab = OwnerTab.OVERVIEW }, { page = OwnerPage.MENU })
                             OwnerTab.ORDERS -> ordersContent(store.profile.name)
-                            else -> StoreEmptyPanel(tab.icon, tab.label, "Chưa có dữ liệu")
+                            OwnerTab.REVENUE -> revenueContent(store.profile.name, payout)
                         }
                     }
                 }

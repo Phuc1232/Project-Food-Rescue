@@ -36,11 +36,17 @@ import com.foodrescue.app.feature.staff.data.LocalEmployeeRepository
 import com.foodrescue.app.feature.staff.domain.StaffAccessRepository
 import com.foodrescue.app.feature.staff.presentation.EmployeeViewModel
 import com.foodrescue.app.feature.staff.presentation.StaffAccessViewModel
+import com.foodrescue.app.feature.complaint.data.LocalComplaintHolds
+import com.foodrescue.app.feature.finance.data.LocalRevenueRepository
+import com.foodrescue.app.feature.finance.data.LocalSettlementStore
+import com.foodrescue.app.feature.finance.presentation.RevenueViewModel
 
 /** Composition root for frontend local dependencies. */
 object RepositoryModule {
     // Temporary frontend behavior requested by the user. Set false to restore application review.
     private const val AUTO_APPROVE_STORE_APPLICATIONS = true
+    // Owner revenue policy confirmed by the product owner: 20%, rounded per order.
+    private const val OWNER_COMMISSION_BPS = 2000
     private fun catalogRepository(context: Context): CatalogRepository {
         val directory = LocalPublicStoreRepository(context)
         val published = LocalSaleCatalogRepository(context, directory::readStores, LocalOrderLedger(context))
@@ -120,6 +126,15 @@ object RepositoryModule {
             val storeId = LocalPublicStoreRepository(context).register(LocalOrderLedger.accountKey(email))
             EmployeeViewModel(createSavedStateHandle(), LocalEmployeeRepository(email, storeId,
                 LocalOwnerStoreRepository(context, email), LocalEmployeeDirectory(context)))
+        }
+    }
+    internal fun revenueViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            val storeId = LocalPublicStoreRepository(context).register(LocalOrderLedger.accountKey(email))
+            RevenueViewModel(createSavedStateHandle(), LocalRevenueRepository(storeId,
+                LocalOwnerStoreRepository(context, email), LocalOrderLedger(context), LocalSettlementStore(context),
+                LocalComplaintHolds(context), OWNER_COMMISSION_BPS))
         }
     }
     internal fun staffAccessRepository(context: Context): StaffAccessRepository = LocalEmployeeDirectory(context)
