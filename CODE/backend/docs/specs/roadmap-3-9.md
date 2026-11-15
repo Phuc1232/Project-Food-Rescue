@@ -45,7 +45,7 @@ lựa chọn đề xuất trong Gate A.
 | Giai đoạn | Task |
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
-| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [ ] T3.5 |
+| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
@@ -130,7 +130,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** thu hồi có hiệu lực ngay request kế tiếp (UC-46); cấp quyền owner/admin/giá → từ chối;
   không tạo tài khoản trùng; không thêm owner làm staff cửa hàng mình; thu hồi không khóa tài khoản toàn nền tảng.
 
-### [ ] T3.5 — Quản trị tài khoản người dùng
+### [x] T3.5 — Quản trị tài khoản người dùng
 - **Phụ thuộc:** T3.4. **Tài liệu:** UC-68, UC-69, UC-70.
 - **Phạm vi:** admin tìm tài khoản theo email/vai trò/trạng thái (phân trang), xem chi tiết (vai trò, cửa hàng liên
   kết, trạng thái, lịch sử) không lộ mật khẩu; khóa/mở khóa có lý do → khóa có hiệu lực request kế tiếp (đã có cơ chế

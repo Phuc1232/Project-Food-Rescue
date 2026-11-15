@@ -16,9 +16,9 @@ task trước) vì task trước chưa được merge vào `master`.
 | T3.1 | Lưu trữ file | ✅ | (đã merge, PR #12) | — | 83 / 82 / 1 / 0 | [t3-1-file-storage](t3-1-file-storage/) |
 | T3.2 | Đăng ký đối tác và xét duyệt | ✅ | (đã merge, PR #13) | — | 97 / 96 / 1 / 0 | [t3-2-partner-application](t3-2-partner-application/) |
 | T3.3 | Thông tin cửa hàng, giờ, khóa/mở | ✅ | `feature/t3-3-store-profile` | c8f6955, a6a3d66 | 113 / 112 / 1 / 0 | [t3-3-store-profile](t3-3-store-profile/) |
-| T3.4 | Quản lý nhân viên và phân quyền | ✅ | `feature/t3-4-staff-management` | | 122 / 121 / 1 / 0 | [t3-4-staff-management](t3-4-staff-management/) |
-| T3.5 | Quản trị tài khoản người dùng | 🔄 |  | |  |  |
-| T4.1 | Menu nội bộ và lịch sử giá | ⬜ | | | | |
+| T3.4 | Quản lý nhân viên và phân quyền | ✅ | `feature/t3-4-staff-management` | 986d1d1, 6ebb8c7 | 122 / 121 / 1 / 0 | [t3-4-staff-management](t3-4-staff-management/) |
+| T3.5 | Quản trị tài khoản người dùng | ✅ | `feature/t3-5-account-admin` | | 128 / 127 / 1 / 0 | [t3-5-account-admin](t3-5-account-admin/) |
+| T4.1 | Menu nội bộ và lịch sử giá | 🔄 |  | |  |  |
 | T4.2 | Mẫu Surprise Box | ⬜ | | | | |
 | T4.3 | Đợt mở bán | ⬜ | | | | |
 | T4.4 | Đóng gói hộp thực tế | ⬜ | | | | |
@@ -51,6 +51,7 @@ task trước) vì task trước chưa được merge vào `master`.
 
 - T3.3: duyệt nguyên Q1–Q13 (người dùng "ok").
 - T3.4: D01 = lời mời (tài khoản có sẵn) + link SET_PASSWORD 72h (tài khoản mới); 6 mã quyền staff; sửa nhỏ auth.
+- T3.5: Khóa = LOCKED (có mở khóa), thu hồi mọi phiên; còn đơn tồn đọng thì bắt buộc outstandingPlan (409 OUTSTANDING_WORK).
 
 ## Việc cần người dùng làm / xem lại
 

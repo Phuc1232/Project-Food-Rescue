@@ -3529,6 +3529,265 @@
           }
         }
       }
+    },
+    "/api/v1/admin/accounts": {
+      "get": {
+        "operationId": "get_admin_accounts",
+        "tags": [
+          "Admin accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Search accounts (ADMIN)",
+        "description": "Filter by part of the email, role and status; newest first. No credentials are returned.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Part of the email"
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CUSTOMER",
+                "ADMIN"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AccountStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/accounts/{id}": {
+      "get": {
+        "operationId": "get_admin_accounts_id",
+        "tags": [
+          "Admin accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Account detail (ADMIN)",
+        "description": "Roles, owned stores and staff assignments, current status and reason, unfinished orders, recent history (UC-69).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Account id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/accounts/{id}/status": {
+      "post": {
+        "operationId": "post_admin_accounts_id_status",
+        "tags": [
+          "Admin accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Lock or unlock an account (ADMIN)",
+        "description": "LOCK: ACTIVE -> LOCKED, effective on the account's next request; all sessions are revoked. Accounts with unfinished orders (as customer or store owner) need `outstandingPlan`, otherwise 409 OUTSTANDING_WORK with counts in fieldErrors (customerOrders, storeOrders). UNLOCK: LOCKED -> ACTIVE; stores, roles and staff assignments are not changed. Admins cannot change their own status.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Account id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountStatusRequest"
+              },
+              "examples": {
+                "lock": {
+                  "value": {
+                    "action": "LOCK",
+                    "reason": "Gian lận thanh toán nhiều lần"
+                  }
+                },
+                "lockWithPlan": {
+                  "value": {
+                    "action": "LOCK",
+                    "reason": "Vi phạm",
+                    "outstandingPlan": "Admin liên hệ khách, hủy/hoàn các đơn còn lại"
+                  }
+                },
+                "unlock": {
+                  "value": {
+                    "action": "UNLOCK",
+                    "reason": "Đã xác minh lại danh tính"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New state",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "CONFLICT (wrong current status) or OUTSTANDING_WORK",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5421,6 +5680,245 @@
             "format": "date-time"
           }
         }
+      },
+      "AccountStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "LOCKED",
+          "DISABLED",
+          "PENDING_VERIFICATION"
+        ]
+      },
+      "AdminAccountSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "roles",
+          "status",
+          "emailVerified",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "CUSTOMER",
+                "ADMIN"
+              ]
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/AccountStatus"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminAccountPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAccountSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "AccountStoreLink": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "storeId",
+          "storeName",
+          "storeStatus",
+          "relation",
+          "permissions"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "storeStatus": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "STAFF"
+            ]
+          },
+          "assignmentStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AccountHistoryItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "occurredAt"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "before": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "after": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "AdminAccountDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account",
+          "stores",
+          "outstandingCustomerOrders",
+          "outstandingStoreOrders",
+          "history"
+        ],
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AdminAccountSummary"
+          },
+          "statusReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusChangedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountStoreLink"
+            }
+          },
+          "outstandingCustomerOrders": {
+            "type": "integer"
+          },
+          "outstandingStoreOrders": {
+            "type": "integer"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountHistoryItem"
+            },
+            "description": "Newest 50 AUTH and ACCOUNT audit entries"
+          }
+        }
+      },
+      "AccountStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "reason"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "LOCK",
+              "UNLOCK"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "outstandingPlan": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Required to LOCK an account with unfinished orders"
+          }
+        }
       }
     },
     "responses": {
@@ -5630,6 +6128,10 @@
     {
       "name": "Staff",
       "description": "Store staff and permissions (UC-43..46): owner management and the staff member's own invitations"
+    },
+    {
+      "name": "Admin accounts",
+      "description": "Find, inspect, lock and unlock user accounts (UC-68..70; ADMIN only)"
     },
     {
       "name": "Health"

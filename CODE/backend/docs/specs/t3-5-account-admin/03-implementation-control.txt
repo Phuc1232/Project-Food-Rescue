@@ -1,0 +1,45 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T3.5: QUẢN TRỊ TÀI KHOẢN NGƯỜI DÙNG
+Ngày: 2026-11-15 | Trạng thái: DONE
+Card: docs/specs/roadmap-3-9.md#t35 | Gate A/B: tự chốt (01, 02) | Nhánh: feature/t3-5-account-admin (từ feature/t3-4-staff-management 6ebb8c7)
+Tài liệu: UC-68, UC-69, UC-70, D10 (tài liệu nghiệp vụ: phương án khi còn nghiệp vụ tồn đọng)
+
+1. KẾT QUẢ
+- GET /api/v1/admin/accounts?q&role&status&page&size — tìm theo một phần email, vai trò, trạng thái; mới nhất trước; không có thông tin đăng nhập.
+- GET /api/v1/admin/accounts/{id} — vai trò, cửa hàng sở hữu (OWNER) và phân công nhân viên (STAFF, trạng thái, quyền), trạng thái + lý do,
+  số đơn tồn đọng (khách / cửa hàng sở hữu), 50 mục lịch sử AUTH + ACCOUNT. Không có hash/token.
+- POST /api/v1/admin/accounts/{id}/status {LOCK|UNLOCK, reason, outstandingPlan?}: ACTIVE ⇄ LOCKED; khóa thu hồi mọi phiên và có hiệu lực
+  request kế tiếp (converter JWT đòi ACTIVE); còn đơn PENDING_PAYMENT/CONFIRMED/HANDOVER_IN_PROGRESS/PENDING_NO_SHOW mà không có
+  outstandingPlan → 409 OUTSTANDING_WORK (fieldErrors customerOrders/storeOrders = số lượng). Mở khóa không đổi cửa hàng, vai trò,
+  phân công. Tự khóa → 403. Trạng thái nguồn sai → 409. Khóa dòng account → hai admin đồng thời: một 200, một 409.
+- V8: account.status_reason, account.status_changed_at. Audit ACCOUNT_LOCKED / ACCOUNT_UNLOCKED (entity ACCOUNT, actor admin,
+  before/after, reason, outstandingPlan); thu hồi phiên ghi thêm AUTH SESSIONS_REVOKED_BY_ADMIN.
+
+2. KIỂM CHỨNG
+Baseline 6ebb8c7: 122 tests, 121 PASS, 1 SKIPPED. Build cuối cleanTest build: BUILD SUCCESSFUL, 128 tests, 127 PASS, 1 SKIPPED, 0 fail.
+AdminAccountTests 6 (mới: AC-01..07, đồng thời ở AC-07); AuthMigrationTests/FoodRescueApplicationTests 7 → 8 migration;
+SwaggerUiTests 40 → 43 paths, 12 → 13 tags. Suite khác không đổi, đều pass.
+Smoke dev (V8 áp lúc khởi động; t35-admin/t35-user-*@example.test) 10/10: tìm, chi tiết, non-admin 403, tự khóa 403, khóa 200 →
+token cũ 401, đăng nhập 401, khóa lại 409, mở khóa 200, đăng nhập lại 200.
+
+3. FILE
+resources/db/migration/V8__account_status_reason.sql (New) · account/entity/Account.kt (Modified: 2 field) · account/AccountStatusAction.kt,
+account/dto/{AccountStatusRequest,AdminAccountSummary,AdminAccountDetail,AccountStoreLink,AccountHistoryItem}.kt (New) ·
+account/service/{AdminAccountQueryService,AdminAccountStatusService,OutstandingWorkCounter}.kt (New) · account/controller/AdminAccountController.kt (New) ·
+audit/repository/AuditLogRepository.kt (Modified) · docs/api/openapi.yaml (3 path, tag Admin accounts, 7 schema) ·
+test AdminAccountTests.kt (New), AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt (hằng số).
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Token ADMIN: Admin accounts › GET /api/v1/admin/accounts?q=<một phần email> → thấy tài khoản U.
+ 2. GET /api/v1/admin/accounts/{id U} → roles, stores, outstanding*, history (REGISTERED, EMAIL_VERIFIED, LOGIN...).
+ 3. POST .../{id U}/status ví dụ "lock" → 200 LOCKED, statusReason. Dùng token cũ của U gọi Account › GET /me → 401; đăng nhập U → 401.
+ 4. Gửi lại "lock" → 409. Gửi với id của chính admin → 403.
+ 5. Ví dụ "unlock" → 200 ACTIVE; U đăng nhập lại được; cửa hàng của U (nếu SUSPENDED) vẫn SUSPENDED.
+ 6. (Có đơn tồn đọng — hiện chỉ tạo được bằng SQL tới T5.2) "lock" → 409 OUTSTANDING_WORK; "lockWithPlan" → 200.
+
+5. GIỚI HẠN
+- Không dùng DISABLED, không xóa tài khoản, không cấp/thu hồi role ADMIN qua API (bootstrap sẵn có).
+- outstandingPlan là văn bản lưu audit; xử lý đơn thực tế thuộc T7.x. Khóa owner không khóa cửa hàng (dùng API T3.3 nếu cần).
+- Smoke để lại trên DB dev: t35-*@example.test (t35-admin có ADMIN). DB dev đã áp V8.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- PageQuery chỉ nhận sort createdAt/expiresAt; T3.5 tự kiểm page/size vì dùng JPQL động.
