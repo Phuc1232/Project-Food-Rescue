@@ -1,4 +1,4 @@
-// AC-01,03: ApplicationDocumentValidator responsibility.
+// AC-01,03 (T3.3 AC-05): ApplicationDocumentValidator responsibility.
 package com.foodrescue.backend.store.service
 
 import com.foodrescue.backend.common.response.FieldViolation
@@ -14,7 +14,8 @@ data class ValidDocument(val type: ApplicationDocumentType, val file: StoredFile
 /** D04 catalogue: known types, required types present, files exist and were uploaded by the applicant. */
 @Component
 class ApplicationDocumentValidator(private val files: StoredFileRepository) {
-    fun validate(documents: List<ApplicationDocumentRequest>, applicantId: UUID): Pair<List<ValidDocument>, List<FieldViolation>> {
+    /** requireMandatory=false for store change requests, where documents are optional (T3.3 P8). */
+    fun validate(documents: List<ApplicationDocumentRequest>, applicantId: UUID, requireMandatory: Boolean = true): Pair<List<ValidDocument>, List<FieldViolation>> {
         val errors = mutableListOf<FieldViolation>()
         val seen = mutableSetOf<UUID>()
         val valid = documents.mapIndexedNotNull { i, d ->
@@ -27,6 +28,7 @@ class ApplicationDocumentValidator(private val files: StoredFileRepository) {
             }
             if (type != null && file != null) ValidDocument(type, file) else null
         }
+        if (!requireMandatory) return valid to errors
         val present = documents.mapNotNull { it.type }.toSet()
         ApplicationDocumentType.entries.filter { it.required && it.name !in present }
             .forEach { errors += FieldViolation("documents", "Missing required document: ${it.name}") }

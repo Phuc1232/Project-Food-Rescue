@@ -45,7 +45,7 @@ lựa chọn đề xuất trong Gate A.
 | Giai đoạn | Task |
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
-| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [ ] T3.3 · [ ] T3.4 · [ ] T3.5 |
+| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [ ] T3.4 · [ ] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
@@ -108,7 +108,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **Test:** nộp → duyệt; nộp → bổ sung → nộp lại → duyệt; nộp → từ chối → nộp lại; đồng thời duyệt.
 - **Kết quả:** `docs/specs/t3-2-partner-application/`. Ngữ cảnh owner/staff chỉ có khi store khác PENDING_APPROVAL/CLOSED; D04 chốt ở Gate A Q4.
 
-### [ ] T3.3 — Thông tin cửa hàng, giờ mở cửa, khóa/mở cửa hàng
+### [x] T3.3 — Thông tin cửa hàng, giờ mở cửa, khóa/mở cửa hàng
 - **Phụ thuộc:** T3.2. **Tài liệu:** UC-40, UC-41, UC-77 (phần trạng thái), BR-55.
 - **Phạm vi:** owner xem/cập nhật tên, mô tả, địa chỉ, tọa độ, lịch `store_opening_hour` (nhiều ca/ngày, ca qua
   nửa đêm); lưu lịch sử thay đổi; thay đổi thuộc diện phải xét duyệt (D04) chuyển thành yêu cầu xem xét, chưa
@@ -116,6 +116,8 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   cửa hàng có lý do: khóa → chặn mở bán/nhận đơn mới, ngừng các đợt chưa phát sinh đơn. (Xử lý đơn đã xác nhận
   khi khóa: T7.5.) Owner không tự kích hoạt cửa hàng bị khóa.
 - **AC tối thiểu:** ca chồng lấn/giờ sai → 400; owner khác → 403; store bị khóa không hiện cho khách và không mở bán.
+- **Kết quả:** `docs/specs/t3-3-store-profile/`. Tên/địa chỉ/tọa độ → `store_change_request` chờ admin duyệt; mô tả/giờ áp dụng ngay;
+  lịch sử ở `audit_log` (before/after). Khóa → đợt DRAFT/OPEN/PAUSED chưa có đơn thành BLOCKED; quy tắc bán chung `StoreSalesPolicy`.
 
 ### [ ] T3.4 — Quản lý nhân viên và phân quyền
 - **Phụ thuộc:** T3.2. **Tài liệu:** UC-43..46, BR-03, SD-02.
@@ -165,6 +167,8 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   công khai (OPEN) chỉ khi cửa hàng ACTIVE, còn hạn đặt **và có ít nhất một hộp đạt yêu cầu** (SD-03 #19: chưa có
   hộp → giữ DRAFT, báo cần đóng hộp); tạm dừng/tiếp tục (tiếp tục kiểm tra lại như công khai)/kết thúc; admin BLOCKED.
   API số lượng hộp theo trạng thái (UC-62: đã đóng, đủ điều kiện, đang giữ, đã phân bổ, đã giao, bị chặn, khả dụng).
+- **Lưu ý từ T3.3:** kiểm tra cửa hàng bằng `StoreSalesPolicy.requireSellable` (chỉ ACTIVE, lỗi 409 `STORE_NOT_ACTIVE`); đợt
+  BLOCKED do admin khóa cửa hàng không tự mở lại khi kích hoạt lại.
 - **AC tối thiểu:** chuyển trạng thái sai → 409; store bị khóa → không mở; số khả dụng luôn tính từ hộp thực tế,
   không có trường "số lượng khai báo".
 
@@ -201,6 +205,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   (tọa độ + có hộp đang bán hay không); chi tiết đợt: nhóm, mô tả, giá, giá trị tối thiểu, số khả dụng, hạn đặt,
   địa chỉ, khung nhận, cảnh báo an toàn. Không lộ danh sách món thực tế.
 - **AC tối thiểu:** đợt PAUSED/hết hàng/quá hạn không hiện; khoảng giá/thời gian sai → 400; phân trang có giới hạn.
+- **Lưu ý từ T3.3:** chỉ cửa hàng `StoreSalesPolicy.isSellable` (ACTIVE) xuất hiện; `GET /api/v1/stores/{id}` (T3.3) đã áp quy tắc này.
 
 ### [ ] T5.2 — Tạo đơn và giữ hộp
 - **Phụ thuộc:** T5.1, T4.5. **Tài liệu:** UC-13, BR-21..23, BR-27, BR-29, BR-33.
@@ -210,6 +215,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   `hold_expires_at` = now + 10 phút; header `Idempotency-Key`.
 - **AC tối thiểu:** không đủ hộp → 409, không giữ một phần; hai khách tranh hộp cuối chỉ một người được; gửi lại cùng
   key trả đúng đơn cũ; snapshot không đổi khi giá/chính sách đổi.
+- **Lưu ý từ T3.3:** trong transaction giữ hộp, đọc/khóa store và gọi `StoreSalesPolicy.requireSellable` để khóa cửa hàng chặn đơn mới.
 
 ### [ ] T5.3 — Hết hạn giữ hộp và theo dõi đơn
 - **Phụ thuộc:** T5.2. **Tài liệu:** UC-17 A2, UC-19..22, UC-54, UC-55, BR-24.
@@ -322,6 +328,8 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   nại (T8.1), không hủy/hoàn lại lần nữa. Admin ngừng bán hộp/đợt vi phạm (UC-78) dùng cùng luồng. Admin khóa cửa hàng
   (T3.3) → rà đơn đã xác nhận: tiếp tục nếu còn an toàn và có người bàn giao, nếu không → hủy/hoàn.
 - **AC tối thiểu:** đánh dấu và bàn giao đồng thời → không ra hai kết quả mâu thuẫn; không xóa lịch sử hộp.
+- **Lưu ý từ T3.3:** API khóa (`POST /api/v1/admin/stores/{id}/status`) mới chỉ bắt buộc lý do; T7.5 thêm phương án xử lý đơn tồn
+  (UC-77 bước 3, E1) và rà đợt có đơn (T3.3 để nguyên trạng thái).
 
 ---
 

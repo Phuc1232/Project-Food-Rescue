@@ -9,6 +9,7 @@ import com.foodrescue.backend.payment.entity.Payment
 import com.foodrescue.backend.payment.entity.Refund
 import com.foodrescue.backend.pickup.entity.NoShowCase
 import com.foodrescue.backend.store.entity.PartnerApplication
+import com.foodrescue.backend.store.entity.StoreChangeRequest
 import com.foodrescue.backend.surprisebox.entity.PhysicalBox
 import jakarta.persistence.*
 
@@ -49,5 +50,10 @@ class Attachment(
 
     @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
     @field:JoinColumn(name = "payout_id", nullable = true)
-    var payout: StorePayout? = null
+    var payout: StorePayout? = null,
+
+    // T3.3: documents supporting a store change request (D04).
+    @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @field:JoinColumn(name = "store_change_request_id", nullable = true)
+    var storeChangeRequest: StoreChangeRequest? = null
 ) : MutableEntity()

@@ -59,15 +59,17 @@ class PartnerApplicationService(
         if (errors.isNotEmpty()) throw ApiException(400, "VALIDATION_FAILED", "Invalid request", errors)
 
         val name = request.storeName!!.trim(); val address = request.address!!.trim()
+        val description = request.businessDescription?.trim()?.takeIf { it.isNotEmpty() }
         val store = existing?.apply {
             this.name = name; this.address = address; latitude = request.latitude!!; longitude = request.longitude!!; this.timezone = timezone
         } ?: Store(applicant, name, address, request.latitude!!, request.longitude!!, timezone, StoreStatus.PENDING_APPROVAL)
+        store.description = description // T3.3 Q6: the store keeps the current public description.
         stores.saveAndFlush(store)
         hours.deleteAllByStoreId(store.id!!)
         hours.saveAllAndFlush(shifts.map { StoreOpeningHour(store, it.dayOfWeek, it.shiftNumber, it.opensAt, it.closesAt, it.closesNextDay) })
 
         val snapshot = ApplicationSnapshot(name, address, request.latitude!!, request.longitude!!, timezone, request.contactPhone!!.trim(),
-            request.businessDescription?.trim()?.takeIf { it.isNotEmpty() },
+            description,
             shifts.map { OpeningHourView(it.dayOfWeek, it.shiftNumber, it.opensAt.format(PartnerApplicationViews.HH_MM),
                 it.closesAt.format(PartnerApplicationViews.HH_MM), it.closesNextDay) },
             documents.map { SnapshotDocument(it.type.name, it.file.id!!) })

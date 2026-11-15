@@ -5,6 +5,7 @@ import com.foodrescue.backend.common.persistence.MutableEntity
 import com.foodrescue.backend.store.StoreStatus
 import jakarta.persistence.*
 import java.math.BigDecimal
+import java.time.Instant
 
 @Entity
 @Table(name = "store")
@@ -30,5 +31,16 @@ class Store(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "status", nullable = false, length = 50)
-    var status: StoreStatus
+    var status: StoreStatus,
+
+    // T3.3 Q6: public description, editable by the owner without review.
+    @field:Column(name = "description", nullable = true, columnDefinition = "text")
+    var description: String? = null,
+
+    // T3.3 Q7: reason for the current admin-set status (suspension); history lives in audit_log.
+    @field:Column(name = "status_reason", nullable = true, columnDefinition = "text")
+    var statusReason: String? = null,
+
+    @field:Column(name = "status_changed_at", nullable = true)
+    var statusChangedAt: Instant? = null
 ) : MutableEntity()
