@@ -13,7 +13,7 @@ import com.foodrescue.app.feature.surprisebox.presentation.component.BoxChoice
 
 @Composable
 internal fun BoxTemplateEditorScreen(state: OwnerBoxesUiState, onBack: () -> Unit, onEdit: (BoxTemplateDraft) -> Unit,
-    onSave: () -> Unit, modifier: Modifier = Modifier) {
+    onSave: () -> Unit, onCalculateValue: () -> Unit, modifier: Modifier = Modifier) {
     val draft = state.templateDraft
     fun error(field: BoxField) = field.message.takeIf { field in state.fields }
     FoodRescuePage(if (draft.id == null) "Tạo mẫu hộp" else "Chỉnh sửa mẫu hộp", onBack, modifier, footer = {
@@ -32,6 +32,9 @@ internal fun BoxTemplateEditorScreen(state: OwnerBoxesUiState, onBack: () -> Uni
         Text("Giá trị dành cho khách", style = MaterialTheme.typography.titleLarge)
         FoodRescueTextField("Giá trị tối thiểu (đ)", draft.minimumValue, { onEdit(draft.copy(minimumValue = it)) }, enabled = !state.busy,
             placeholder = "120000", error = error(BoxField.VALUE), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        OutlinedButton(onClick = onCalculateValue, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+            Text("Tính từ menu")
+        }
         FoodRescueTextField("Giá bán hộp (đ)", draft.price, { onEdit(draft.copy(price = it)) }, enabled = !state.busy,
             placeholder = "49000", error = error(BoxField.PRICE), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
         if (draft.id != null) Text("Thay đổi mẫu áp dụng cho đợt bán mới. Các đợt đã tạo giữ nguyên thông tin.",

@@ -2,7 +2,7 @@ package com.foodrescue.app.feature.surprisebox.presentation
 
 import com.foodrescue.app.feature.surprisebox.domain.*
 
-internal enum class OwnerBoxPage { LIST, TEMPLATE_EDIT, BATCH_EDIT, BATCH_DETAIL }
+internal enum class OwnerBoxPage { LIST, TEMPLATE_EDIT, VALUE_CALCULATOR, BATCH_EDIT, BATCH_DETAIL }
 internal enum class OwnerBoxSection { BATCHES, TEMPLATES }
 internal data class OwnerBoxesUiState(
     val catalog: OwnerBoxCatalog = OwnerBoxCatalog(), val loading: Boolean = true, val busy: Boolean = false,
@@ -12,6 +12,7 @@ internal data class OwnerBoxesUiState(
     val query: String = "", val filter: BatchStatus? = null, val now: Long = System.currentTimeMillis(),
     val fields: Set<BoxField> = emptySet(), val error: String? = null, val message: String? = null,
     val confirmDiscard: Boolean = false, val pendingAction: BatchAction? = null, val toggleTemplateId: String? = null,
+    val calculator: BoxValueCalculatorState = BoxValueCalculatorState(),
 ) {
     val selected: SaleBatch? get() = catalog.batches.firstOrNull { it.id == selectedId }
     val editedBatch: SaleBatch? get() = catalog.batches.firstOrNull { it.id == batchDraft.id }

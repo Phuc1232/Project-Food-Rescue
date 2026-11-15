@@ -7,19 +7,26 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.foodrescue.app.feature.surprisebox.domain.*
+import com.foodrescue.app.feature.menu.domain.MenuRepository
+import com.foodrescue.app.feature.menu.domain.MenuStatus
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private val repository: OwnerBoxRepository,
+    private val menuRepository: MenuRepository,
     private val clock: () -> Long = System::currentTimeMillis) : ViewModel() {
+    private var valueJob: Job? = null
     var state by mutableStateOf(OwnerBoxesUiState(
         page = enumValue<OwnerBoxPage>(saved["boxes.page"]) ?: OwnerBoxPage.LIST,
         section = enumValue<OwnerBoxSection>(saved["boxes.section"]) ?: OwnerBoxSection.BATCHES,
         selectedId = saved["boxes.selected"], query = saved["boxes.query"] ?: "",
         filter = enumValue<BatchStatus>(saved["boxes.filter"]), now = clock(),
         templateDraft = restoreTemplate(), batchDraft = restoreBatch("boxes.draft"), initialBatchDraft = restoreBatch("boxes.initial"),
+        calculator = BoxValueCalculatorState(quantities = restoreValueQuantities(), query = saved["boxes.value.query"] ?: ""),
     ))
         private set
 
@@ -43,6 +50,7 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
     fun consumeMessage() { state = state.copy(message = null) }
     fun beginTemplate(template: BoxTemplate? = null) {
         if (state.busy) return
+        resetValueCalculator()
         state = state.copy(templateDraft = template?.toDraft() ?: BoxTemplateDraft())
         rememberTemplate(); navigate(OwnerBoxPage.TEMPLATE_EDIT)
     }
@@ -52,6 +60,66 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
             allergens = draft.allergens.take(250), price = draft.price.take(12), minimumValue = draft.minimumValue.take(12)), fields = emptySet(), error = null)
         rememberTemplate()
     }
+    fun openValueCalculator() {
+        if (state.busy || state.page != OwnerBoxPage.TEMPLATE_EDIT) return
+        state = state.copy(calculator = state.calculator.copy(loading = true, error = null, notice = null))
+        navigate(OwnerBoxPage.VALUE_CALCULATOR)
+    }
+    fun searchValueMenu(query: String) {
+        state = state.copy(calculator = state.calculator.copy(query = query.take(100)))
+        saved["boxes.value.query"] = state.calculator.query
+    }
+    fun valueQuantity(id: String, quantity: String?) {
+        if (state.page != OwnerBoxPage.VALUE_CALCULATOR || state.calculator.loading) return
+        val item = state.calculator.menu.items.firstOrNull { it.id == id }
+        if (quantity != null && item?.status != MenuStatus.ACTIVE) return
+        val values = state.calculator.quantities.toMutableMap()
+        if (quantity == null) values.remove(id) else values[id] = quantity.take(12)
+        state = state.copy(calculator = state.calculator.copy(quantities = values, notice = null))
+        saved["boxes.value.quantities"] = ArrayList(values.flatMap { listOf(it.key, it.value) })
+    }
+    fun loadValueMenu() = refreshValueMenu(apply = false)
+    fun applyValueEstimate() {
+        if (state.calculator.canApply) refreshValueMenu(apply = true)
+    }
+    private fun refreshValueMenu(apply: Boolean) {
+        if (state.page != OwnerBoxPage.VALUE_CALCULATOR || valueJob?.isActive == true) return
+        val before = state.calculator
+        state = state.copy(calculator = before.copy(loading = true, error = null, notice = null))
+        valueJob = viewModelScope.launch {
+            try {
+                val menu = menuRepository.load()
+                ensureActive()
+                val previous = before.menu.items.associateBy { it.id }
+                val current = menu.items.associateBy { it.id }
+                val changed = before.quantities.keys.any { id ->
+                    val old = previous[id]; val fresh = current[id]
+                    old?.price != fresh?.price || old?.unit != fresh?.unit || old?.status != fresh?.status
+                }
+                val calculator = state.calculator.copy(menu = menu, loading = false,
+                    notice = if (apply && changed) "Menu vừa thay đổi. Kiểm tra lại giá và món đã chọn trước khi áp dụng." else null)
+                state = state.copy(calculator = calculator)
+                if (apply && !changed && calculator.canApply) {
+                    state = state.copy(templateDraft = state.templateDraft.copy(minimumValue = calculator.estimate.total.toString()))
+                    rememberTemplate()
+                    navigate(OwnerBoxPage.TEMPLATE_EDIT)
+                }
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (_: Exception) {
+                ensureActive()
+                state = state.copy(calculator = state.calculator.copy(loading = false,
+                    error = "Chưa tải được menu. Vui lòng thử lại."))
+            }
+        }
+    }
+    private fun resetValueCalculator() {
+        valueJob?.cancel(); valueJob = null
+        saved.remove<ArrayList<String>>("boxes.value.quantities"); saved.remove<String>("boxes.value.query")
+        state = state.copy(calculator = BoxValueCalculatorState())
+    }
+    private fun restoreValueQuantities(): Map<String, String> =
+        saved.get<ArrayList<String>>("boxes.value.quantities").orEmpty().chunked(2)
+            .filter { it.size == 2 }.associate { it[0] to it[1] }
     fun beginBatch(templateId: String? = null, batch: SaleBatch? = null) {
         if (state.busy) return
         val active = state.catalog.templates.filter { it.active }
@@ -83,6 +151,7 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
             val catalog = repository.saveTemplate(draft)
             state = state.copy(catalog = catalog, section = OwnerBoxSection.TEMPLATES, query = "", message = "Đã lưu mẫu hộp")
             saved.remove<ArrayList<String>>("boxes.template"); saved["boxes.section"] = OwnerBoxSection.TEMPLATES.name; saved["boxes.query"] = ""
+            resetValueCalculator()
             navigate(OwnerBoxPage.LIST)
         }
     }
@@ -121,6 +190,11 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
         }
     }
     fun back(onClose: () -> Unit) {
+        if (state.page == OwnerBoxPage.VALUE_CALCULATOR) {
+            valueJob?.cancel(); valueJob = null
+            navigate(OwnerBoxPage.TEMPLATE_EDIT)
+            return
+        }
         if (state.busy) return
         if (state.dirty) { state = state.copy(confirmDiscard = true); return }
         when (state.page) { OwnerBoxPage.LIST -> onClose(); else -> discard() }
@@ -129,12 +203,14 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
     fun discard() {
         if (state.busy) return
         val detail = state.page == OwnerBoxPage.BATCH_EDIT && state.batchDraft.id != null
+        resetValueCalculator()
         saved.remove<ArrayList<String>>("boxes.template"); saved.remove<ArrayList<String>>("boxes.draft"); saved.remove<ArrayList<String>>("boxes.initial")
         state = state.copy(confirmDiscard = false)
         navigate(if (detail) OwnerBoxPage.BATCH_DETAIL else OwnerBoxPage.LIST)
     }
     fun clearTransient() {
         if (state.busy) return
+        valueJob?.cancel(); valueJob = null
         saved.keys().filter { it.startsWith("boxes.") }.forEach { saved.remove<Any>(it) }
         state = OwnerBoxesUiState()
     }

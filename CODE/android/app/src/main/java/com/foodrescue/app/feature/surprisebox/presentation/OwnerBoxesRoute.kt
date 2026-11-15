@@ -20,6 +20,7 @@ internal fun OwnerBoxesRoute(storeName: String, vm: OwnerBoxesViewModel, onBack:
     val back = { vm.back(onBack) }
     BackHandler(onBack = back)
     LaunchedEffect(vm) { if (vm.state.loading) vm.load() }
+    LaunchedEffect(vm, state.page) { if (state.page == OwnerBoxPage.VALUE_CALCULATOR) vm.loadValueMenu() }
     LaunchedEffect(vm) { snapshotFlow { vm.state.message }.filterNotNull().collect { vm.consumeMessage(); snackbar.showSnackbar(it) } }
     Column(modifier.fillMaxSize()) {
       Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -31,7 +32,9 @@ internal fun OwnerBoxesRoute(storeName: String, vm: OwnerBoxesViewModel, onBack:
                     FoodRescueButton("Thử lại", vm::load, enabled = !state.busy)
                 }
             }
-            state.page == OwnerBoxPage.TEMPLATE_EDIT -> BoxTemplateEditorScreen(state, back, vm::editTemplate, vm::saveTemplate)
+            state.page == OwnerBoxPage.TEMPLATE_EDIT -> BoxTemplateEditorScreen(state, back, vm::editTemplate, vm::saveTemplate, vm::openValueCalculator)
+            state.page == OwnerBoxPage.VALUE_CALCULATOR -> BoxValueCalculatorScreen(state.calculator, back,
+                vm::searchValueMenu, vm::valueQuantity, vm::loadValueMenu, vm::applyValueEstimate)
             state.page == OwnerBoxPage.BATCH_EDIT -> SaleBatchEditorScreen(state, back, vm::editBatch, vm::saveBatch)
             state.page == OwnerBoxPage.BATCH_DETAIL && state.selected != null -> SaleBatchDetailScreen(checkNotNull(state.selected), state.now,
                 state.busy, state.error, back, { vm.beginBatch(batch = state.selected) }, vm::requestAction)

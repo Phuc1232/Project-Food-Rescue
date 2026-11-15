@@ -81,7 +81,8 @@ object RepositoryModule {
         initializer {
             val context = checkNotNull(this[APPLICATION_KEY])
             val owner = LocalOwnerStoreRepository(context, email)
-            OwnerBoxesViewModel(createSavedStateHandle(), LocalOwnerBoxRepository(context, email, owner))
+            OwnerBoxesViewModel(createSavedStateHandle(), LocalOwnerBoxRepository(context, email, owner),
+                LocalMenuRepository(context, email, owner, LocalMenuAssetStore(context, email)))
         }
     }
 }
