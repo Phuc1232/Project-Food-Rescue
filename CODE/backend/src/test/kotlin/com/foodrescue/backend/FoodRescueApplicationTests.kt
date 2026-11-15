@@ -117,8 +117,8 @@ class FoodRescueApplicationTests {
 
     @Test
     fun `all entities persist and load against migrated PostgreSQL schema`() {
-        assertEquals(41, entityManager.metamodel.entities.size)
-        assertEquals(8, jdbc.queryForObject("select count(*) from flyway_schema_history where success", Int::class.java))
+        assertEquals(42, entityManager.metamodel.entities.size)
+        assertEquals(9, jdbc.queryForObject("select count(*) from flyway_schema_history where success", Int::class.java))
         tx {
             entityManager.clear()
             val order = entityManager.find(CustomerOrder::class.java, ids.getValue("CustomerOrder"))

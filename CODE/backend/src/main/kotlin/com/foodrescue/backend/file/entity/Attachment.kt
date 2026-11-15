@@ -1,6 +1,7 @@
 package com.foodrescue.backend.file.entity
 
 import com.foodrescue.backend.catalog.entity.MenuItem
+import com.foodrescue.backend.catalog.entity.PriceReferenceDocument
 import com.foodrescue.backend.common.persistence.MutableEntity
 import com.foodrescue.backend.complaint.entity.Complaint
 import com.foodrescue.backend.file.entity.StoredFile
@@ -55,5 +56,10 @@ class Attachment(
     // T3.3: documents supporting a store change request (D04).
     @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
     @field:JoinColumn(name = "store_change_request_id", nullable = true)
-    var storeChangeRequest: StoreChangeRequest? = null
+    var storeChangeRequest: StoreChangeRequest? = null,
+
+    // T4.1: listed-price reference document (UC-53).
+    @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @field:JoinColumn(name = "price_document_id", nullable = true)
+    var priceDocument: PriceReferenceDocument? = null
 ) : MutableEntity()
