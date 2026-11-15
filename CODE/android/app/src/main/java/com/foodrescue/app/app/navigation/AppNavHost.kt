@@ -15,6 +15,9 @@ import com.foodrescue.app.app.session.SessionViewModel
 import com.foodrescue.app.dashboard.customer.CustomerRoute
 import com.foodrescue.app.dashboard.owner.OwnerRoute
 import com.foodrescue.app.dashboard.owner.OwnerOverviewUiState
+import com.foodrescue.app.feature.surprisebox.presentation.OwnerBoxesRoute
+import com.foodrescue.app.feature.surprisebox.presentation.OwnerBoxesViewModel
+import com.foodrescue.app.feature.surprisebox.presentation.OwnerBoxPage
 import com.foodrescue.app.feature.store.presentation.StoreManagementViewModel
 import com.foodrescue.app.feature.menu.presentation.MenuRoute
 import com.foodrescue.app.feature.menu.presentation.MenuViewModel
@@ -62,12 +65,23 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val store: StoreManagementViewModel = viewModel(key = "owner.store:$account", factory = factory)
         val menuFactory = remember(account) { RepositoryModule.menuViewModelFactory(account) }
         val menu: MenuViewModel = viewModel(key = "owner.menu:$account", factory = menuFactory)
+        val boxesFactory = remember(account) { RepositoryModule.ownerBoxesViewModelFactory(account) }
+        val boxes: OwnerBoxesViewModel = viewModel(key = "owner.boxes:$account", factory = boxesFactory)
+        val ownerLifecycle = LocalLifecycleOwner.current
+        LaunchedEffect(boxes, ownerLifecycle) {
+            ownerLifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                boxes.load()
+                while (true) { boxes.refreshTime(); delay(1_000) }
+            }
+        }
         OwnerRoute(account, store,
             locationSource = remember(context) { RepositoryModule.locationSource(context) },
-            onCustomer = { store.clearTransient(); menu.clearTransient(); session.switchToCustomer() },
-            onLogout = { store.clearTransient(); menu.clearTransient(); auth.reset(); session.signOut() }, modifier = modifier,
+            onCustomer = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); session.switchToCustomer() },
+            onLogout = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); auth.reset(); session.signOut() }, modifier = modifier,
             menuContent = { name, back -> MenuRoute(name, menu, back) },
-            summary = OwnerOverviewUiState())
+            boxesContent = { name, back, onMenu -> OwnerBoxesRoute(name, boxes, back, onMenu) },
+            boxesFullscreen = boxes.state.page != OwnerBoxPage.LIST,
+            summary = OwnerOverviewUiState(available = boxes.state.available))
     } else {
         AuthRoute(modifier = modifier, viewModel = auth, onAuthenticated = { name, email ->
             if (RepositoryModule.isStoreOwner(context, email)) session.signInOwner(name, email)

@@ -24,6 +24,8 @@ import com.foodrescue.app.feature.store.presentation.StoreManagementViewModel
 import com.foodrescue.app.feature.menu.data.LocalMenuAssetStore
 import com.foodrescue.app.feature.menu.data.LocalMenuRepository
 import com.foodrescue.app.feature.menu.presentation.MenuViewModel
+import com.foodrescue.app.feature.surprisebox.data.LocalOwnerBoxRepository
+import com.foodrescue.app.feature.surprisebox.presentation.OwnerBoxesViewModel
 
 /** Composition root for frontend local dependencies. */
 object RepositoryModule {
@@ -75,5 +77,11 @@ object RepositoryModule {
         }
     }
 
-
+    internal fun ownerBoxesViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            val owner = LocalOwnerStoreRepository(context, email)
+            OwnerBoxesViewModel(createSavedStateHandle(), LocalOwnerBoxRepository(context, email, owner))
+        }
+    }
 }
