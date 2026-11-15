@@ -54,6 +54,7 @@ class StoreViews(
         val role = when {
             actorId == store.owner.id -> "OWNER"
             actorId != null && roles.existsByAccountIdAndRole(actorId, PlatformRole.ADMIN) -> "ADMIN"
+            log.entityType == "CUSTOMER_ORDER" -> "CUSTOMER"
             else -> "STAFF"
         }
         return StoreHistoryItem(log.action, log.occurredAt, role,
