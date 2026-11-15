@@ -46,7 +46,7 @@ lựa chọn đề xuất trong Gate A.
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
-| 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
+| 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
@@ -159,7 +159,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   giá bán và giá trị tối thiểu **mặc định** gợi ý cho đợt bán); không công khai món thực tế; không xóa cứng mẫu đã dùng.
 - **AC tối thiểu:** thiếu cảnh báo bắt buộc → 400; sửa mẫu không đổi đợt/đơn đã tạo; tạo mẫu không sinh tồn kho.
 
-### [ ] T4.3 — Đợt mở bán
+### [x] T4.3 — Đợt mở bán
 - **Phụ thuộc:** T4.2. **Tài liệu:** UC-59..62, BR-10, BR-15, BR-16, BR-18, BR-21, SD-03.
 - **Phạm vi:** owner tạo `sale_batch` DRAFT từ mẫu (ngày bán, giá bán cố định, giá trị tối thiểu, hạn đặt, khung
   nhận; snapshot cảnh báo); kiểm tra `order_deadline` ≤ `pickup_starts_at` < `pickup_ends_at`, nằm trong giờ hoạt động

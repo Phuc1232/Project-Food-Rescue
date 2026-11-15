@@ -43,5 +43,9 @@ class SaleBatch(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "status", nullable = false, length = 50)
-    var status: SaleBatchStatus
+    var status: SaleBatchStatus,
+
+    // T4.3: reason of a BLOCKED batch (admin or store suspension).
+    @field:Column(name = "status_reason", nullable = true, columnDefinition = "text")
+    var statusReason: String? = null
 ) : MutableEntity()

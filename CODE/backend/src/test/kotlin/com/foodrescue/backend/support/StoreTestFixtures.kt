@@ -114,6 +114,29 @@ abstract class StoreTestFixtures : AuthTestFixtures() {
         return id
     }
 
-    fun batchStatus(id: UUID): String = jdbc.queryForObject("select status from sale_batch where id=?", String::class.java, id)!!
+    /** T4.3+: opens every day 06:00-21:00 (store timezone Asia/Ho_Chi_Minh). */
+    fun openAllWeek(storeId: String, owner: String) {
+        val r = patch(storeId, owner, mapOf("version" to version(storeId, owner),
+            "openingHours" to (1..7).map { mapOf("dayOfWeek" to it, "opensAt" to "06:00", "closesAt" to "21:00") }))
+        assertEquals(200, r.statusCode(), r.body())
+    }
+
+    /** Tomorrow at [hour]:[minute] in Asia/Ho_Chi_Minh, as an ISO instant string. */
+    fun tomorrowAt(hour: Int, minute: Int = 0): String {
+        val zone = java.time.ZoneId.of("Asia/Ho_Chi_Minh")
+        return java.time.LocalDate.now(zone).plusDays(1).atTime(hour, minute).atZone(zone).toInstant().toString()
+    }
+
+    /** A packed box on [batchId], inserted with SQL (box packing API is T4.4). */
+    fun box(storeId: String, batchId: UUID, value: Int = 70000, safeUntil: Instant = Instant.now().plusSeconds(3 * 86400),
+            status: String = "AVAILABLE", packerEmail: String = "owner@example.test"): UUID {
+        val id = UUID.randomUUID()
+        jdbc.update("""insert into physical_box(id,created_at,version,updated_at,store_id,current_batch_id,box_code,packed_by_id,packed_at,
+            total_listed_value,safe_until,storage_instructions,safety_warnings,status) values (?,now(),0,now(),?,?,?,?,now(),?,?,'Ngăn mát','Có gluten',?)""",
+            id, UUID.fromString(storeId), batchId, "BX-" + id.toString().take(8), accountId(packerEmail), value, Timestamp.from(safeUntil), status)
+        return id
+    }
+
+    fun batchStatus(id: UUID): String =jdbc.queryForObject("select status from sale_batch where id=?", String::class.java, id)!!
     fun assertField(r: HttpResponse<String>, field: String) = assertTrue(field in fields(r), "$field in ${r.body()}")
 }
