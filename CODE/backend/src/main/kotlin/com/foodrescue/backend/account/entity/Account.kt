@@ -21,5 +21,12 @@ class Account(
     @field:Column(name = "status", nullable = false, length = 50)
     var status: AccountStatus,
     @field:Column(name = "email_verified_at")
-    var emailVerifiedAt: java.time.Instant? = null
+    var emailVerifiedAt: java.time.Instant? = null,
+
+    // T3.5: reason/time of the current admin-set status (UC-70); history is in audit_log.
+    @field:Column(name = "status_reason", nullable = true, columnDefinition = "text")
+    var statusReason: String? = null,
+
+    @field:Column(name = "status_changed_at", nullable = true)
+    var statusChangedAt: java.time.Instant? = null
 ) : MutableEntity()
