@@ -37,8 +37,11 @@ import com.foodrescue.app.feature.order.domain.OwnerOrderFilter
 import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
 import com.foodrescue.app.feature.staff.presentation.EmployeeViewModel
 import com.foodrescue.app.feature.staff.presentation.EmployeeRoute
-import com.foodrescue.app.feature.staff.presentation.StaffAccessViewModel
-import com.foodrescue.app.feature.staff.presentation.StaffAccessScreen
+import com.foodrescue.app.feature.staff.presentation.StaffPackingViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffHandoverViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffBoxConditionViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffNoShowViewModel
+import com.foodrescue.app.dashboard.staff.StaffRoute
 import com.foodrescue.app.feature.finance.presentation.RevenueViewModel
 import com.foodrescue.app.feature.finance.presentation.RevenueRoute
 import com.foodrescue.app.feature.finance.presentation.RevenuePage
@@ -122,14 +125,16 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 revenue = orders.state.paidToday.sumOf { it.total }))
     } else if (destination == Destinations.STAFF && profile != null) {
         val account = profile.email.trim().lowercase(Locale.ROOT)
-        val factory = remember(account) { RepositoryModule.staffAccessViewModelFactory(account) }
-        val access: StaffAccessViewModel = viewModel(key = "staff.access:$account", factory = factory)
-        val lifecycle = LocalLifecycleOwner.current
-        LaunchedEffect(access, lifecycle) { lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) { access.refresh(); delay(5_000) }
-        } }
-        StaffAccessScreen(access.state, access::reload, { access.clear(); session.switchToCustomer() },
-            { access.clear(); auth.reset(); session.signOut() }, modifier)
+        val factory = remember(account) { RepositoryModule.staffPackingViewModelFactory(account) }
+        val staff: StaffPackingViewModel = viewModel(key = "staff.packing:$account", factory = factory)
+        val handoverFactory = remember(account) { RepositoryModule.staffHandoverViewModelFactory(account) }
+        val handover: StaffHandoverViewModel = viewModel(key = "staff.handover:$account", factory = handoverFactory)
+        val conditionFactory = remember(account) { RepositoryModule.staffBoxConditionViewModelFactory(account) }
+        val condition: StaffBoxConditionViewModel = viewModel(key = "staff.condition:$account", factory = conditionFactory)
+        val noShowFactory = remember(account) { RepositoryModule.staffNoShowViewModelFactory(account) }
+        val noShow: StaffNoShowViewModel = viewModel(key = "staff.noShow:$account", factory = noShowFactory)
+        StaffRoute(staff, handover, condition, noShow, { staff.clear(); handover.clear(); condition.clear(); noShow.clear(); session.switchToCustomer() },
+            { staff.clear(); handover.clear(); condition.clear(); noShow.clear(); auth.reset(); session.signOut() }, modifier)
     } else {
         val request = accountRequest
         if (request == null) AuthRoute(modifier = modifier, viewModel = auth,

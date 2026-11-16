@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.feature.staff.domain.EmployeeStatus
 
-/** Account access boundary; operational staff workflows live in the future staff dashboard. */
+/** Account access boundary for loading, unavailable and revoked membership. */
 @Composable
 internal fun StaffAccessScreen(state: StaffAccessUiState, onRetry: () -> Unit, onCustomer: () -> Unit,
     onLogout: () -> Unit, modifier: Modifier = Modifier) {

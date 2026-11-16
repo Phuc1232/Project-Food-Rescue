@@ -36,6 +36,14 @@ import com.foodrescue.app.feature.staff.data.LocalEmployeeRepository
 import com.foodrescue.app.feature.staff.domain.StaffAccessRepository
 import com.foodrescue.app.feature.staff.presentation.EmployeeViewModel
 import com.foodrescue.app.feature.staff.presentation.StaffAccessViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffPackingViewModel
+import com.foodrescue.app.feature.staff.data.LocalStaffPackingRepository
+import com.foodrescue.app.feature.staff.data.LocalStaffHandoverRepository
+import com.foodrescue.app.feature.staff.presentation.StaffHandoverViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffBoxConditionViewModel
+import com.foodrescue.app.feature.staff.presentation.StaffNoShowViewModel
+import com.foodrescue.app.feature.staff.data.LocalStaffNoShowRepository
+import com.foodrescue.app.feature.staff.data.LocalStaffBoxConditionRepository
 import com.foodrescue.app.feature.complaint.data.LocalComplaintHolds
 import com.foodrescue.app.feature.finance.data.LocalRevenueRepository
 import com.foodrescue.app.feature.finance.data.LocalSettlementStore
@@ -140,6 +148,30 @@ object RepositoryModule {
     internal fun staffAccessRepository(context: Context): StaffAccessRepository = LocalEmployeeDirectory(context)
     internal fun staffAccessViewModelFactory(email: String) = viewModelFactory {
         initializer { StaffAccessViewModel(email, staffAccessRepository(checkNotNull(this[APPLICATION_KEY]))) }
+    }
+    internal fun staffPackingViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            StaffPackingViewModel(createSavedStateHandle(), LocalStaffPackingRepository(context, email, LocalEmployeeDirectory(context)))
+        }
+    }
+    internal fun staffHandoverViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            StaffHandoverViewModel(createSavedStateHandle(), LocalStaffHandoverRepository(context, email, LocalEmployeeDirectory(context)))
+        }
+    }
+    internal fun staffBoxConditionViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            StaffBoxConditionViewModel(createSavedStateHandle(), LocalStaffBoxConditionRepository(context, email, LocalEmployeeDirectory(context)))
+        }
+    }
+    internal fun staffNoShowViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            StaffNoShowViewModel(createSavedStateHandle(), LocalStaffNoShowRepository(context, email, LocalEmployeeDirectory(context)))
+        }
     }
 
 }
