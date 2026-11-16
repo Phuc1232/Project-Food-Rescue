@@ -14,7 +14,8 @@ class OrderMoneyReader(private val jdbc: JdbcTemplate) {
     fun money(o: CustomerOrder): OrderMoneyView {
         val paid = sum("SELECT coalesce(sum(received_amount),0) FROM payment WHERE order_id = ? AND status = 'VERIFIED'", o)
         val refunded = sum("SELECT coalesce(sum(amount),0) FROM refund WHERE order_id = ? AND status = 'SUCCEEDED'", o)
-        val refunding = sum("SELECT coalesce(sum(amount),0) FROM refund WHERE order_id = ? AND status IN ('PENDING','PROCESSING')", o)
+        // T6.4: open refund obligations (refund rows are created when an administrator pays them out, T6.5)
+        val refunding = sum("SELECT coalesce(sum(coalesce(approved_amount, requested_amount)),0) FROM refund_request WHERE order_id = ? AND status IN ('PENDING','APPROVED')", o)
         return OrderMoneyView(o.id!!, o.totalAmount.setScale(0), paid, (o.totalAmount - paid).max(BigDecimal.ZERO).setScale(0), refunded, refunding,
             MoneyRounding.applyRate(o.totalAmount, o.noShowRetentionRate), o.currency)
     }

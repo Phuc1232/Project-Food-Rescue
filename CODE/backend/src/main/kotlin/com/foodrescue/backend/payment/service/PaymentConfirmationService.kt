@@ -46,6 +46,7 @@ class PaymentConfirmationService(
     private val events: FinancialEventRepository,
     private val ledger: LedgerEntryRepository,
     private val releaser: OrderReleaser,
+    private val obligations: RefundObligationService,
     private val history: StoreHistoryRecorder,
     private val clock: Clock
 ) {
@@ -65,9 +66,14 @@ class PaymentConfirmationService(
 
         if (order.status == OrderStatus.PENDING_PAYMENT && order.holdExpiresAt.isBefore(now))
             releaser.release(order, OrderStatus.EXPIRED, OrderExpiryService.REASON, null, "ORDER_EXPIRED")   // BR-26: late money never revives the order
-        if (order.status != OrderStatus.PENDING_PAYMENT) return review(payment, "order ${order.orderCode} is ${order.status}")
+        if (order.status != OrderStatus.PENDING_PAYMENT) return review(payment, "order ${order.orderCode} is ${order.status}", order, when (order.status) {
+            OrderStatus.EXPIRED -> RefundObligationService.LATE_PAYMENT
+            OrderStatus.CANCELLED -> RefundObligationService.ORDER_CANCELLED
+            else -> RefundObligationService.ALREADY_PAID
+        })
         if (amount.compareTo(order.totalAmount) != 0 || payment.currency != order.currency)
-            return review(payment, "amount ${w.amount} ${payment.currency} does not match ${order.totalAmount.toPlainString()} ${order.currency}")
+            return review(payment, "amount ${w.amount} ${payment.currency} does not match ${order.totalAmount.toPlainString()} ${order.currency}", order,
+                RefundObligationService.AMOUNT_MISMATCH)
 
         confirm(order, payment, now)
         return WebhookOutcome.CONFIRMED
@@ -92,8 +98,10 @@ class PaymentConfirmationService(
         log.info("Order {} confirmed by payment {}", order.orderCode, payment.id)
     }
 
-    private fun review(payment: Payment, why: String): WebhookOutcome {
-        payment.status = PaymentStatus.REQUIRES_REVIEW; payments.save(payment)
+    /** T6.4: with a known order the whole amount becomes a refund obligation in the same transaction (BR-26). */
+    private fun review(payment: Payment, why: String, order: CustomerOrder? = null, reasonCode: String? = null): WebhookOutcome {
+        payment.status = PaymentStatus.REQUIRES_REVIEW; payments.saveAndFlush(payment)
+        if (order != null && reasonCode != null) obligations.open(payment, order, reasonCode, why)
         log.warn("Payment {} needs review: {}", payment.id, why)
         return WebhookOutcome.REQUIRES_REVIEW
     }

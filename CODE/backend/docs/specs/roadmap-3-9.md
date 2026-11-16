@@ -48,7 +48,7 @@ lựa chọn đề xuất trong Gate A.
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
-| 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [ ] T6.4 · [ ] T6.5 |
+| 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
@@ -256,7 +256,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   kết quả nhất quán.
 - **Thử thật:** hướng dẫn người dùng cấu hình webhook URL (ngrok/cloudflared) và tự chuyển số tiền nhỏ.
 
-### [ ] T6.4 — Tiền đến muộn, sai số tiền và đối chiếu
+### [x] T6.4 — Tiền đến muộn, sai số tiền và đối chiếu
 - **Phụ thuộc:** T6.3. **Tài liệu:** UC-13 E3, UC-14 E1/E2/E4, BR-26, BR-29, BR-30.
 - **Phạm vi:** tiền đến khi đơn đã EXPIRED/CANCELLED → ghi nhận, **không khôi phục đơn hay phân bổ lại hộp** (BR-26),
   tạo nghĩa vụ hoàn; thiếu/thừa/không khớp mã → `payment` `REQUIRES_REVIEW`, đơn chưa xác nhận, đưa vào đối chiếu;

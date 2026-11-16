@@ -1,0 +1,43 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T6.4: TIỀN ĐẾN MUỘN, SAI SỐ TIỀN VÀ ĐỐI CHIẾU
+Ngày: 2026-11-16 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t6-4-payment-reconciliation (từ feature/t6-3-payment-webhook 3be9a49)
+Tài liệu: UC-13 E3, UC-14 E1/E2/E4, BR-26, BR-29, BR-30, D3
+
+1. KẾT QUẢ
+- Nghĩa vụ hoàn tự động (RefundObligationService): khi webhook (T6.3) đưa payment có đơn vào REQUIRES_REVIEW → cùng transaction tạo refund_request PENDING
+  = toàn bộ số tiền, gắn payment (unique), reason_code LATE_PAYMENT | ORDER_CANCELLED | ALREADY_PAID | AMOUNT_MISMATCH; audit REFUND_OBLIGATION_OPENED.
+  Đơn không được khôi phục / xác nhận (BR-26). Khách thấy refundInProgress trong /orders/{id}/money.
+- Payment không rõ đơn = nhóm UNASSIGNED; ADMIN POST /api/v1/admin/payments/{id}/assign {orderCode, note} → gắn đơn + nghĩa vụ ASSIGNED_BY_ADMIN (không xác nhận đơn);
+  gán lần hai → 409.
+- Đối chiếu (PaymentReconciliationService; job 5 phút payments.reconcile-interval-ms, tắt bằng payments.reconcile-job-enabled=false; chạy tay
+  POST /api/v1/admin/payment-reconciliation/run): yêu cầu sống của đơn đã kết thúc → EXPIRED + hủy link (ngoài transaction, lỗi bỏ qua); đơn còn chờ:
+  getLink → CANCELLED/EXPIRED → yêu cầu EXPIRED, đơn EXPIRED, nhả hộp (UC-14 E4); PAID/UNDERPAID mà chưa có payment → reconcile_note MISSING_WEBHOOK
+  (không tự tạo payment). Chạy lại không tạo payment/nghĩa vụ mới.
+- Admin tra cứu: GET /api/v1/admin/payments (status, orderCode, reference, bucket), GET /api/v1/admin/payments/{id}, GET /api/v1/admin/orders/{orderId}/money
+  (received = applied + refundPending + refunded). Nhóm (BUCKET_SQL): APPLIED, REFUND_PENDING, REFUNDED, UNASSIGNED (RECEIVED chỉ khi bất thường — test bảo đảm 0).
+- V16: refund_request.payment_id (unique), reason_code; payment_request.reconcile_note, reconciled_at; index payment(order_id, request_id, status).
+
+2. KIỂM CHỨNG
+Baseline 3be9a49: 204 tests, 203 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (2m17s), 208 tests, 207 PASS, 1 SKIPPED, 0 fail.
+PaymentReconciliationTests 4 (mới, AC-01..05; mỗi test kiểm tổng theo nhóm bằng tổng đã nhận); PaymentWebhookTests vẫn xanh. Migration 15 → 16;
+Swagger 75 → 80 paths, 21 → 22 tags.
+Smoke dev (V16, fake gateway, t64-*) 8/8: trả cho đơn đã hủy → REQUIRES_REVIEW, khách thấy refundInProgress 30 000; mã lạ → UNASSIGNED; admin gán →
+REFUND_PENDING; tóm tắt đơn received 30 000 = refundPending 30 000; đối chiếu chạy 2 lần (lần 2 không đổi gì). providerErrors 2 = link do fake tạo
+trước khi app khởi động lại (fake lưu trong bộ nhớ) — không xảy ra với payOS.
+
+3. FILE
+resources/db/migration/V16__refund_obligations_and_reconciliation.sql · payment/entity/{RefundRequest,PaymentRequest}.kt, payment/repository/*.kt (M) ·
+payment/service/{RefundObligationService,PaymentReconciliationService,ReconciliationStore,PaymentReconciliationJob,AdminPaymentService}.kt (New),
+PaymentConfirmationService.kt (M) · order/service/OrderMoneyReader.kt (M) · payment/dto/{AdminPaymentView,OrderMoneySummary,PaymentAssignRequest,
+ReconciliationReport}.kt · payment/controller/AdminPaymentController.kt · openapi (5 path, tag Admin payments, 5 schema) · test PaymentReconciliationTests.kt,
+support/AuthTestFixtures.kt (tắt job), hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Token ADMIN: Admin payments › GET /api/v1/admin/payments?bucket=REFUND_PENDING → các khoản chờ hoàn (lý do refundReason).
+ 2. GET /api/v1/admin/payments?bucket=UNASSIGNED → POST .../{id}/assign ví dụ "receipt" (đổi orderCode) → REFUND_PENDING.
+ 3. GET /api/v1/admin/orders/{orderId}/money → received / applied / refundPending / refunded.
+ 4. POST /api/v1/admin/payment-reconciliation/run → báo cáo; chạy lại → không đổi thêm.
+
+5. GIỚI HẠN
+- Thực hiện hoàn (admin chuyển khoản, xác nhận) → T6.5; nghĩa vụ hiện ở PENDING.
+- Thừa tiền cũng không xác nhận đơn (đúng card) — khách nhận hoàn toàn bộ và trả lại đúng số.

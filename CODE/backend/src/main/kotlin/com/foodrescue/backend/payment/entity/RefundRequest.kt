@@ -38,5 +38,13 @@ class RefundRequest(
     var approvedBy: Account? = null,
 
     @field:Column(name = "approved_at", nullable = true)
-    var approvedAt: Instant? = null
+    var approvedAt: Instant? = null,
+
+    // T6.4: the payment this obligation returns (one obligation per payment) and a stable reason code.
+    @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @field:JoinColumn(name = "payment_id", nullable = true)
+    var payment: com.foodrescue.backend.payment.entity.Payment? = null,
+
+    @field:Column(name = "reason_code", nullable = true, length = 50)
+    var reasonCode: String? = null
 ) : MutableEntity()

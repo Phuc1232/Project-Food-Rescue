@@ -35,7 +35,7 @@ object TestAuthKeys {
         r.add("auth.jwt.key-id") { "test-key" }; r.add("auth.rate-limit-key-secret") { "test-only-secret-at-least-32-bytes-long" }
         r.add("files.storage-dir") { fileRoot.toString() }
         // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.
-        r.add("orders.expiry-job-enabled") { "false" }
+        r.add("orders.expiry-job-enabled") { "false" }; r.add("payments.reconcile-job-enabled") { "false" }
         // T6.1: prod-profile tests build the payOS adapter; dummy credentials and an unreachable URL, never the real provider.
         r.add("payos.client-id") { "test-client" }; r.add("payos.api-key") { "test-api-key" }; r.add("payos.checksum-key") { "test-checksum-key" }
         r.add("payos.base-url") { "http://127.0.0.1:9" }

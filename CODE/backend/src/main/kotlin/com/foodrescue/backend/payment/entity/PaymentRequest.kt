@@ -44,5 +44,12 @@ class PaymentRequest(
     var providerOrderCode: Long? = null,
 
     @field:Column(name = "qr_code", nullable = true, columnDefinition = "text")
-    var qrCode: String? = null
+    var qrCode: String? = null,
+
+    // T6.4: last reconciliation result (e.g. MISSING_WEBHOOK) for administrators.
+    @field:Column(name = "reconcile_note", nullable = true, columnDefinition = "text")
+    var reconcileNote: String? = null,
+
+    @field:Column(name = "reconciled_at", nullable = true)
+    var reconciledAt: Instant? = null
 ) : MutableEntity()

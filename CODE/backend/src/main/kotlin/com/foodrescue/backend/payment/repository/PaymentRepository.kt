@@ -16,4 +16,5 @@ interface PaymentRepository : JpaRepository<Payment, UUID> {
 
     fun existsByProviderAndProviderTransactionId(provider: String, providerTransactionId: String): Boolean
     fun findAllByOrderIdOrderByReceivedAt(orderId: UUID): List<Payment>
+    fun countByRequestId(requestId: UUID): Long
 }
