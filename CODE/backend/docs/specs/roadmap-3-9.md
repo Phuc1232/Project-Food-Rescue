@@ -46,7 +46,7 @@ lựa chọn đề xuất trong Gate A.
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
-| 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [ ] T4.4 · [ ] T4.5 |
+| 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
@@ -172,7 +172,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** chuyển trạng thái sai → 409; store bị khóa → không mở; số khả dụng luôn tính từ hộp thực tế,
   không có trường "số lượng khai báo".
 
-### [ ] T4.4 — Đóng gói hộp thực tế
+### [x] T4.4 — Đóng gói hộp thực tế
 - **Phụ thuộc:** T4.3. **Tài liệu:** UC-25, UC-26, UC-32, UC-33, BR-11..14, BR-17, BR-18, D7.
 - **Phạm vi:** staff (`BOX_PACK`) hoặc owner mở phiếu đóng cho một đợt: phiếu trống hoặc **điền nhanh từ hộp đã đóng
   của cùng cửa hàng** (chỉ copy món + số lượng); chỉnh theo thực tế, nhập hạn dùng và cách bảo quản; backend lấy giá
