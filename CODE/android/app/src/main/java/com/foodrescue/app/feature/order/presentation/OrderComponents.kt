@@ -22,6 +22,7 @@ internal val OrderStatus.label: String get() = when (this) {
     OrderStatus.COLLECTED -> "Đã nhận hộp"
     OrderStatus.CANCELLED -> "Đã hủy"
     OrderStatus.EXPIRED -> "Hết hạn thanh toán"
+    OrderStatus.NO_SHOW -> "Không đến nhận"
 }
 
 internal val OrderFilter.label: String get() = when (this) {
@@ -31,6 +32,7 @@ internal val OrderFilter.label: String get() = when (this) {
     OrderFilter.COLLECTED -> "Đã nhận"
     OrderFilter.CANCELLED -> "Đã hủy"
     OrderFilter.EXPIRED -> "Hết hạn"
+    OrderFilter.NO_SHOW -> "Không đến nhận"
 }
 
 @Composable
@@ -55,6 +57,8 @@ internal fun OrderTimeline(order: BoxReservation, nowMillis: Long, modifier: Mod
         if (status == OrderStatus.CANCELLED || status == OrderStatus.EXPIRED) {
             OrderStep(status.label, bookingTimestamp(order.cancelledAtMillis ?: order.expiresAtMillis), true)
             order.refund?.let { OrderStep(it.status.label, bookingTimestamp(it.updatedAtMillis), it.status == RefundStatus.COMPLETED) }
+        } else if (order.noShow != null) {
+            OrderStep("Cửa hàng xác nhận không đến nhận", bookingTimestamp(order.noShow.atMillis), true)
         } else if (order.ownerCancellation != null) {
             OrderStep("Cửa hàng yêu cầu hủy", bookingTimestamp(order.ownerCancellation.requestedAtMillis), true)
             OrderStep("Chờ xử lý yêu cầu", "Chưa phát sinh hoàn tiền", false)

@@ -7,13 +7,14 @@ import androidx.compose.ui.Modifier
 import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.core.util.money
 import com.foodrescue.app.feature.order.domain.*
+import com.foodrescue.app.feature.order.presentation.component.HandoverHistory
 import com.foodrescue.app.feature.pickup.presentation.component.PickupCodeCard
 import com.foodrescue.app.feature.refund.presentation.component.label
 
 @Composable
 internal fun OwnerOrderDetailScreen(order: BoxReservation, now: Long, onBack: () -> Unit,
     onCancellation: () -> Unit, modifier: Modifier = Modifier) {
-    val canCancel = order.isPaid && order.cancelledAtMillis == null && order.collectedAtMillis == null && order.ownerCancellation == null
+    val canCancel = order.noShow == null && order.isPaid && order.cancelledAtMillis == null && order.collectedAtMillis == null && order.ownerCancellation == null
     FoodRescuePage("Chi tiết đơn hàng", onBack, modifier, footer = if (canCancel) ({
         OutlinedButton(onCancellation, Modifier.fillMaxWidth()) { Text("Yêu cầu hủy đơn") }
     }) else null) {
@@ -52,6 +53,7 @@ internal fun OwnerOrderDetailScreen(order: BoxReservation, now: Long, onBack: ()
             Text("Hoàn tiền", style = MaterialTheme.typography.titleMedium)
             Text(refund.status.label); BookingAmount("Số tiền", refund.amount)
         } }
+        HandoverHistory(order)
         OrderTimeline(order, now)
     }
 }
