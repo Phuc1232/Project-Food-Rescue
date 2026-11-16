@@ -1,0 +1,36 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T5.1: TÌM KIẾM SURPRISE BOX VÀ CỬA HÀNG
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t5-1-search (từ feature/t4-5-financial-policy 6d8170a) | Tài liệu: UC-07..12, BR-05, BR-19, BR-21, D10
+
+1. KẾT QUẢ
+- GET /api/v1/surprise-boxes: đợt OPEN, chưa quá hạn đặt, store ACTIVE, ≥ 1 hộp khả dụng (định nghĩa T4.3); vị trí lat/lng + radiusKm (0.1..50,
+  mặc định 5), lọc categoryCode, minPrice/maxPrice, pickupFrom/pickupTo; sort distance|price|pickupStartsAt; size ≤ 50.
+- GET /api/v1/surprise-boxes/{batchId}: nhóm, mô tả dự kiến, giá, giá trị tối thiểu, số khả dụng, hạn đặt, khung nhận, địa chỉ + tọa độ +
+  directionsUrl Google Maps (UC-12), cảnh báo = cảnh báo đợt ∪ cảnh báo món của hộp có thể phân bổ (BR-19), orderable + unavailableReason
+  (PAUSED/ENDED/SOLD_OUT/DEADLINE_PASSED); DRAFT/BLOCKED/store không ACTIVE → 404. Không trả món, giá món, mã hộp (BR-05).
+- GET /api/v1/surprise-boxes/{batchId}/cover: ảnh bìa mẫu của đợt hiển thị được (đóng giới hạn T4.2).
+- GET /api/v1/store-search (tên, vị trí; openOffers), GET /api/v1/store-map (khung ≤ 2°×2°, ≤ 500 điểm, hasOpenOffers). Chỉ store ACTIVE.
+- BatchAvailability (T4.3) refactor sang NamedParameterJdbcTemplate và công khai MEETS_TERMS / NOT_HELD / AVAILABLE_COUNT_SQL dùng chung.
+- Khoảng cách Haversine trong SQL (không PostGIS), lọc khung tọa độ trước.
+
+2. KIỂM CHỨNG
+Baseline 6d8170a: 164 tests, 163 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL, 170 tests, 169 PASS, 1 SKIPPED, 0 fail.
+(Thời gian báo 22m23s do máy ngủ giữa lúc tắt JVM test — thread dump cho thấy JVM chỉ chạy ~110s; không có khóa DB.)
+SearchTests 6 (mới, AC-01..07); SaleBatchTests vẫn qua sau refactor BatchAvailability; Swagger 61 → 66 paths, 18 → 19 tags.
+Smoke dev (t51-*) 7/7: tìm gần thấy đợt; tìm Hà Nội không thấy; khoảng giá ngược 400; chi tiết orderable, cảnh báo có "mè", không lộ tên món;
+tìm cửa hàng openOffers 1; bản đồ 9 điểm; không token 401.
+
+3. FILE
+search/dto/{OfferSummary,OfferDetail,StoreCard,StorePin}.kt · search/service/{SearchParams,OfferQueryService,StoreSearchService,Geo}.kt ·
+search/controller/{OfferController,StoreSearchController}.kt · surprisebox/service/BatchAvailability.kt (M) · openapi (5 path, tag Search, 6 schema) ·
+test SearchTests.kt, SwaggerUiTests.kt.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Có đợt OPEN có hộp (T4.3/T4.4). Token khách.
+ 2. Search › GET /api/v1/surprise-boxes?lat=10.7769&lng=106.7009&radiusKm=5 → thấy đợt; thêm minPrice=50000&maxPrice=1 → 400.
+ 3. GET /api/v1/surprise-boxes/{batchId} → orderable, safetyWarnings, directionsUrl (mở được Google Maps). Owner tạm dừng đợt → orderable=false PAUSED.
+ 4. GET /api/v1/store-search?q=<tên>; GET /api/v1/store-map?minLat=10.7&maxLat=10.85&minLng=106.6&maxLng=106.8.
+
+5. GIỚI HẠN
+- Không có dữ liệu địa giới hành chính: "khu vực" = vị trí + bán kính hoặc khung bản đồ.
+- Truy vấn đếm khả dụng theo từng đợt (subquery) — đủ cho MVP, cần index/materialize khi dữ liệu lớn (T9.1).
