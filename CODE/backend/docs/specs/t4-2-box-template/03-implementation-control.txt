@@ -1,0 +1,33 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T4.2: MẪU SURPRISE BOX
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t4-2-box-template (từ feature/t4-1-menu 523d093) | Tài liệu: UC-57, UC-58, BR-09, BR-10, BR-19
+
+1. KẾT QUẢ
+- /api/v1/stores/{storeId}/box-templates: GET (?active), POST; /{templateId}: GET, PATCH (version, khóa dòng); /{templateId}/status
+  (active true/false + lý do). Không có xóa.
+- Dữ liệu: tên, nhóm thực phẩm (T4.1), mô tả dự kiến, cảnh báo an toàn (bắt buộc, không xóa được), giá bán và giá trị tối thiểu mặc định
+  (nguyên đồng 1..100tr, tối thiểu ≥ giá bán), ảnh bìa (file image/* của owner).
+- Quyền: ghi owner (BOX_TEMPLATE_MANAGE không seed); đọc owner, staff BOX_PACK/BOX_MANAGE, ADMIN (kiểm tra không ném qua contexts()).
+- Không tạo đợt/hộp; đợt bán giữ snapshot riêng. Audit BOX_TEMPLATE_CREATED / UPDATED (chỉ trường đổi) / STATUS_CHANGED.
+- Không migration.
+
+2. KIỂM CHỨNG
+Baseline 523d093: 136 tests, 135 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m30s), 141 tests, 140 PASS, 1 SKIPPED, 0 fail.
+BoxTemplateTests 5 (mới: AC-01..06; đồng thời ở AC-03); SwaggerUiTests 48 → 51 paths, 14 → 15 tags; MenuTests dùng helper staffWith chung.
+Smoke dev 9/9: tạo có ảnh bìa 201; tối thiểu < giá 400; xóa cảnh báo 400; sửa 200; version cũ 409; ngừng 200; khách 403; admin 200; không sinh đợt.
+
+3. FILE
+surprisebox/repository/BoxTemplateRepository.kt (M) · surprisebox/dto/{BoxTemplateCreateRequest,BoxTemplateUpdateRequest,BoxTemplateStatusRequest,BoxTemplateView}.kt ·
+surprisebox/service/{BoxTemplateAccess,BoxTemplateService}.kt · surprisebox/controller/BoxTemplateController.kt · store/service/StoreHistoryRecorder.kt (M) ·
+docs/api/openapi.yaml (3 path, tag Box templates, 4 schema) · test BoxTemplateTests.kt (New), support/StoreTestFixtures.kt (imageId, staffWith), MenuTests.kt, SwaggerUiTests.kt.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Token owner: Files › POST ảnh PNG → id. Box templates › POST /api/v1/stores/{storeId}/box-templates ví dụ "bakery" + "coverFileId" → 201.
+ 2. PATCH .../{templateId} ví dụ "warnings" (version theo bước 1) → 200; gửi lại → 409; {"version":..,"safetyWarnings":""} → 400.
+ 3. POST .../{templateId}/status ví dụ "stop" → active=false. GET ...?active=false.
+ 4. Token khách → GET 403; token ADMIN → GET 200.
+
+5. GIỚI HẠN
+- Khách chưa xem được ảnh bìa (file chưa gắn attachment → chỉ uploader); T5.1 cấp quyền đọc ảnh bìa của mẫu có đợt OPEN.
+- UC-58 A1 (cảnh báo phản ánh rủi ro thật → chặn hộp liên quan) → T7.5.
+- Smoke để lại trên DB dev: t42-*@example.test, store "T42 Bánh", 1 mẫu (đã ngừng).

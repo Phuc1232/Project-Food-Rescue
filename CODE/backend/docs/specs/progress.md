@@ -18,9 +18,9 @@ task trước) vì task trước chưa được merge vào `master`.
 | T3.3 | Thông tin cửa hàng, giờ, khóa/mở | ✅ | `feature/t3-3-store-profile` | c8f6955, a6a3d66 | 113 / 112 / 1 / 0 | [t3-3-store-profile](t3-3-store-profile/) |
 | T3.4 | Quản lý nhân viên và phân quyền | ✅ | `feature/t3-4-staff-management` | 986d1d1, 6ebb8c7 | 122 / 121 / 1 / 0 | [t3-4-staff-management](t3-4-staff-management/) |
 | T3.5 | Quản trị tài khoản người dùng | ✅ | `feature/t3-5-account-admin` | afff2a2, b2125e8 | 128 / 127 / 1 / 0 | [t3-5-account-admin](t3-5-account-admin/) |
-| T4.1 | Menu nội bộ và lịch sử giá | ✅ | `feature/t4-1-menu` | | 136 / 135 / 1 / 0 | [t4-1-menu](t4-1-menu/) |
-| T4.2 | Mẫu Surprise Box | 🔄 |  | |  |  |
-| T4.3 | Đợt mở bán | ⬜ | | | | |
+| T4.1 | Menu nội bộ và lịch sử giá | ✅ | `feature/t4-1-menu` | 87265ba, 523d093 | 136 / 135 / 1 / 0 | [t4-1-menu](t4-1-menu/) |
+| T4.2 | Mẫu Surprise Box | ✅ | `feature/t4-2-box-template` | | 141 / 140 / 1 / 0 | [t4-2-box-template](t4-2-box-template/) |
+| T4.3 | Đợt mở bán | 🔄 |  | |  |  |
 | T4.4 | Đóng gói hộp thực tế | ⬜ | | | | |
 | T4.5 | Chính sách tài chính theo phiên bản | ⬜ | | | | |
 | T5.1 | Tìm kiếm Surprise Box và cửa hàng | ⬜ | | | | |
@@ -53,6 +53,7 @@ task trước) vì task trước chưa được merge vào `master`.
 - T3.4: D01 = lời mời (tài khoản có sẵn) + link SET_PASSWORD 72h (tài khoản mới); 6 mã quyền staff; sửa nhỏ auth.
 - T3.5: Khóa = LOCKED (có mở khóa), thu hồi mọi phiên; còn đơn tồn đọng thì bắt buộc outstandingPlan (409 OUTSTANDING_WORK).
 - T4.1: 9 nhóm thực phẩm seed; giá nguyên đồng 1..100tr; tài liệu giá có phiên bản (bảng mới); đọc menu: owner/staff MENU_VIEW/admin.
+- T4.2: Không xóa mẫu (chỉ ngừng); giá trị tối thiểu mặc định ≥ giá bán; ảnh bìa cho khách để T5.1.
 
 ## Việc cần người dùng làm / xem lại
 
