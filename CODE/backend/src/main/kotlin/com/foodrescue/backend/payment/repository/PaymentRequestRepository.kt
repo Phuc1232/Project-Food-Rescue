@@ -14,6 +14,7 @@ interface PaymentRequestRepository : JpaRepository<PaymentRequest, UUID> {
     fun findFirstByOrderIdAndStatusIn(orderId: UUID, statuses: Collection<PaymentRequestStatus>): PaymentRequest?
     fun findFirstByOrderIdOrderByCreatedAtDesc(orderId: UUID): PaymentRequest?
     fun findByProviderAndProviderOrderCode(provider: String, code: Long): PaymentRequest?
+    fun findTop50ByStatusInOrderByCreatedAt(statuses: Collection<PaymentRequestStatus>): List<PaymentRequest>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from PaymentRequest r where r.id = :id")

@@ -7043,6 +7043,351 @@
           }
         }
       }
+    },
+    "/api/v1/admin/payments": {
+      "get": {
+        "operationId": "get_admin_payments",
+        "tags": [
+          "Admin payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Search received payments",
+        "description": "Filter by status, order code, bank/provider transaction reference or bucket.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RECEIVED",
+                "VERIFIED",
+                "REQUIRES_REVIEW",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "name": "orderCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reference",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "APPLIED",
+                "REFUND_PENDING",
+                "REFUNDED",
+                "UNASSIGNED",
+                "RECEIVED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payments",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/payments/{paymentId}": {
+      "get": {
+        "operationId": "get_admin_payments_paymentId",
+        "tags": [
+          "Admin payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Payment detail",
+        "description": "",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Payment id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/payments/{paymentId}/assign": {
+      "post": {
+        "operationId": "post_admin_payments_paymentId_assign",
+        "tags": [
+          "Admin payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Assign an unmatched payment to an order",
+        "description": "On the administrator's evidence; the payment becomes a refund obligation of that order (it never confirms the order).",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Payment id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentAssignRequest"
+              },
+              "examples": {
+                "receipt": {
+                  "value": {
+                    "orderCode": "FR-261116-ABCDEF",
+                    "note": "Khách gửi biên lai chuyển khoản"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Assigned",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/orders/{orderId}/money": {
+      "get": {
+        "operationId": "get_admin_orders_orderId_money",
+        "tags": [
+          "Admin payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "All money of an order",
+        "description": "received = applied + refundPending + refunded.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Order id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderMoneySummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/payment-reconciliation/run": {
+      "post": {
+        "operationId": "post_admin_payment_reconciliation_run",
+        "tags": [
+          "Admin payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Run reconciliation now",
+        "description": "Same as the 5-minute job: closes requests of ended orders, releases orders whose provider link was cancelled/expired, flags paid links without a recorded webhook. Never creates payments; safe to repeat.",
+        "responses": {
+          "200": {
+            "description": "Report",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11282,6 +11627,229 @@
             ]
           }
         }
+      },
+      "AdminPaymentView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "provider",
+          "providerTransactionId",
+          "amount",
+          "currency",
+          "status",
+          "bucket",
+          "receivedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "providerTransactionId": {
+            "type": "string"
+          },
+          "providerOrderCode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "orderId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED",
+              "VERIFIED",
+              "REQUIRES_REVIEW",
+              "REJECTED"
+            ]
+          },
+          "bucket": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "REFUND_PENDING",
+              "REFUNDED",
+              "UNASSIGNED",
+              "RECEIVED"
+            ],
+            "description": "Each received amount is in exactly one bucket"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "refundRequestId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "refundReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "LATE_PAYMENT, ORDER_CANCELLED, ALREADY_PAID, AMOUNT_MISMATCH, ASSIGNED_BY_ADMIN"
+          }
+        }
+      },
+      "AdminPaymentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPaymentView"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "OrderMoneySummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "orderCode",
+          "orderStatus",
+          "totalAmount",
+          "received",
+          "applied",
+          "refundPending",
+          "refunded",
+          "payments"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "orderStatus": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "totalAmount": {
+            "type": "integer"
+          },
+          "received": {
+            "type": "integer"
+          },
+          "applied": {
+            "type": "integer"
+          },
+          "refundPending": {
+            "type": "integer"
+          },
+          "refunded": {
+            "type": "integer"
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPaymentView"
+            }
+          }
+        }
+      },
+      "PaymentAssignRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderCode",
+          "note"
+        ],
+        "properties": {
+          "orderCode": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "ReconciliationReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checked",
+          "expiredRequests",
+          "ordersReleased",
+          "missingWebhook",
+          "providerErrors"
+        ],
+        "properties": {
+          "checked": {
+            "type": "integer"
+          },
+          "expiredRequests": {
+            "type": "integer"
+          },
+          "ordersReleased": {
+            "type": "integer"
+          },
+          "missingWebhook": {
+            "type": "integer"
+          },
+          "providerErrors": {
+            "type": "integer"
+          }
+        }
       }
     },
     "responses": {
@@ -11527,6 +12095,10 @@
     {
       "name": "Payments",
       "description": "Payment provider webhook (UC-14 steps 5-8); called by payOS, not by the app"
+    },
+    {
+      "name": "Admin payments",
+      "description": "Received money lookup, unmatched payments, reconciliation with the provider (UC-14 E1/E2/E4; ADMIN only)"
     },
     {
       "name": "Health"

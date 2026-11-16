@@ -43,3 +43,4 @@ docs/specs/*
 !docs/specs/t6-1-payment-gateway/
 !docs/specs/t6-2-payment-request/
 !docs/specs/t6-3-payment-webhook/
+!docs/specs/t6-4-payment-reconciliation/
