@@ -6,6 +6,7 @@ import com.foodrescue.app.feature.payment.domain.*
 import com.foodrescue.app.feature.refund.domain.*
 import com.foodrescue.app.feature.surprisebox.domain.*
 import org.json.JSONObject
+import org.json.JSONArray
 
 internal object OrderJson {
     fun read(row: JSONObject): BoxReservation = BoxReservation(
@@ -17,6 +18,21 @@ internal object OrderJson {
         row.optJSONObject("refund")?.let { OrderRefund(it.getLong("amount"), RefundStatus.valueOf(it.getString("status")), it.getLong("requestedAt"), it.getLong("updatedAt")) },
         row.optJSONObject("box")?.let(::readBox),
         row.optJSONObject("ownerCancellation")?.let { OwnerCancellationRequest(OwnerCancellationReason.valueOf(it.getString("reason")), it.getString("note"), it.getLong("requestedAt")) },
+        row.optJSONObject("handover")?.let { receipt ->
+            val ids = receipt.getJSONArray("boxes")
+            HandoverReceipt(receipt.getString("request"), (0 until ids.length()).map(ids::getString),
+                receipt.getString("employee"), receipt.getString("employeeName"), receipt.getLong("at"))
+        },
+        row.optJSONArray("handoverFailures")?.let { entries -> (0 until entries.length()).map { index ->
+            val event = entries.getJSONObject(index)
+            HandoverFailure(event.getString("id"), HandoverFailureReason.valueOf(event.getString("reason")), event.getString("note"),
+                event.getString("employee"), event.getString("employeeName"), event.getLong("at"))
+        } }.orEmpty(),
+        if (row.isNull("noShow")) null else row.getJSONObject("noShow").let { receipt ->
+            val ids = receipt.getJSONArray("boxes")
+            NoShowReceipt(receipt.getString("request"), (0 until ids.length()).map(ids::getString), receipt.getString("note"),
+                receipt.getString("employee"), receipt.getString("employeeName"), receipt.getLong("at"))
+        },
     )
     fun write(order: BoxReservation) = JSONObject().apply {
         put("id", order.id); put("boxId", order.boxId); put("quantity", order.quantity); put("unitPrice", order.unitPrice)
@@ -34,6 +50,20 @@ internal object OrderJson {
             put("reason", it.reason.name); put("note", it.note); put("requestedAt", it.requestedAtMillis)
         }) }
         order.boxSnapshot?.let { put("box", writeBox(it)) }
+        order.noShow?.let { put("noShow", JSONObject().apply {
+            put("request", it.requestId); put("boxes", JSONArray(it.boxIds)); put("note", it.note)
+            put("employee", it.employeeId); put("employeeName", it.employeeName); put("at", it.atMillis)
+        }) }
+        order.handover?.let { put("handover", JSONObject().apply {
+            put("request", it.requestId); put("boxes", JSONArray(it.boxIds)); put("employee", it.employeeId)
+            put("employeeName", it.employeeName); put("at", it.atMillis)
+        }) }
+        if (order.handoverFailures.isNotEmpty()) put("handoverFailures", JSONArray().apply {
+            order.handoverFailures.forEach { event -> put(JSONObject().apply {
+                put("id", event.id); put("reason", event.reason.name); put("note", event.note)
+                put("employee", event.employeeId); put("employeeName", event.employeeName); put("at", event.atMillis)
+            }) }
+        })
     }
     private fun writeBox(box: CatalogBox) = JSONObject().apply {
         put("id", box.id); put("storeId", box.storeId); put("store", box.store); put("name", box.name); put("category", box.category.name)
