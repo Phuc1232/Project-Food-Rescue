@@ -4745,6 +4745,553 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/sale-batches": {
+      "get": {
+        "operationId": "get_stores_storeId_sale_batches",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List sale batches",
+        "description": "Owner, staff with BOX_PACK, BOX_MANAGE, PICKUP_HANDLE or ORDER_VIEW, or ADMIN.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SaleBatchStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batches",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SaleBatchView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_stores_storeId_sale_batches",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create a draft batch (owner)",
+        "description": "Creates a DRAFT batch from an active template; warnings are copied from the template. No stock is created (UC-59 A1).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleBatchCreateRequest"
+              },
+              "examples": {
+                "tomorrowNoon": {
+                  "value": {
+                    "templateId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f",
+                    "sellingPrice": 30000,
+                    "minimumValue": 60000,
+                    "orderDeadline": "2026-11-16T02:00:00Z",
+                    "pickupStartsAt": "2026-11-16T03:00:00Z",
+                    "pickupEndsAt": "2026-11-16T05:00:00Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleBatchView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/sale-batches/{batchId}": {
+      "get": {
+        "operationId": "get_stores_storeId_sale_batches_batchId",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Sale batch detail",
+        "description": "Owner, staff with BOX_PACK, BOX_MANAGE, PICKUP_HANDLE or ORDER_VIEW, or ADMIN.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleBatchView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch_stores_storeId_sale_batches_batchId",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update a batch (owner)",
+        "description": "UC-60. Boxes that no longer meet the new terms leave the available count.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleBatchUpdateRequest"
+              },
+              "examples": {
+                "price": {
+                  "value": {
+                    "version": 0,
+                    "sellingPrice": 35000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleBatchView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/sale-batches/{batchId}/status": {
+      "post": {
+        "operationId": "post_stores_storeId_sale_batches_batchId_status",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Publish, pause, resume or end (owner)",
+        "description": "PUBLISH DRAFT->OPEN and RESUME PAUSED->OPEN require an ACTIVE store (409 STORE_NOT_ACTIVE), the order deadline not passed (409 ORDER_DEADLINE_PASSED) and at least one sellable box (409 NO_ELIGIBLE_BOX; the batch stays as it was). PAUSE OPEN->PAUSED, END -> ENDED. Wrong source status -> 409 CONFLICT.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleBatchStatusRequest"
+              },
+              "examples": {
+                "publish": {
+                  "value": {
+                    "action": "PUBLISH"
+                  }
+                },
+                "pause": {
+                  "value": {
+                    "action": "PAUSE"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New state",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleBatchView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "CONFLICT, STORE_NOT_ACTIVE, ORDER_DEADLINE_PASSED or NO_ELIGIBLE_BOX",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/sale-batches/{batchId}/box-counts": {
+      "get": {
+        "operationId": "get_stores_storeId_sale_batches_batchId_box_counts",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Box counts",
+        "description": "Owner, staff with BOX_PACK, BOX_MANAGE, PICKUP_HANDLE or ORDER_VIEW, or ADMIN. Counts by status from real boxes (UC-62).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Counts",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxCountsView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/sale-batches/{batchId}/block": {
+      "post": {
+        "operationId": "post_admin_sale_batches_batchId_block",
+        "tags": [
+          "Sale batches"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Block a batch (ADMIN)",
+        "description": "Stops a DRAFT/OPEN/PAUSED batch for good with a reason. Orders of the batch are handled in T7.5.",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sale batch id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleBatchBlockRequest"
+              },
+              "examples": {
+                "violation": {
+                  "value": {
+                    "reason": "Hộp vi phạm an toàn thực phẩm"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Blocked",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleBatchView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7353,6 +7900,253 @@
             "format": "int64"
           }
         }
+      },
+      "SaleBatchStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "OPEN",
+          "PAUSED",
+          "ENDED",
+          "BLOCKED"
+        ]
+      },
+      "SaleBatchCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "templateId",
+          "orderDeadline",
+          "pickupStartsAt",
+          "pickupEndsAt"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellingPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "description": "Defaults to the template suggestion"
+          },
+          "minimumValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "description": ">= sellingPrice; defaults to the template"
+          },
+          "orderDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Window <= 24h, inside one opening shift (store timezone)"
+          }
+        }
+      },
+      "SaleBatchUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sellingPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "minimumValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "orderDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "safetyWarnings": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "description": "Only DRAFT or PAUSED batches; once the batch has orders only orderDeadline can change (BR-16)."
+      },
+      "SaleBatchStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "PUBLISH",
+              "PAUSE",
+              "RESUME",
+              "END"
+            ]
+          }
+        }
+      },
+      "SaleBatchBlockRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "SaleBatchView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "templateId",
+          "templateName",
+          "saleDate",
+          "sellingPrice",
+          "minimumValue",
+          "orderDeadline",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "safetyWarnings",
+          "status",
+          "version",
+          "available"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "saleDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sellingPrice": {
+            "type": "integer"
+          },
+          "minimumValue": {
+            "type": "integer"
+          },
+          "orderDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "safetyWarnings": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SaleBatchStatus"
+          },
+          "statusReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "available": {
+            "type": "integer",
+            "description": "Sellable boxes now (computed from real boxes, BR-15)"
+          }
+        }
+      },
+      "BoxCountsView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "packed",
+          "eligible",
+          "held",
+          "allocated",
+          "delivered",
+          "blocked",
+          "awaitingInspection",
+          "ineligible",
+          "available",
+          "asOf"
+        ],
+        "properties": {
+          "packed": {
+            "type": "integer"
+          },
+          "eligible": {
+            "type": "integer"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "allocated": {
+            "type": "integer"
+          },
+          "delivered": {
+            "type": "integer"
+          },
+          "blocked": {
+            "type": "integer"
+          },
+          "awaitingInspection": {
+            "type": "integer"
+          },
+          "ineligible": {
+            "type": "integer",
+            "description": "AVAILABLE boxes below the minimum value or not safe until the end of pickup"
+          },
+          "available": {
+            "type": "integer"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     },
     "responses": {
@@ -7574,6 +8368,10 @@
     {
       "name": "Box templates",
       "description": "Surprise Box templates: general box information and default prices for sale batches (UC-57, UC-58)"
+    },
+    {
+      "name": "Sale batches",
+      "description": "Sale batches: commercial terms, publishing and box counts (UC-59..62); admin block"
     },
     {
       "name": "Health"

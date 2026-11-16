@@ -14,7 +14,7 @@ import java.util.UUID
 @Component
 class SaleBatchBlocker(private val jdbc: JdbcTemplate, private val clock: Clock) {
     fun blockBatchesWithoutOrders(storeId: UUID): Int = jdbc.update(
-        """UPDATE sale_batch b SET status = 'BLOCKED', version = b.version + 1, updated_at = ?
+        """UPDATE sale_batch b SET status = 'BLOCKED', status_reason = 'Store suspended', version = b.version + 1, updated_at = ?
            WHERE b.store_id = ? AND b.status IN ('DRAFT', 'OPEN', 'PAUSED')
              AND NOT EXISTS (SELECT 1 FROM customer_order o WHERE o.sale_batch_id = b.id)""",
         Timestamp.from(clock.instant()), storeId)

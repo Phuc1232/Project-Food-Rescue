@@ -1,0 +1,44 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T4.3: ĐỢT MỞ BÁN
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t4-3-sale-batch (từ feature/t4-2-box-template 7debb84)
+Tài liệu: UC-59..62, BR-10, BR-14, BR-15, BR-16, BR-18, BR-21, SD-03
+
+1. KẾT QUẢ
+- /api/v1/stores/{storeId}/sale-batches: GET (?status), POST (DRAFT từ mẫu đang dùng; giá/giá trị mặc định từ mẫu; cảnh báo copy từ mẫu;
+  saleDate suy ra theo múi giờ cửa hàng); /{batchId}: GET, PATCH (DRAFT/PAUSED; có đơn → chỉ đổi orderDeadline); /{batchId}/status
+  {PUBLISH|PAUSE|RESUME|END}; /{batchId}/box-counts. /api/v1/admin/sale-batches/{batchId}/block {reason} (BLOCKED vĩnh viễn).
+- Kiểm tra: giá nguyên đồng 1..100tr, tối thiểu ≥ giá bán; orderDeadline ≤ pickupStartsAt < pickupEndsAt, khung ≤ 24h, trong tương lai,
+  nằm trọn trong một ca hoạt động (kể cả ca qua đêm của ngày trước) theo store.timezone.
+- PUBLISH/RESUME: StoreSalesPolicy (409 STORE_NOT_ACTIVE), mẫu đang dùng, chưa quá hạn đặt (409 ORDER_DEADLINE_PASSED), ≥ 1 hộp khả dụng
+  (409 NO_ELIGIBLE_BOX, đợt giữ nguyên). Chuyển sai → 409 CONFLICT; khóa dòng đợt.
+- BatchAvailability: định nghĩa duy nhất của hộp khả dụng (AVAILABLE, total_listed_value ≥ minimum_value, safe_until ≥ pickup_ends_at và > now,
+  không có allocation HELD/CONFIRMED) + các nhóm UC-62. T5.1/T5.2 phải dùng lại.
+- V10: sale_batch.status_reason; SaleBatchBlocker (T3.3) ghi "Store suspended".
+- Audit SALE_BATCH_CREATED / UPDATED (trường đổi) / PUBLISHED / PAUSED / RESUMED / ENDED / BLOCKED (lịch sử cửa hàng).
+
+2. KIỂM CHỨNG
+Baseline 7debb84: 141 tests, 140 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m33s), 149 tests, 148 PASS, 1 SKIPPED, 0 fail.
+SaleBatchTests 8 (mới, AC-01..09; đồng thời AC-05); migration 9 → 10; Swagger 51 → 56 paths, 15 → 16 tags.
+Lỗi phát hiện khi làm: câu đếm hộp truyền thừa tham số → PostgreSQL lỗi 22023, Spring dịch thành DataIntegrityViolation → 409 chung
+"Resource already exists or conflicts" (không có log SQL). Đã sửa; ghi vào bộ nhớ.
+Smoke dev (V10 áp; t43-*) 9/9: tạo DRAFT 201; hạn đặt sau giờ nhận 400; công khai khi chưa có hộp 409 NO_ELIGIBLE_BOX; 2 hộp SQL (70k, 50k)
+→ packed 2 / available 1 / ineligible 1; công khai 200; RESUME khi OPEN 409; tạm dừng 200; admin chặn 200; RESUME đợt bị chặn 409.
+
+3. FILE
+resources/db/migration/V10__sale_batch_status_reason.sql · surprisebox/entity/SaleBatch.kt (M) · surprisebox/SaleBatchAction.kt ·
+surprisebox/repository/SaleBatchRepository.kt · surprisebox/dto/{SaleBatchCreateRequest,SaleBatchUpdateRequest,SaleBatchStatusRequest,SaleBatchBlockRequest,SaleBatchView,BoxCountsView}.kt ·
+surprisebox/service/{SaleBatchAccess,SaleBatchService,SaleBatchLifecycleService,PickupWindowValidator,BatchAvailability,SaleBatchViews}.kt ·
+surprisebox/controller/{SaleBatchController,AdminSaleBatchController}.kt · store/service/{SaleBatchBlocker,StoreHistoryRecorder}.kt (M) ·
+openapi (5 path, tag Sale batches, 7 schema) · test SaleBatchTests.kt, support/StoreTestFixtures.kt (openAllWeek, tomorrowAt, box), hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Token owner, store ACTIVE có giờ mở cửa phủ khung nhận; có mẫu (T4.2).
+ 2. Sale batches › POST /api/v1/stores/{storeId}/sale-batches ví dụ "tomorrowNoon" (đổi templateId, thời gian sang ngày mai theo giờ mở cửa) → 201 DRAFT.
+ 3. POST .../{batchId}/status ví dụ "publish" → 409 NO_ELIGIBLE_BOX (chưa có hộp). GET .../box-counts → packed 0.
+ 4. Sau khi có hộp (T4.4 đóng hộp; hiện có thể chèn SQL như smoke) → "publish" 200 OPEN; "pause" 200; PATCH giá khi PAUSED 200; khi OPEN 409.
+ 5. Token ADMIN: POST /api/v1/admin/sale-batches/{batchId}/block ví dụ "violation" → BLOCKED; owner "publish"/"resume" → 409.
+
+5. GIỚI HẠN
+- Khách chưa thấy đợt (T5.1). Giữ chỗ khi tạm dừng (D02) và xử lý đơn khi kết thúc/chặn: T5.2, T7.x.
+- Hộp phải nằm trong khung giờ mở cửa; đợt đã tạo không bị kiểm lại khi đổi giờ mở cửa (T3.3 Q10).
+- Smoke để lại trên DB dev: t43-*, store "T43 Bánh", 1 đợt BLOCKED, 2 hộp SQL.
