@@ -1,0 +1,37 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T6.5: HOÀN TIỀN CÓ KIỂM SOÁT (THỦ CÔNG QUA ADMIN)
+Ngày: 2026-11-16 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t6-5-manual-refund (từ feature/t6-4-payment-reconciliation 6d1a199)
+Tài liệu: UC-72, UC-74, BR-45, BR-52, roadmap D3 (lệch có chủ đích: hoàn thủ công)
+
+1. KẾT QUẢ
+- ADMIN: GET /api/v1/admin/refund-requests (status), GET .../{id} (giao dịch gốc, refundableFromPayment, các lần ghi, tên + email khách để chuyển khoản);
+  POST .../{id}/approve {amount, note} (≤ yêu cầu và ≤ còn hoàn được từ giao dịch gốc — UC-72 E1; một phần — A3);
+  POST .../{id}/confirm {bankTransactionId, transferredAt, evidenceFileId, note}: khóa nghĩa vụ, phải APPROVED → refund SUCCEEDED (provider_refund_id = mã ngân
+  hàng, duy nhất), bằng chứng gắn attachment.refund_id, nghĩa vụ FULFILLED, financial_event REFUND_SUCCEEDED, ledger CUSTOMER_REFUND (−số hoàn) chỉ khi giao dịch
+  gốc VERIFIED (là doanh thu đơn); audit REFUND_SUCCEEDED. POST .../{id}/fail {note} → refund FAILED, nghĩa vụ giữ APPROVED (E3).
+- Khách: GET /api/v1/orders/{orderId}/refunds (không có email/tên), tải bằng chứng (RefundAttachmentPolicy: ADMIN + khách của đơn).
+- Tóm tắt tiền đơn của admin: refunded = Σ refund SUCCEEDED (đúng cho hoàn một phần), refundPending = Σ nghĩa vụ còn mở.
+- V17: refund.recorded_by_id, transferred_at, note.
+
+2. KIỂM CHỨNG
+Baseline 6d1a199: 208 tests, 207 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (2m26s), 214 tests, 213 PASS, 1 SKIPPED, 0 fail.
+ManualRefundTests 6 (mới, AC-01..06; đồng thời: 2 xác nhận cùng lúc → [200, 409], 1 refund, 1 event). Migration 16 → 17; Swagger 80 → 86 paths, 22 → 23 tags.
+Smoke dev (V17, fake gateway, t65-*) 6/6: nghĩa vụ từ đơn hủy đã trả; duyệt 50 000 > yêu cầu → 400; duyệt 30 000; xác nhận → FULFILLED 30 000;
+xác nhận lại → 409; khách thấy FULFILLED.
+
+3. FILE
+resources/db/migration/V17__manual_refund_details.sql · payment/entity/Refund.kt, payment/repository/{Refund,RefundRequest}Repository.kt (M) ·
+payment/dto/{RefundRequestView,RefundAttemptView,RefundApproveRequest,RefundConfirmRequest,RefundFailRequest}.kt · payment/service/{ManualRefundService,
+RefundViews,RefundAttachmentPolicy}.kt · payment/controller/{AdminRefundController,OrderRefundController}.kt · payment/service/AdminPaymentService.kt,
+store/service/StoreHistoryRecorder.kt (M) · openapi (6 path, tag Admin refunds, 6 schema) · test ManualRefundTests.kt, hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Có nghĩa vụ hoàn (vd trả tiền cho đơn đã hủy — T6.4). Token ADMIN: Admin refunds › GET /api/v1/admin/refund-requests?status=PENDING.
+ 2. POST .../{id}/approve ví dụ "full" (số tiền ≤ requestedAmount).
+ 3. Chuyển khoản thật cho khách ngoài hệ thống (D3). Files › POST /api/v1/files (ảnh/PDF biên lai) → POST .../{id}/confirm ví dụ "transfer"
+    (đổi bankTransactionId, evidenceFileId) → FULFILLED. Gửi lại → 409.
+ 4. Token khách: Orders › GET /api/v1/orders/{orderId}/refunds → FULFILLED, tải biên lai qua Files › GET .../content.
+
+5. GIỚI HẠN
+- Không có "từ chối" nghĩa vụ; điều chỉnh hoa hồng/phải trả cửa hàng cho đơn đã hoàn tất: T8.3/T8.4 dùng sổ cái. Thông báo khách: T8.2.
+- Smoke để lại: t65-*, 1 nghĩa vụ FULFILLED trên DB dev.

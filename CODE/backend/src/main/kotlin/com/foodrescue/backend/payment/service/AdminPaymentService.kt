@@ -55,8 +55,12 @@ class AdminPaymentService(
         val o = orders.findById(orderId).orElse(null) ?: notFound()
         val list = jdbc.query("$SELECT $FROM WHERE p.order_id = :id ORDER BY p.received_at", MapSqlParameterSource("id", orderId)) { rs, _ -> view(rs) }
         fun sum(b: String) = list.filter { it.bucket == b }.fold(BigDecimal.ZERO) { a, v -> a + v.amount }
+        // T6.5: refunded = refunds actually recorded (supports partial refunds); refundPending = still owed on open obligations.
+        val refunded = jdbc.queryForObject("SELECT coalesce(sum(amount),0) FROM refund WHERE order_id = :id AND status = 'SUCCEEDED'", MapSqlParameterSource("id", orderId), BigDecimal::class.java)!!.setScale(0)
+        val owed = jdbc.queryForObject("SELECT coalesce(sum(coalesce(approved_amount, requested_amount)),0) FROM refund_request WHERE order_id = :id AND status IN ('PENDING','APPROVED')",
+            MapSqlParameterSource("id", orderId), BigDecimal::class.java)!!.setScale(0)
         return OrderMoneySummary(o.id!!, o.orderCode, o.status.name, o.totalAmount.setScale(0), list.fold(BigDecimal.ZERO) { a, v -> a + v.amount },
-            sum("APPLIED"), sum("REFUND_PENDING"), sum("REFUNDED"), list)
+            sum("APPLIED"), owed, refunded, list)
     }
 
     /** An unassigned payment is linked to an order on the administrator's evidence and becomes a refund obligation (never confirms the order). */

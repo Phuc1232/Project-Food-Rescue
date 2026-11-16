@@ -48,7 +48,7 @@ lựa chọn đề xuất trong Gate A.
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
-| 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [ ] T6.5 |
+| 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
@@ -265,7 +265,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** mọi đồng nhận được đều ở một trong: đã dùng cho đơn, chờ hoàn, đã hoàn; đối chiếu chạy lại không
   tạo payment trùng.
 
-### [ ] T6.5 — Hoàn tiền có kiểm soát (thủ công qua admin)
+### [x] T6.5 — Hoàn tiền có kiểm soát (thủ công qua admin)
 - **Phụ thuộc:** T6.4. **Tài liệu:** UC-72, UC-74, BR-45, BR-52, D3.
 - **Phạm vi:** nghĩa vụ hoàn (`refund_request`) gắn đơn + giao dịch gốc + lý do; admin xem danh sách, số đã thu/đã hoàn/
   đang xử lý; xác nhận đã chuyển khoản kèm mã giao dịch ngân hàng + bằng chứng → `refund` SUCCEEDED, `financial_event`
