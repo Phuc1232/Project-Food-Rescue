@@ -6223,6 +6223,248 @@
           }
         }
       }
+    },
+    "/api/v1/orders/preview": {
+      "post": {
+        "operationId": "post_orders_preview",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Preview an order",
+        "description": "Total, committed value, warnings, pickup place/window, hold time and the current policy (UC-13 step 4). Holds nothing.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderPreviewRequest"
+              },
+              "examples": {
+                "two": {
+                  "value": {
+                    "batchId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f",
+                    "quantity": 2
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "NOT_ENOUGH_BOXES (fieldErrors quantity = available), BATCH_NOT_OPEN, ORDER_DEADLINE_PASSED, STORE_NOT_ACTIVE, POLICY_CHANGED, OWN_STORE, IDEMPOTENCY_KEY_REUSED",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "post": {
+        "operationId": "post_orders",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Place an order and hold boxes",
+        "description": "Re-checks everything, creates a PENDING_PAYMENT order with a full snapshot (BR-33) and holds exactly `quantity` real boxes for 10 minutes, or nothing (UC-13 E1). Resending the same Idempotency-Key returns the same order with 200.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "One per checkout attempt"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreateRequest"
+              },
+              "examples": {
+                "two": {
+                  "value": {
+                    "batchId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f",
+                    "quantity": 2,
+                    "acceptedPolicyVersion": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order placed",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderView"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Same Idempotency-Key: existing order",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "NOT_ENOUGH_BOXES (fieldErrors quantity = available), BATCH_NOT_OPEN, ORDER_DEADLINE_PASSED, STORE_NOT_ACTIVE, POLICY_CHANGED, OWN_STORE, IDEMPOTENCY_KEY_REUSED",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}": {
+      "get": {
+        "operationId": "get_orders_orderId",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "My order",
+        "description": "Only the customer who placed it (others get 404).",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Order id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7686,7 +7928,8 @@
             "enum": [
               "OWNER",
               "ADMIN",
-              "STAFF"
+              "STAFF",
+              "CUSTOMER"
             ]
           },
           "actorId": {
@@ -9802,6 +10045,252 @@
             "type": "boolean"
           }
         }
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING_PAYMENT",
+          "CONFIRMED",
+          "HANDOVER_IN_PROGRESS",
+          "COMPLETED",
+          "CANCELLED",
+          "EXPIRED",
+          "PENDING_NO_SHOW",
+          "NO_SHOW"
+        ]
+      },
+      "OrderPreviewRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "quantity"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        }
+      },
+      "OrderCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "quantity",
+          "acceptedPolicyVersion"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "acceptedPolicyVersion": {
+            "type": "integer",
+            "description": "policy.version from the preview; a newer policy returns 409 POLICY_CHANGED"
+          }
+        }
+      },
+      "PolicySummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "noShowRetentionRate",
+          "noShowRetentionAmount",
+          "disputeWindowHours",
+          "cancellationTerms",
+          "refundTerms"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "noShowRetentionRate": {
+            "type": "number"
+          },
+          "noShowRetentionAmount": {
+            "type": "integer",
+            "description": "total x rate, HALF_UP"
+          },
+          "disputeWindowHours": {
+            "type": "integer"
+          },
+          "cancellationTerms": {
+            "type": "string"
+          },
+          "refundTerms": {
+            "type": "string"
+          }
+        }
+      },
+      "OrderPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "storeName",
+          "boxName",
+          "quantity",
+          "available",
+          "unitPrice",
+          "totalAmount",
+          "minimumValuePerBox",
+          "safetyWarnings",
+          "pickupAddress",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "holdMinutes",
+          "policy"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "boxName": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "available": {
+            "type": "integer"
+          },
+          "unitPrice": {
+            "type": "integer"
+          },
+          "totalAmount": {
+            "type": "integer"
+          },
+          "minimumValuePerBox": {
+            "type": "integer"
+          },
+          "safetyWarnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "holdMinutes": {
+            "type": "integer"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/PolicySummary"
+          }
+        }
+      },
+      "OrderView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "orderCode",
+          "status",
+          "storeId",
+          "storeName",
+          "batchId",
+          "quantity",
+          "unitPrice",
+          "totalAmount",
+          "minimumValuePerBox",
+          "currency",
+          "safetyWarnings",
+          "pickupAddress",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "holdExpiresAt",
+          "acceptedAt",
+          "policy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unitPrice": {
+            "type": "integer"
+          },
+          "totalAmount": {
+            "type": "integer"
+          },
+          "minimumValuePerBox": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "safetyWarnings": {
+            "type": "string"
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "holdExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/PolicySummary"
+          }
+        }
       }
     },
     "responses": {
@@ -10039,6 +10528,10 @@
     {
       "name": "Search",
       "description": "Customer search: Surprise Box offers, offer detail, store search and map (UC-07..12; sign-in required)"
+    },
+    {
+      "name": "Orders",
+      "description": "Customer orders: preview, place with box hold, view (UC-13)"
     },
     {
       "name": "Health"

@@ -1,0 +1,40 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T5.2: TẠO ĐƠN VÀ GIỮ HỘP
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t5-2-order-hold (từ feature/t5-1-search 2bfd3d6) | Tài liệu: UC-13 bước 1–6, BR-21..23, BR-27, BR-29, BR-33, D5
+
+1. KẾT QUẢ
+- POST /api/v1/orders/preview {batchId, quantity}: tổng tiền, đơn giá, giá trị cam kết/hộp, cảnh báo, địa chỉ, khung nhận, holdMinutes, chính sách hiện hành
+  (phiên bản, tỷ lệ + số tiền giữ lại no-show, giờ phản ánh, điều khoản hủy/hoàn). Không giữ gì.
+- POST /api/v1/orders (header Idempotency-Key) {batchId, quantity, acceptedPolicyVersion}: một transaction — khóa account khách → store và sale_batch FOR SHARE
+  → chọn N hộp khả dụng FOR UPDATE SKIP LOCKED (hạn an toàn sớm nhất trước) → đủ N mới tạo đơn PENDING_PAYMENT + N box_allocation HELD + hộp RESERVED;
+  hold_expires_at = now + orders.hold-minutes (10). Snapshot: giá, tổng, giá trị tối thiểu, cảnh báo (đợt ∪ món của hộp được giữ), địa chỉ, khung nhận,
+  phiên bản chính sách + tỷ lệ + giờ phản ánh + điều khoản. Mã đơn FR-yyMMdd-XXXXXX.
+- Lỗi 409: NOT_ENOUGH_BOXES (fieldErrors quantity = số khả dụng), BATCH_NOT_OPEN, ORDER_DEADLINE_PASSED, STORE_NOT_ACTIVE, POLICY_CHANGED (fieldErrors =
+  phiên bản hiện hành), OWN_STORE, IDEMPOTENCY_KEY_REUSED. Số lượng 1..5. Gửi lại cùng key → 200 cùng đơn.
+- GET /api/v1/orders/{orderId}: chỉ khách đặt (khác → 404), dựng hoàn toàn từ snapshot.
+- V13: customer_order.idempotency_key + unique (customer_id, idempotency_key). Audit ORDER_CREATED (lịch sử cửa hàng, actorRole CUSTOMER).
+
+2. KIỂM CHỨNG
+Baseline 2bfd3d6: 170 tests, 169 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m57s), 178 tests, 177 PASS, 1 SKIPPED, 0 fail.
+OrderPlacementTests 8 (mới, AC-01..08; đồng thời: 2 khách tranh 1 hộp, 6 khách tranh 3 hộp → đúng 3 thành công, không hộp nào 2 allocation; cùng key đồng thời
+→ một đơn). Chạy lại riêng 2 lần: xanh. Migration 12 → 13; Swagger 66 → 69 paths, 19 → 20 tags.
+Smoke dev (V13; t52-*) 7/7: preview 30 000, giữ lại 15 000; đặt 1 → PENDING_PAYMENT, giữ 10′; cùng key 200; xin 2 khi còn 1 → 409 NOT_ENOUGH_BOXES;
+2 luồng tranh hộp cuối → [201, 409]; counts held 2 / available 0; owner tự đặt → 409.
+
+3. FILE
+resources/db/migration/V13__order_idempotency_key.sql · order/entity/CustomerOrder.kt (M) · order/repository/{CustomerOrder,BoxAllocation}Repository.kt (M) ·
+order/OrderProperties.kt · order/dto/{OrderPreviewRequest,OrderCreateRequest,OrderPreview,OrderView,PolicySummary}.kt ·
+order/service/{OrderPlacementService,OrderCodeGenerator,OrderViews}.kt · order/controller/OrderController.kt · store/service/{StoreHistoryRecorder,StoreViews}.kt (M) ·
+openapi (3 path, tag Orders, 6 schema) · test OrderPlacementTests.kt, support/StoreTestFixtures.kt (openOffer, placeOrder, callWithHeader), hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Có đợt OPEN có hộp (T4.3/T4.4). Token khách (không phải chủ cửa hàng).
+ 2. Orders › POST /api/v1/orders/preview ví dụ "two" (đổi batchId) → ghi lại policy.version.
+ 3. POST /api/v1/orders, header Idempotency-Key = chuỗi bất kỳ (vd checkout-001), body ví dụ "two" (acceptedPolicyVersion theo bước 2) → 201 PENDING_PAYMENT.
+    Gửi lại y nguyên → 200 cùng id. quantity lớn hơn số khả dụng (key mới) → 409 NOT_ENOUGH_BOXES.
+ 4. GET /api/v1/orders/{orderId} → snapshot; token người khác → 404.
+
+5. GIỚI HẠN
+- Hộp giữ chưa tự nhả khi quá 10 phút (T5.3 job). Thanh toán: giai đoạn 6.
+- Chặn chủ cửa hàng tự đặt; staff của cửa hàng vẫn đặt được như khách (chưa có quy tắc nghiệp vụ cấm).
+- Smoke để lại trên DB dev: t52-*, store "T52 Bánh", 2 đơn PENDING_PAYMENT giữ 2 hộp (sẽ hết hạn khi có job T5.3).

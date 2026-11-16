@@ -47,7 +47,7 @@ lựa chọn đề xuất trong Gate A.
 | 0. Baseline | [x] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
-| 5. Tìm kiếm và đặt hàng | [x] T5.1 · [ ] T5.2 · [ ] T5.3 |
+| 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
@@ -207,7 +207,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** đợt PAUSED/hết hàng/quá hạn không hiện; khoảng giá/thời gian sai → 400; phân trang có giới hạn.
 - **Lưu ý từ T3.3:** chỉ cửa hàng `StoreSalesPolicy.isSellable` (ACTIVE) xuất hiện; `GET /api/v1/stores/{id}` (T3.3) đã áp quy tắc này.
 
-### [ ] T5.2 — Tạo đơn và giữ hộp
+### [x] T5.2 — Tạo đơn và giữ hộp
 - **Phụ thuộc:** T5.1, T4.5. **Tài liệu:** UC-13, BR-21..23, BR-27, BR-29, BR-33.
 - **Phạm vi:** preview (số lượng, tổng tiền, giá trị cam kết, cảnh báo, địa chỉ, khung nhận, chính sách hủy/hoàn/
   no-show); khách xác nhận → kiểm tra lại, tạo `customer_order` `PENDING_PAYMENT` với snapshot đầy đủ + chính sách

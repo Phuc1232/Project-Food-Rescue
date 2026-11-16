@@ -137,6 +137,28 @@ abstract class StoreTestFixtures : AuthTestFixtures() {
         return id
     }
 
+    /** T5.2+: an OPEN batch (tomorrow 10:00-12:00) of a new template with [boxes] sellable boxes packed by [ownerEmail]. */
+    fun openOffer(storeId: String, owner: String, ownerEmail: String = "owner@example.test", boxes: Int = 3, price: Int = 30000): UUID {
+        val t = json(call("/api/v1/stores/$storeId/box-templates", "POST", mapOf("name" to "Hộp bánh", "categoryCode" to "BAKERY",
+            "description" to "Bánh trong ngày", "safetyWarnings" to "Có gluten", "defaultSellingPrice" to price, "defaultMinimumValue" to 60000), owner))["id"].asString()
+        val b = json(call("/api/v1/stores/$storeId/sale-batches", "POST", mapOf("templateId" to t, "orderDeadline" to tomorrowAt(9),
+            "pickupStartsAt" to tomorrowAt(10), "pickupEndsAt" to tomorrowAt(12)), owner))["id"].asString()
+        repeat(boxes) { box(storeId, UUID.fromString(b), packerEmail = ownerEmail) }
+        assertEquals(200, call("/api/v1/stores/$storeId/sale-batches/$b/status", "POST", mapOf("action" to "PUBLISH"), owner).statusCode())
+        return UUID.fromString(b)
+    }
+
+    /** T5.2+: places an order with a fresh Idempotency-Key. */
+    fun placeOrder(token: String, batchId: UUID, quantity: Int = 1, key: String = UUID.randomUUID().toString(), policyVersion: Int = 1): HttpResponse<String> =
+        callWithHeader("/api/v1/orders", "POST", mapOf("batchId" to batchId, "quantity" to quantity, "acceptedPolicyVersion" to policyVersion), token, "Idempotency-Key", key)
+
+    fun callWithHeader(path: String, method: String, body: Any?, token: String?, header: String, value: String): HttpResponse<String> {
+        val b = java.net.http.HttpRequest.newBuilder(java.net.URI("http://localhost:$port$contextPath$path")).header("Content-Type", "application/json").header(header, value)
+        token?.takeIf { it.isNotEmpty() }?.let { b.header("Authorization", "Bearer $it") }
+        b.method(method, if (body == null) java.net.http.HttpRequest.BodyPublishers.noBody() else java.net.http.HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
+        return java.net.http.HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.ofString())
+    }
+
     fun batchStatus(id: UUID): String =jdbc.queryForObject("select status from sale_batch where id=?", String::class.java, id)!!
     fun assertField(r: HttpResponse<String>, field: String) = assertTrue(field in fields(r), "$field in ${r.body()}")
 }

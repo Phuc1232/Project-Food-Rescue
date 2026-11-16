@@ -88,5 +88,9 @@ class CustomerOrder(
     var pickupCodeHash: String? = null,
 
     @field:Column(name = "completed_at", nullable = true)
-    var completedAt: Instant? = null
+    var completedAt: Instant? = null,
+
+    // T5.2: Idempotency-Key of the creating request (unique per customer); written once.
+    @field:Column(name = "idempotency_key", nullable = true, length = 64, updatable = false)
+    val idempotencyKey: String? = null
 ) : MutableEntity()

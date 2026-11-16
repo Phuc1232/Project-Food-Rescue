@@ -1,3 +1,4 @@
+// AC-02,05,08 (T5.2): CustomerOrderRepository responsibility.
 package com.foodrescue.backend.order.repository
 
 import com.foodrescue.backend.order.entity.CustomerOrder
@@ -13,4 +14,7 @@ interface CustomerOrderRepository : JpaRepository<CustomerOrder, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select entity from CustomerOrder entity where entity.id = :id")
     fun findForUpdate(@Param("id") id: UUID): CustomerOrder?
+
+    fun findByCustomerIdAndIdempotencyKey(customerId: UUID, key: String): CustomerOrder?
+    fun existsByOrderCode(code: String): Boolean
 }

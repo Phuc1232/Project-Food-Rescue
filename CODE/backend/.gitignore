@@ -38,3 +38,4 @@ docs/specs/*
 !docs/specs/t4-4-box-packing/
 !docs/specs/t4-5-financial-policy/
 !docs/specs/t5-1-search/
+!docs/specs/t5-2-order-hold/
