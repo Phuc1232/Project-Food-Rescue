@@ -1,0 +1,43 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T6.3: WEBHOOK XÁC NHẬN THANH TOÁN
+Ngày: 2026-11-16 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t6-3-payment-webhook (từ feature/t6-2-payment-request 123622f)
+Tài liệu: UC-14 bước 5–8, A2, A3, E1, E2; UC-13 bước 7–8; BR-25, BR-26, BR-30, BR-32
+
+1. KẾT QUẢ
+- POST /api/v1/payments/webhooks/payos (công khai, không token): đọc body thô → PaymentGateway.verifyWebhook (chữ ký trước; sai → 400 INVALID_SIGNATURE,
+  không ghi gì) → PaymentConfirmationService.record trong một transaction:
+  · data.code ≠ "00" → IGNORED; mã đơn provider không có → payment REQUIRES_REVIEW không gắn đơn;
+  · khóa đơn (FOR UPDATE) → (provider, reference) đã có → DUPLICATE (200, không ghi lần hai);
+  · ghi payment; đơn PENDING_PAYMENT đã quá hạn giữ → hết hạn ngay (OrderReleaser, nhả hộp) — BR-26;
+  · đơn PENDING_PAYMENT còn hạn + đúng số tiền + VND → payment VERIFIED, đơn CONFIRMED (PAYMENT_VERIFIED), allocation CONFIRMED, hộp ALLOCATED,
+    financial_event PAYMENT_RECEIVED (business_key PAYMENT_RECEIVED:{payment}) + ledger_entry PAYMENT_RECEIPT, audit ORDER_CONFIRMED (SYSTEM);
+  · còn lại (hết hạn, hủy, đã xác nhận, sai số tiền) → payment REQUIRES_REVIEW (T6.4 xử lý).
+  Trả {success, outcome: CONFIRMED|DUPLICATE|REQUIRES_REVIEW|IGNORED}. Hai bản trùng đến cùng lúc mà chưa gắn đơn: unique violation → DUPLICATE.
+- Sửa code task khác (nêu theo CLAUDE.md §1): middleware/SecurityConfiguration permitAll đúng một route POST /api/v1/payments/webhooks/payos.
+- Không migration.
+
+2. KIỂM CHỨNG
+Baseline 123622f: 198 tests, 197 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (2m08s), 204 tests, 203 PASS, 1 SKIPPED, 0 fail.
+PaymentWebhookTests 6 (mới, AC-01..06; đồng thời: 3 webhook trùng cùng lúc; webhook ‖ job hết hạn). Chạy lại riêng 2 lần: xanh.
+Swagger 74 → 75 paths, 20 → 21 tags (Payments).
+Smoke dev (fake gateway, webhook tự ký bằng khóa fake; t63-*) 6/6: sai chữ ký 400; hợp lệ → CONFIRMED; gửi lại → DUPLICATE; đơn CONFIRMED;
+verifiedPaid 30 000; ledger PAYMENT_RECEIPT 30 000; chuyển thiếu 1 000 → REQUIRES_REVIEW.
+
+3. FILE
+payment/controller/PaymentWebhookController.kt, payment/service/PaymentConfirmationService.kt (New) · payment/repository/PaymentRepository.kt,
+middleware/SecurityConfiguration.kt (M) · openapi (1 path, tag Payments, 2 schema) · test PaymentWebhookTests.kt, SwaggerUiTests.kt.
+
+4. KỊCH BẢN BẤM THỬ
+A. Swagger (fake gateway, dev): Payments › POST /api/v1/payments/webhooks/payos với body sai chữ ký → 400. Body hợp lệ cần ký HMAC-SHA256 bằng khóa fake
+   "fake-checksum-key-for-tests-and-dev-only" trên các trường data sắp xếp (xem script smoke) — tiện nhất là dùng script hoặc test.
+B. Thử thật với payOS (người dùng tự làm, tiền thật nhỏ):
+ 1. .env: PAYMENT_GATEWAY=payos, PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY của kênh thanh toán; khởi động lại app dev.
+ 2. Mở đường hầm: cloudflared tunnel --url http://localhost:8080 (hoặc ngrok http 8080) → lấy https://<tunnel>.
+ 3. Trang my.payos.vn → Kênh thanh toán → Webhook URL = https://<tunnel>/api/v1/payments/webhooks/payos → Lưu (payOS gửi payload thử; app trả 200, ghi
+    payment REQUIRES_REVIEW không gắn đơn — bình thường).
+ 4. Tạo đơn rẻ (vd đợt giá 2 000đ), POST /api/v1/orders/{id}/payment → mở checkoutUrl, chuyển khoản đúng số tiền và nội dung.
+ 5. GET /api/v1/orders/{id} → CONFIRMED trong vài giây. Nếu chưa: xem log "Payment ... needs review" và bảng payment.
+
+5. GIỚI HẠN
+- Hoàn tiền cho tiền đến muộn / sai số tiền, đối chiếu và tra cứu payOS định kỳ: T6.4. Mã nhận hàng khi xác nhận: T7.1. Thông báo: T8.2.
+- Smoke để lại: t63-*, 1 đơn CONFIRMED, 1 payment REQUIRES_REVIEW (thiếu tiền) trên DB dev.

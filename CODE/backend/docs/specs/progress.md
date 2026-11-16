@@ -27,9 +27,9 @@ task trước) vì task trước chưa được merge vào `master`.
 | T5.2 | Tạo đơn và giữ hộp | ✅ | `feature/t5-2-order-hold` | b38a791, 7e1c26c | 178 / 177 / 1 / 0 | [t5-2-order-hold](t5-2-order-hold/) |
 | T5.3 | Hết hạn giữ hộp và theo dõi đơn | ✅ | `feature/t5-3-order-expiry` | 0ebd64b, ae38956 | 184 / 183 / 1 / 0 | [t5-3-order-expiry](t5-3-order-expiry/) |
 | T6.1 | Port thanh toán và adapter payOS | ✅ | `feature/t6-1-payment-gateway` | a771a49, 1d7fb44 | 192 / 191 / 1 / 0 | [t6-1-payment-gateway](t6-1-payment-gateway/) |
-| T6.2 | Tạo yêu cầu thanh toán | ✅ | `feature/t6-2-payment-request` | | 198 / 197 / 1 / 0 | [t6-2-payment-request](t6-2-payment-request/) |
-| T6.3 | Webhook xác nhận thanh toán | 🔄 |  | |  |  |
-| T6.4 | Tiền đến muộn, sai số tiền, đối chiếu | ⬜ | | | | |
+| T6.2 | Tạo yêu cầu thanh toán | ✅ | `feature/t6-2-payment-request` | 5964b72, 123622f | 198 / 197 / 1 / 0 | [t6-2-payment-request](t6-2-payment-request/) |
+| T6.3 | Webhook xác nhận thanh toán | ✅ | `feature/t6-3-payment-webhook` | | 204 / 203 / 1 / 0 | [t6-3-payment-webhook](t6-3-payment-webhook/) |
+| T6.4 | Tiền đến muộn, sai số tiền, đối chiếu | 🔄 |  | |  |  |
 | T6.5 | Hoàn tiền có kiểm soát | ⬜ | | | | |
 | T7.1 | Mã nhận hàng | ⬜ | | | | |
 | T7.2 | Phiên bàn giao và sự cố | ⬜ | | | | |
@@ -62,6 +62,7 @@ task trước) vì task trước chưa được merge vào `master`.
 - T5.3: Job hết hạn 30 s (FOR UPDATE SKIP LOCKED); hủy đơn đã thanh toán để T7.3; cửa hàng thấy tên hiển thị khách, không email; V14 thay trigger để thêm status_reason.
 - T6.1: payment.gateway=fake mặc định (dev/test), prod bắt buộc payos + 3 khóa; expiredAt gửi epoch giây; chữ ký webhook khớp vector tài liệu payOS.
 - T6.2: Mã số provider từ sequence (từ 100000), nội dung FR+mã; ghi ý định → gọi payOS ngoài transaction → ghi kết quả; lỗi không rõ tra cứu theo mã trước khi tạo lại.
+- T6.3: Webhook công khai (sửa SecurityConfiguration đúng 1 route); sai chữ ký 400, hợp lệ luôn 200; số tiền phải bằng đúng tổng; tiền sau hạn giữ → đơn hết hạn, payment REQUIRES_REVIEW.
 
 ## Việc cần người dùng làm / xem lại
 
