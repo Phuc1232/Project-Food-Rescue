@@ -6993,6 +6993,56 @@
           }
         }
       }
+    },
+    "/api/v1/payments/webhooks/payos": {
+      "post": {
+        "operationId": "post_payments_webhooks_payos",
+        "tags": [
+          "Payments"
+        ],
+        "summary": "payOS payment notification (public)",
+        "description": "No user token: the HMAC signature is verified first (invalid -> 400, nothing recorded). A valid notification is recorded once per bank transaction (duplicates -> 200 DUPLICATE); a full payment of a still-held order confirms it, allocates its boxes and writes PAYMENT_RECEIVED + PAYMENT_RECEIPT; late, cancelled, unknown or wrong-amount payments are kept as REQUIRES_REVIEW.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayOsWebhook"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAck"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_SIGNATURE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11150,6 +11200,88 @@
             "description": "Only CONFIRMED means the payment was verified; returning to the app does not (UC-14 A3)"
           }
         }
+      },
+      "PayOsWebhook": {
+        "type": "object",
+        "required": [
+          "code",
+          "desc",
+          "success",
+          "data",
+          "signature"
+        ],
+        "description": "payOS notification; signature = HMAC-SHA256 of the sorted data fields with the checksum key",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "orderCode": {
+                "type": "integer"
+              },
+              "amount": {
+                "type": "integer"
+              },
+              "description": {
+                "type": "string"
+              },
+              "accountNumber": {
+                "type": "string"
+              },
+              "reference": {
+                "type": "string"
+              },
+              "transactionDateTime": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "paymentLinkId": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "WebhookAck": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "success",
+          "outcome"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "CONFIRMED",
+              "DUPLICATE",
+              "REQUIRES_REVIEW",
+              "IGNORED"
+            ]
+          }
+        }
       }
     },
     "responses": {
@@ -11391,6 +11523,10 @@
     {
       "name": "Orders",
       "description": "Customer orders: preview, place with box hold, view (UC-13)"
+    },
+    {
+      "name": "Payments",
+      "description": "Payment provider webhook (UC-14 steps 5-8); called by payOS, not by the app"
     },
     {
       "name": "Health"
