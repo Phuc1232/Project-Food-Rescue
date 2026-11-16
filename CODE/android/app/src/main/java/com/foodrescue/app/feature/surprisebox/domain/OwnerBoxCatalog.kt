@@ -19,11 +19,13 @@ internal fun BoxTemplate.toDraft() = BoxTemplateDraft(id, name, category, descri
 internal data class SaleBatch(
     val id: String, val template: BoxTemplate, val quantity: Int, val salesStart: Long, val salesEnd: Long,
     val pickupStart: Long, val pickupEnd: Long, val control: BatchControl = BatchControl.DRAFT,
-    val held: Int = 0, val sold: Int = 0,
+    val held: Int = 0, val sold: Int = 0, val packed: Int = 0, val eligible: Int = 0, val handedOver: Int = 0,
+    val rejected: Int = 0, val expired: Int = 0, val recheck: Int = 0,
 ) {
     init { require(quantity > 0 && held >= 0 && sold >= 0 && held.toLong() + sold <= quantity) }
     val remaining: Int get() = quantity - held - sold
     val committed: Int get() = held + sold
+    val prepared: Int get() = (packed - rejected - expired).coerceAtLeast(0)
 }
 internal data class SaleBatchDraft(
     val id: String? = null, val templateId: String = "", val quantity: String = "",
