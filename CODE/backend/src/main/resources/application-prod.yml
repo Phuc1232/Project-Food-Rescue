@@ -27,3 +27,6 @@ auth:
 files:
   # Required in production: a persistent volume outside the source tree (roadmap D4).
   storage-dir: ${FILE_STORAGE_DIR}
+# T6.1: production always uses payOS; missing keys stop the application at startup.
+payment:
+  gateway: payos

@@ -1,0 +1,40 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T6.1: PORT THANH TOÁN VÀ ADAPTER PAYOS
+Ngày: 2026-11-16 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t6-1-payment-gateway (từ feature/t5-3-order-expiry ae38956)
+Nguồn: roadmap D2, D3; CLAUDE.md §5–6; tài liệu payOS (api, webhook signature, webhook payload) đọc 2026-11-16
+
+1. KẾT QUẢ
+- payment/gateway/PaymentGateway: createLink, getLink(orderCode), cancelLink, verifyWebhook(rawBody) (chữ ký trước, không hợp lệ → InvalidSignatureException).
+- PayOsPaymentGateway (java.net.http, không thêm thư viện): POST /v2/payment-requests (orderCode số, amount, description, cancelUrl, returnUrl,
+  expiredAt epoch giây, signature HMAC-SHA256 trên amount&cancelUrl&description&orderCode&returnUrl), GET /v2/payment-requests/{orderCode},
+  POST /v2/payment-requests/{orderCode}/cancel; header x-client-id, x-api-key; code ≠ "00" → lỗi. Lỗi có kiểu PaymentGatewayException.Kind:
+  NOT_CONFIGURED, TIMEOUT, NETWORK, REJECTED, UNAVAILABLE, INVALID_RESPONSE — không chứa khóa.
+- PayOsSignature: chữ ký webhook trên data (key sắp xếp, null/"null"/"undefined" → "", mảng/đối tượng → JSON key sắp xếp, không URL-encode, hex),
+  so sánh constant-time. Đã khớp vector mẫu tài liệu (checksum key mẫu → 412e915d…eaa03).
+- FakePaymentGateway: cùng hợp đồng và thuật toán ký (khóa test cố định), webhookFor(...) sinh webhook đã ký, failNext mô phỏng lỗi; dùng cho test/dev.
+- Cấu hình: payment.gateway = fake (mặc định) | payos; prod luôn payos và dừng khởi động nếu thiếu PAYOS_CLIENT_ID/PAYOS_API_KEY/PAYOS_CHECKSUM_KEY;
+  payos.base-url, return-url, cancel-url, connect-timeout 5s, read-timeout 10s. .env.example cập nhật (giá trị rỗng). PayOsProperties.toString không in khóa.
+- Không endpoint, không migration (OpenAPI không đổi).
+
+2. KIỂM CHỨNG
+Baseline ae38956: 184 tests, 183 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (2m17s), 192 tests, 191 PASS, 1 SKIPPED, 0 fail.
+Mới: PayOsSignatureTests 4 (vector tài liệu, giả mạo/sai/thiếu chữ ký, quy tắc null/mảng, chữ ký tạo link), PayOsPaymentGatewayTests 3 (HTTP server
+giả cục bộ: đúng path/header/body; REJECTED, 401, 503, HTML, thiếu trường, timeout, cổng đóng; không lộ khóa; thiếu khóa), FakePaymentGatewayTests 1.
+Lỗi phát hiện khi build: 4 test profile prod (ProductionApiContractTests, SwaggerUiProduction/MixedDev/MixedTest) không khởi động vì prod nay bắt buộc
+khóa payOS → fixture cấp khóa giả + base URL 127.0.0.1:9 (không bao giờ gọi payOS thật).
+Kiểm tra khởi động: PAYMENT_GATEWAY=payos không có khóa → app dừng với "payment.gateway=payos needs PAYOS_CLIENT_ID, PAYOS_API_KEY and PAYOS_CHECKSUM_KEY";
+log không chứa khóa.
+
+3. FILE
+payment/gateway/{PaymentGateway,PaymentLinkRequest,PaymentLink,PaymentLinkInfo,PaymentLinkStatus,WebhookPayment,InvalidSignatureException,
+PaymentGatewayException,PayOsSignature,PayOsProperties,PayOsPaymentGateway,FakePaymentGateway,PaymentGatewayConfiguration}.kt (New) ·
+resources/application.yml, application-prod.yml, .env.example (M) · test PayOsSignatureTests.kt, PayOsPaymentGatewayTests.kt, FakePaymentGatewayTests.kt (New),
+support/AuthTestFixtures.kt (khóa giả).
+
+4. KỊCH BẢN THỬ
+Không có endpoint mới trên Swagger. Thử với payOS thật ở T6.3 (cần khóa kênh thanh toán trong .env, PAYMENT_GATEWAY=payos, webhook URL công khai).
+
+5. GIỚI HẠN / GIẢ ĐỊNH
+- expiredAt gửi epoch giây (tài liệu chỉ ghi "Unix Timestamp, Int32"). Trạng thái PAID/EXPIRED/PROCESSING/UNDERPAID ánh xạ theo SDK; tài liệu chỉ
+  liệt kê PENDING/CANCELLED. Chưa kiểm chứng chữ ký phản hồi của API tạo link (tài liệu không mô tả). Môi trường sandbox chưa xác minh.
+- description ≤ 9 ký tự với tài khoản không liên kết qua payOS → T6.2 dùng mã ngắn.
