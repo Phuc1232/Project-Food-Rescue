@@ -42,3 +42,4 @@ docs/specs/*
 !docs/specs/t5-3-order-expiry/
 !docs/specs/t6-1-payment-gateway/
 !docs/specs/t6-2-payment-request/
+!docs/specs/t6-3-payment-webhook/
