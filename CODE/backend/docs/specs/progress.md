@@ -24,9 +24,9 @@ task trước) vì task trước chưa được merge vào `master`.
 | T4.4 | Đóng gói hộp thực tế | ✅ | `feature/t4-4-box-packing` | 4d4e892, e76dd84 | 158 / 157 / 1 / 0 | [t4-4-box-packing](t4-4-box-packing/) |
 | T4.5 | Chính sách tài chính theo phiên bản | ✅ | `feature/t4-5-financial-policy` | 75705c6, 6d8170a | 164 / 163 / 1 / 0 | [t4-5-financial-policy](t4-5-financial-policy/) |
 | T5.1 | Tìm kiếm Surprise Box và cửa hàng | ✅ | `feature/t5-1-search` | dcc2773, 2bfd3d6 | 170 / 169 / 1 / 0 | [t5-1-search](t5-1-search/) |
-| T5.2 | Tạo đơn và giữ hộp | ✅ | `feature/t5-2-order-hold` | | 178 / 177 / 1 / 0 | [t5-2-order-hold](t5-2-order-hold/) |
-| T5.3 | Hết hạn giữ hộp và theo dõi đơn | 🔄 |  | |  |  |
-| T6.1 | Port thanh toán và adapter payOS | ⬜ | | | | |
+| T5.2 | Tạo đơn và giữ hộp | ✅ | `feature/t5-2-order-hold` | b38a791, 7e1c26c | 178 / 177 / 1 / 0 | [t5-2-order-hold](t5-2-order-hold/) |
+| T5.3 | Hết hạn giữ hộp và theo dõi đơn | ✅ | `feature/t5-3-order-expiry` | | 184 / 183 / 1 / 0 | [t5-3-order-expiry](t5-3-order-expiry/) |
+| T6.1 | Port thanh toán và adapter payOS | 🔄 |  | |  |  |
 | T6.2 | Tạo yêu cầu thanh toán | ⬜ | | | | |
 | T6.3 | Webhook xác nhận thanh toán | ⬜ | | | | |
 | T6.4 | Tiền đến muộn, sai số tiền, đối chiếu | ⬜ | | | | |
@@ -59,6 +59,7 @@ task trước) vì task trước chưa được merge vào `master`.
 - T4.5: Seed hoa hồng 10%, giữ lại no-show 50% (giả định, tài liệu không nêu số); hiệu lực = effective_from mới nhất ≤ t; giờ phản ánh cố định 48.
 - T5.1: Khu vực = vị trí + bán kính hoặc khung bản đồ; chi tiết đợt PAUSED/ENDED vẫn xem được (orderable=false); ảnh bìa cho khách qua /surprise-boxes/{id}/cover.
 - T5.2: Giữ hộp: khóa account → store/batch FOR SHARE → hộp FOR UPDATE SKIP LOCKED; tối đa 5 hộp/đơn; chủ cửa hàng không tự đặt; acceptedPolicyVersion bắt buộc.
+- T5.3: Job hết hạn 30 s (FOR UPDATE SKIP LOCKED); hủy đơn đã thanh toán để T7.3; cửa hàng thấy tên hiển thị khách, không email; V14 thay trigger để thêm status_reason.
 
 ## Việc cần người dùng làm / xem lại
 

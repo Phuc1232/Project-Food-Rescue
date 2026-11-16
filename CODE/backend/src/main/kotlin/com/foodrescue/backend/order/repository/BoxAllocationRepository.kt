@@ -7,4 +7,5 @@ import java.util.UUID
 
 interface BoxAllocationRepository : JpaRepository<BoxAllocation, UUID> {
     fun findAllByOrderIdOrderByReservedAt(orderId: UUID): List<BoxAllocation>
+    fun findAllByOrderIdAndStatus(orderId: UUID, status: com.foodrescue.backend.order.AllocationStatus): List<BoxAllocation>
 }

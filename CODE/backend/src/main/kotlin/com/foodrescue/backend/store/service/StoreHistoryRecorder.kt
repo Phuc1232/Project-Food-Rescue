@@ -11,7 +11,7 @@ import java.util.UUID
 /** Store change history = audit_log rows with before/after JSON (T3.3 Q5, BR-56). Call inside the changing transaction. */
 @Component
 class StoreHistoryRecorder(private val audit: AuditService, private val mapper: ObjectMapper) {
-    fun record(actor: Account, store: Store, entityType: String, entityId: UUID, action: String,
+    fun record(actor: Account?, store: Store, entityType: String, entityId: UUID, action: String,
                before: Map<String, Any?>?, after: Map<String, Any?>?) {
         audit.record(actor, entityType, entityId, action, store, after?.let(mapper::writeValueAsString),
             before?.let(mapper::writeValueAsString))

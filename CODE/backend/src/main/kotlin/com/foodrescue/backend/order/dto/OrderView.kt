@@ -10,5 +10,5 @@ data class OrderView(
     val id: UUID, val orderCode: String, val status: String, val storeId: UUID, val storeName: String, val batchId: UUID, val quantity: Int,
     val unitPrice: BigDecimal, val totalAmount: BigDecimal, val minimumValuePerBox: BigDecimal, val currency: String, val safetyWarnings: String,
     val pickupAddress: String, val pickupStartsAt: Instant, val pickupEndsAt: Instant, val holdExpiresAt: Instant, val acceptedAt: Instant,
-    val policy: PolicySummary
+    val policy: PolicySummary, val statusReason: String? = null, val statusChangedAt: Instant? = null
 )

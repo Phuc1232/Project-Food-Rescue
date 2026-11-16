@@ -34,6 +34,8 @@ object TestAuthKeys {
         r.add("spring.mail.host") { "localhost" }; r.add("spring.mail.port") { 1025 }
         r.add("auth.jwt.key-id") { "test-key" }; r.add("auth.rate-limit-key-secret") { "test-only-secret-at-least-32-bytes-long" }
         r.add("files.storage-dir") { fileRoot.toString() }
+        // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.
+        r.add("orders.expiry-job-enabled") { "false" }
     }
     /** T3.1: uploaded test files live in a throwaway directory, never in the developer's real storage. */
     val fileRoot: java.nio.file.Path=Files.createTempDirectory("foodrescue-test-files")
