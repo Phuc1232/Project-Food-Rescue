@@ -44,12 +44,12 @@ internal fun SaleBatchDraft.validationErrors(catalog: OwnerBoxCatalog, now: Long
     val sameTemplate = old?.template?.id == templateId
     if (!sameTemplate && catalog.templates.none { it.id == templateId && it.active }) add(BoxField.TEMPLATE)
     val count = quantity.takeIf { it.matches(Regex("[0-9]{1,5}")) }?.toIntOrNull()
-    if (count == null || count !in 1..9999 || count < (old?.committed ?: 0)) add(BoxField.QUANTITY)
+    if (count == null || count !in 1..9999 || count < maxOf(old?.committed ?: 0, old?.prepared ?: 0)) add(BoxField.QUANTITY)
     if (salesStart <= 0 || salesStart >= salesEnd || salesEnd <= now) add(BoxField.SALES)
     if (pickupStart < salesEnd || pickupEnd <= pickupStart) add(BoxField.PICKUP)
     // A published start time describes history; only a draft may move it.
     if (old != null && old.control != BatchControl.DRAFT && (templateId != old.template.id || salesStart != old.salesStart)) add(BoxField.LOCKED)
-    if (old != null && old.committed > 0 && (templateId != old.template.id || salesStart != old.salesStart ||
+    if (old != null && (old.committed > 0 || old.packed > 0) && (templateId != old.template.id || salesStart != old.salesStart ||
             salesEnd != old.salesEnd || pickupStart != old.pickupStart || pickupEnd != old.pickupEnd)) add(BoxField.LOCKED)
 }
 
@@ -68,7 +68,8 @@ internal fun OwnerBoxCatalog.saveBatch(draft: SaleBatchDraft, now: Long, newId: 
     val previous = batches.firstOrNull { it.id == draft.id }
     val snapshot = previous?.template?.takeIf { it.id == draft.templateId } ?: templates.first { it.id == draft.templateId }
     val batch = SaleBatch(previous?.id ?: newId, snapshot, draft.quantity.toInt(), draft.salesStart, draft.salesEnd,
-        draft.pickupStart, draft.pickupEnd, previous?.control ?: BatchControl.DRAFT, previous?.held ?: 0, previous?.sold ?: 0)
+        draft.pickupStart, draft.pickupEnd, previous?.control ?: BatchControl.DRAFT, previous?.held ?: 0, previous?.sold ?: 0,
+        previous?.packed ?: 0, previous?.eligible ?: 0, previous?.handedOver ?: 0, previous?.rejected ?: 0, previous?.expired ?: 0, previous?.recheck ?: 0)
     return copy(batches = if (previous == null) batches + batch else batches.map { if (it.id == batch.id) batch else it })
 }
 

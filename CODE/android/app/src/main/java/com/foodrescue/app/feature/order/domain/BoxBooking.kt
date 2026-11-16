@@ -37,6 +37,9 @@ internal data class BoxReservation(
     val refund: OrderRefund? = null,
     val boxSnapshot: CatalogBox? = null,
     val ownerCancellation: OwnerCancellationRequest? = null,
+    val handover: HandoverReceipt? = null,
+    val handoverFailures: List<HandoverFailure> = emptyList(),
+    val noShow: NoShowReceipt? = null,
 ) {
     init {
         require(id.isNotBlank() && quantity > 0)
@@ -46,8 +49,15 @@ internal data class BoxReservation(
         require(cancelledAtMillis == null || cancelledAtMillis >= createdAtMillis)
         require(collectedAtMillis == null || (isPaid && collectedAtMillis >= createdAtMillis))
         require(cancelledAtMillis == null || collectedAtMillis == null)
+        require(handover == null || (handover.atMillis == collectedAtMillis && handover.boxIds.size == quantity &&
+            handover.boxIds.distinct().size == quantity && handover.boxIds.none(String::isBlank) && handover.requestId.isNotBlank()))
         require(cancellationReason == null || cancelledAtMillis != null)
         require(cancellationNote.length <= 500)
+        require(noShow == null || (isPaid && collectedAtMillis == null && cancelledAtMillis == null && ownerCancellation == null &&
+            handoverFailures.isEmpty() && noShow.atMillis >= pickup.endMillis && noShow.requestId.isNotBlank() &&
+            noShow.employeeId.isNotBlank() && noShow.employeeName.isNotBlank() && noShow.boxIds.size <= quantity &&
+            noShow.boxIds.distinct().size == noShow.boxIds.size && noShow.boxIds.none(String::isBlank) &&
+            noShow.note.length <= 500 && noShow.note.none { it.isISOControl() && it != '\n' }))
         require(refund == null || (isPaid && cancelledAtMillis == refund.requestedAtMillis && refund.amount <= total))
     }
 

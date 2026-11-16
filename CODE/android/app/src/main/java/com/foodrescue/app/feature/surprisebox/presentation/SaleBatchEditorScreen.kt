@@ -19,7 +19,7 @@ internal fun SaleBatchEditorScreen(state: OwnerBoxesUiState, onBack: () -> Unit,
     val old = state.editedBatch
     val template = state.batchTemplate
     val lockTemplate = old != null && (old.control != BatchControl.DRAFT || old.committed > 0)
-    val lockTimes = old != null && old.committed > 0
+    val lockTimes = old != null && (old.committed > 0 || old.packed > 0)
     FoodRescuePage(if (draft.id == null) "Tạo đợt bán" else "Chỉnh sửa đợt bán", onBack, modifier, footer = {
         FoodRescueButton(if (state.busy) "Đang lưu…" else "Lưu đợt bán", onSave, Modifier.fillMaxWidth(), enabled = !state.busy)
     }) {
@@ -38,6 +38,8 @@ internal fun SaleBatchEditorScreen(state: OwnerBoxesUiState, onBack: () -> Unit,
         if (old != null && old.committed > 0) Text("${old.held} hộp đang giữ · ${old.sold} hộp đã bán. Giá và lịch nhận đã được chốt cho khách.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         HorizontalDivider()
+        if (old != null && old.packed > 0) Text("${old.packed} hộp đã đóng gói, ${old.prepared} hộp còn tính vào tiến độ. Giữ nguyên lịch nhận và số lượng đủ cho các hộp hợp lệ cùng đơn đã giữ hoặc bán.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Thời gian mở bán", style = MaterialTheme.typography.titleLarge)
         BoxDateTimeField("Mở bán lúc", draft.salesStart, { onEdit(draft.copy(salesStart = it)) }, enabled = !state.busy && !lockTemplate)
         BoxDateTimeField("Đóng bán lúc", draft.salesEnd, { onEdit(draft.copy(salesEnd = it)) }, enabled = !state.busy && !lockTimes)

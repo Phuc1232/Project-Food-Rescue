@@ -80,7 +80,7 @@ internal fun buildRevenueSnapshot(storeId: Int, orders: List<BoxReservation>, op
             refund != null && refund.status != com.foodrescue.app.feature.refund.domain.RefundStatus.COMPLETED -> RevenueEntryStatus.REFUND_PENDING
             refund != null && refund.amount == order.total -> RevenueEntryStatus.REFUNDED
             order.cancelledAtMillis != null -> RevenueEntryStatus.CANCELLED
-            order.ownerCancellation != null || order.id in openComplaintIds -> RevenueEntryStatus.HELD
+            order.noShow != null || order.ownerCancellation != null || order.id in openComplaintIds -> RevenueEntryStatus.HELD
             order.collectedAtMillis != null && order.collectedAtMillis <= now -> RevenueEntryStatus.ELIGIBLE
             else -> RevenueEntryStatus.WAITING_PICKUP
         }

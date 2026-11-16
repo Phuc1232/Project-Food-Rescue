@@ -34,7 +34,8 @@ internal val RevenueEntry.explanation: String get() {
     val currentStatus = when (status) {
     RevenueEntryStatus.ELIGIBLE -> "Đơn đã giao và đủ điều kiện tính khoản cửa hàng được hưởng."
     RevenueEntryStatus.WAITING_PICKUP -> "Khách đã thanh toán. Khoản này chưa được đưa vào đối soát vì chưa xác nhận giao hộp."
-    RevenueEntryStatus.HELD -> if (order.ownerCancellation != null) "Đang chờ xử lý yêu cầu hủy của cửa hàng. Khoản này được tạm giữ."
+    RevenueEntryStatus.HELD -> if (order.noShow != null) "Đơn đã xác nhận khách không đến nhận. Khoản thanh toán chờ xử lý, chưa được đưa vào đối soát."
+        else if (order.ownerCancellation != null) "Đang chờ xử lý yêu cầu hủy của cửa hàng. Khoản này được tạm giữ."
         else "Đơn đang có khiếu nại cần xử lý. Khoản được hưởng hiện tại đang tạm giữ."
     RevenueEntryStatus.REFUND_PENDING -> if (order.refund?.status == com.foodrescue.app.feature.refund.domain.RefundStatus.FAILED)
         "Hoàn tiền chưa thành công. Số tiền vẫn được giữ để xử lý hoàn cho khách." else "Khoản hoàn cho khách đang được xử lý và không được tính vào khoản cửa hàng được hưởng."

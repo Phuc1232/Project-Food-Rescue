@@ -26,6 +26,9 @@ internal class LocalMenuRepository(context: Context, email: String, private val 
     private val mutex = locks.getOrPut(key) { Mutex() }
 
     override suspend fun load(): StoreMenu = withContext(Dispatchers.IO) { mutex.withLock { read() } }
+    internal suspend fun <T> withCurrentMenu(block: suspend (StoreMenu) -> T): T = withContext(Dispatchers.IO) {
+        mutex.withLock { block(read()) }
+    }
 
     override suspend fun save(draft: MenuDraft): StoreMenu = change { menu ->
         val errors = draft.validationErrors(menu.items)

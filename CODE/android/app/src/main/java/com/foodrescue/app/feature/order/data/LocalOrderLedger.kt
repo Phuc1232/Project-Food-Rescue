@@ -17,12 +17,20 @@ internal class LocalOrderLedger(context: Context) : BoxStockSource {
         val rows = JSONArray(preferences.getString("orders", "[]"))
         return (0 until rows.length()).map { rows.getJSONObject(it).let { row -> Row(row.getString("account"), OrderJson.read(row.getJSONObject("order"))) } }
     }
-    @SuppressLint("UseKtx")
-    internal fun write(rows: List<Row>, migrated: String? = null) {
+    // Commit and rollback settle while holding the commerce lock; callers must never observe a failed receipt.
+    @SuppressLint("UseKtx", "ApplySharedPref")
+    internal fun write(rows: List<Row>, migrated: String? = null) = synchronized(LocalCommerceLock) {
+        val before = preferences.getString("orders", null)
+        val wasMigrated = migrated?.let { preferences.getBoolean("migrated.$it", false) }
         val json = JSONArray().apply { rows.forEach { put(JSONObject().apply { put("account", it.account); put("order", OrderJson.write(it.order)) }) } }
         val editor = preferences.edit().putString("orders", json.toString())
         if (migrated != null) editor.putBoolean("migrated.$migrated", true)
-        check(editor.commit()) { "Order write failed" }
+        if (!editor.commit()) {
+            val rollback = preferences.edit().putString("orders", before)
+            if (migrated != null) rollback.putBoolean("migrated.$migrated", wasMigrated == true)
+            rollback.commit()
+            error("Order write failed")
+        }
     }
     internal fun migrate(account: String, legacy: OrderHistoryStore) = synchronized(LocalCommerceLock) {
         if (!preferences.getBoolean("migrated.$account", false)) {

@@ -31,6 +31,13 @@ internal fun SaleBatchDetailScreen(batch: SaleBatch, now: Long, busy: Boolean, e
             BoxStock(batch)
             HorizontalDivider()
             StoreValue("Tổng mở bán", "${batch.quantity} hộp")
+            HorizontalDivider()
+            StoreValue("Đã đóng gói", "${batch.packed} hộp")
+            StoreValue("Đủ điều kiện bàn giao", "${batch.eligible} hộp")
+            StoreValue("Không đạt", "${batch.rejected} hộp")
+            StoreValue("Hết hạn, chưa bàn giao", "${batch.expired} hộp")
+            StoreValue("Đã bàn giao", "${batch.handedOver} hộp")
+            StoreValue("Chờ kiểm tra lại", "${batch.recheck} hộp")
         }
         FoodRescueCard {
             Text("Lịch bán và nhận hàng", style = MaterialTheme.typography.titleMedium)

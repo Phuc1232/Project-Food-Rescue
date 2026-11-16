@@ -26,6 +26,15 @@ internal class LocalEmployeeDirectory(context: Context) : StaffAccessRepository 
         }
     }
     internal fun isOwner(email: String): Boolean = LocalOwnerStoreRepository(context, email).hasApplication()
+    /** Keep membership stable through an authorized operation, including its final persistence. */
+    internal suspend fun <T> withMembership(email: String, block: suspend (String?, StaffAccess?) -> T): T = withContext(Dispatchers.IO) {
+        lock.withLock {
+            val record = readLocked().firstOrNull { it.employee.email == employeeEmail(email) }
+            val store = record?.let { LocalOwnerStoreRepository(context, it.ownerEmail).load() }
+            block(record?.ownerEmail, if (record == null || store == null) null else
+                StaffAccess(record.employee, store.profile.name, store.status == StoreReviewStatus.APPROVED))
+        }
+    }
     override suspend fun find(email: String): StaffAccess? = withContext(Dispatchers.IO) {
         lock.withLock {
             val record = readLocked().firstOrNull { it.employee.email == employeeEmail(email) } ?: return@withLock null

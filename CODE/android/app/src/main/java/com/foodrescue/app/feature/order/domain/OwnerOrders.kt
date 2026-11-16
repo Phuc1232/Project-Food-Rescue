@@ -15,7 +15,7 @@ internal interface OwnerOrderRepository {
 }
 
 internal fun ownerCancellationIssue(order: BoxReservation, draft: OwnerCancellationDraft): OwnerCancellationIssue? = when {
-    order.id != draft.orderId || !order.isPaid || order.cancelledAtMillis != null || order.collectedAtMillis != null -> OwnerCancellationIssue.NOT_ELIGIBLE
+    order.id != draft.orderId || !order.isPaid || order.noShow != null || order.cancelledAtMillis != null || order.collectedAtMillis != null -> OwnerCancellationIssue.NOT_ELIGIBLE
     order.ownerCancellation != null -> OwnerCancellationIssue.ALREADY_REQUESTED
     draft.reason == null -> OwnerCancellationIssue.REASON_REQUIRED
     draft.note.length > 500 -> OwnerCancellationIssue.NOTE_TOO_LONG
@@ -45,7 +45,7 @@ internal fun selectOwnerOrders(orders: List<BoxReservation>, query: String, filt
             OwnerOrderFilter.UNPAID -> status == OrderStatus.WAITING_PAYMENT || status == OrderStatus.CHECKING_PAYMENT
             OwnerOrderFilter.CANCELLATION_REQUESTED -> status == OrderStatus.CANCELLATION_REQUESTED
             OwnerOrderFilter.COLLECTED -> status == OrderStatus.COLLECTED
-            OwnerOrderFilter.CLOSED -> status == OrderStatus.CANCELLED || status == OrderStatus.EXPIRED
+            OwnerOrderFilter.CLOSED -> status == OrderStatus.NO_SHOW || status == OrderStatus.CANCELLED || status == OrderStatus.EXPIRED
         }
         val dayMatches = when (pickup) {
             OwnerPickupFilter.ALL -> true
