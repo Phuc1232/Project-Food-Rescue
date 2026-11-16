@@ -45,7 +45,7 @@ lựa chọn đề xuất trong Gate A.
 | Giai đoạn | Task |
 |---|---|
 | 0. Baseline | [x] T0 · [x] T2.1 |
-| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [ ] T3.4 · [ ] T3.5 |
+| 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [ ] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [ ] T4.1 · [ ] T4.2 · [ ] T4.3 · [ ] T4.4 · [ ] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [ ] T5.1 · [ ] T5.2 · [ ] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
@@ -119,7 +119,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **Kết quả:** `docs/specs/t3-3-store-profile/`. Tên/địa chỉ/tọa độ → `store_change_request` chờ admin duyệt; mô tả/giờ áp dụng ngay;
   lịch sử ở `audit_log` (before/after). Khóa → đợt DRAFT/OPEN/PAUSED chưa có đơn thành BLOCKED; quy tắc bán chung `StoreSalesPolicy`.
 
-### [ ] T3.4 — Quản lý nhân viên và phân quyền
+### [x] T3.4 — Quản lý nhân viên và phân quyền
 - **Phụ thuộc:** T3.2. **Tài liệu:** UC-43..46, BR-03, SD-02.
 - **Phạm vi:** seed permission code nghiệp vụ staff (đề xuất: `MENU_VIEW`, `BOX_PACK`, `BOX_MANAGE`, `PICKUP_HANDLE`,
   `ORDER_VIEW`, `NO_SHOW_CONFIRM` — chốt ở Gate A). **Không tồn tại** quyền sửa giá, giá bán, hoa hồng, chính sách

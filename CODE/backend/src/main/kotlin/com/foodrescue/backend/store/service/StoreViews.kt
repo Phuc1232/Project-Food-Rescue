@@ -1,7 +1,9 @@
 // AC-01,05,07,12,13,15: StoreViews responsibility.
 package com.foodrescue.backend.store.service
 
+import com.foodrescue.backend.account.PlatformRole
 import com.foodrescue.backend.account.entity.Account
+import com.foodrescue.backend.account.repository.AccountRoleRepository
 import com.foodrescue.backend.audit.entity.AuditLog
 import com.foodrescue.backend.file.repository.StoredFileRepository
 import com.foodrescue.backend.store.StoreChangeRequestStatus
@@ -20,7 +22,8 @@ class StoreViews(
     private val mapper: ObjectMapper,
     private val hours: StoreOpeningHourRepository,
     private val requests: StoreChangeRequestRepository,
-    private val files: StoredFileRepository
+    private val files: StoredFileRepository,
+    private val roles: AccountRoleRepository
 ) {
     fun openingHours(store: Store): List<OpeningHourView> = hours.findAllByStoreIdOrderByDayOfWeekAscShiftNumberAsc(store.id!!).map {
         OpeningHourView(it.dayOfWeek, it.shiftNumber, it.opensAt.format(PartnerApplicationViews.HH_MM),
@@ -45,10 +48,15 @@ class StoreViews(
     fun adminRequest(r: StoreChangeRequest) = AdminChangeRequestView(request(r), StoreSummary(r.store.id!!, r.store.name, r.store.status.name),
         account(r.requestedBy), r.resolvedBy?.let(::account))
 
-    /** Owners see the actor's role only (BR-T33-10); administrators also see the actor id. */
+    /** Owners see the actor's role only (BR-T33-10); administrators also see the actor id. Role: OWNER, ADMIN or STAFF (T3.4). */
     fun history(log: AuditLog, store: Store, withActorId: Boolean): StoreHistoryItem {
         val actorId = log.actor?.id
-        return StoreHistoryItem(log.action, log.occurredAt, if (actorId == store.owner.id) "OWNER" else "ADMIN",
+        val role = when {
+            actorId == store.owner.id -> "OWNER"
+            actorId != null && roles.existsByAccountIdAndRole(actorId, PlatformRole.ADMIN) -> "ADMIN"
+            else -> "STAFF"
+        }
+        return StoreHistoryItem(log.action, log.occurredAt, role,
             if (withActorId) actorId else null, log.beforeState?.let(mapper::readTree), log.afterState?.let(mapper::readTree))
     }
 

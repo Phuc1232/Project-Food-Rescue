@@ -1,0 +1,68 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T3.4: QUẢN LÝ NHÂN VIÊN VÀ PHÂN QUYỀN
+Ngày: 2026-11-15 | Trạng thái: DONE
+Card: docs/specs/roadmap-3-9.md#t34 | Gate A: 01-business-definition.md (agent tự chốt) | Plan: 02-plan.md
+Nhánh: feature/t3-4-staff-management (tách từ feature/t3-3-store-profile a6a3d66) | Tài liệu: UC-43..46, BR-03, SD-02, D01
+
+1. KẾT QUẢ
+- Danh mục quyền staff (V7 seed): MENU_VIEW, BOX_PACK, BOX_MANAGE, PICKUP_HANDLE, ORDER_VIEW, NO_SHOW_CONFIRM. Mã khác (owner, admin,
+  giá, hoa hồng, chính sách, STORE_PROFILE_MANAGE, STAFF_MANAGE) → 400 permissions[i].
+- Owner (mã STAFF_MANAGE không seed → chỉ owner): GET/POST /api/v1/stores/{storeId}/staff, PUT .../{assignmentId}/permissions,
+  POST .../{assignmentId}/revoke {reason}.
+- D01: email chưa có tài khoản → tạo tài khoản PENDING_VERIFICATION (mật khẩu ngẫu nhiên), phân công ACTIVE, gửi link SET_PASSWORD
+  (72h, auth.setup-ttl) qua AuthMailSender; đặt mật khẩu bằng POST /api/v1/auth/reset-password → tài khoản ACTIVE + đã xác minh.
+  Email đã có tài khoản ACTIVE đã xác minh → lời mời INVITED, người đó GET /api/v1/staff/assignments rồi accept/decline.
+  Tài khoản LOCKED/chưa xác minh → 409. Owner tự thêm mình → 400. Đã INVITED/ACTIVE → 409. REVOKED/DECLINED → mời lại dùng lại dòng.
+- Thu hồi: REVOKED + xóa quyền hiện hành; StoreAuthorizationService đọc DB mỗi request nên token cũ mất ngữ cảnh store ngay; tài
+  khoản không bị khóa. Thu hồi lặp → 200, không ghi trùng.
+- Khóa: thêm nhân viên khóa dòng store; đổi quyền/thu hồi/chấp nhận khóa dòng phân công; tạo tài khoản trùng đồng thời → 409.
+- Audit (entity STAFF_ASSIGNMENT, có store_id): STAFF_ACCOUNT_CREATED, STAFF_INVITED, STAFF_INVITATION_ACCEPTED/DECLINED,
+  STAFF_PERMISSIONS_CHANGED (before/after), STAFF_REVOKED (lý do). Hiện trong lịch sử cửa hàng T3.3; vai trò người làm nay là
+  OWNER / ADMIN / STAFF (tra role thật).
+- Sửa auth (Gate A Q3): TokenPurpose.SET_PASSWORD, AuthProperties.setupTtl, tiêu đề mail riêng, PasswordRecoveryService.reset nhận
+  SET_PASSWORD; điều kiện RESET_PASSWORD không đổi (PasswordRecoveryTests vẫn qua).
+- Test fixture: AuthTestFixtures không TRUNCATE bảng dữ liệu tham chiếu (REFERENCE_TABLES = permission) để seed migration còn.
+
+2. KIỂM CHỨNG
+Baseline (a6a3d66): 113 tests, 112 PASS, 1 SKIPPED.
+Build cuối: sh ./gradlew cleanTest build --console=plain → BUILD SUCCESSFUL. 122 tests, 121 PASS, 1 SKIPPED (opt-in Swagger browser), 0 fail.
+Thay đổi theo suite: StaffManagementTests 9 (mới; AC-01..10, đồng thời AC-05), AuthMigrationTests/FoodRescueApplicationTests
+(6 → 7 migration), SwaggerUiTests (34 → 40 paths, 11 → 12 tags); các suite khác giữ nguyên số và đều pass.
+Smoke dev (V7 áp lúc khởi động; tài khoản t34-owner/admin/worker/new-*@example.test) 13/13: tạo mới → link SET_PASSWORD → đăng nhập,
+/me có store quyền BOX_PACK; mời tài khoản có sẵn → INVITED, /me chưa có store → accept; PRICE_EDIT 400; đổi quyền 200; staff gọi API
+quản lý 403; thêm owner 400; thu hồi → /me (token cũ) không còn store; danh sách owner [REVOKED, ACTIVE].
+
+3. FILE | NEW/MODIFIED | AC
+resources/db/migration/V7__staff_permissions_and_invitations.sql | New | AC-02,03,10
+staff/AssignmentStatus.kt | Modified (+INVITED, DECLINED) | AC-03
+staff/StaffPermissionCode.kt | New | AC-04,10
+staff/repository/PermissionRepository.kt, StaffAssignmentRepository.kt, StaffPermissionRepository.kt | Modified | AC-01..09
+staff/dto/* (5) | New | AC-01..09
+staff/service/StaffManagementService.kt, StaffSelfService.kt, StaffAccountProvisioner.kt, StaffPermissionCatalog.kt, StaffViews.kt | New | AC-01..09
+staff/controller/StoreStaffController.kt, MyStaffAssignmentController.kt | New | AC-01..09
+auth/TokenPurpose.kt, AuthProperties.kt, mail/SmtpAuthMailSender.kt, service/EmailVerificationService.kt, service/PasswordRecoveryService.kt | Modified | AC-02
+store/service/StoreHistoryRecorder.kt, StoreViews.kt | Modified | Q8 (lịch sử gồm nhân viên, vai trò STAFF)
+docs/api/openapi.yaml | Modified | 6 path, tag Staff, 7 schema | AC-10
+test StaffManagementTests.kt | New; support/AuthTestFixtures.kt, AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt | Modified
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+Chuẩn bị như T3.3 (bootRun dev, /docs, Mailpit http://localhost:8025). Cần owner A có store ACTIVE (T3.2/T3.3), tài khoản C đã đăng ký.
+ 1. Token A: Staff › POST /api/v1/stores/{storeId}/staff ví dụ "newAccount" (email chưa tồn tại) → 201 ACTIVE, accountCreated=true.
+ 2. Mailpit: mở mail "Set up your FoodRescue staff account", copy token sau "#token=". Password › POST /api/v1/auth/reset-password
+    {"token": "...", "newPassword": "..."} → 204. Đăng nhập bằng email mới → Account › GET /me: stores có cửa hàng, quyền đã chọn.
+ 3. Token A: POST .../staff với email của C → 201 INVITED. Token C: Staff › GET /api/v1/staff/assignments → thấy lời mời;
+    POST .../{assignmentId}/accept → ACTIVE; GET /me có store.
+ 4. Token A: PUT .../staff/{assignmentId}/permissions {"permissions":["PRICE_EDIT"]} → 400; ví dụ "packAndHandover" → 200.
+ 5. Token C: GET /api/v1/stores/{storeId}/staff → 403.
+ 6. Token A: POST .../staff/{assignmentId}/revoke ví dụ "leave" → 200 REVOKED. Token C (không đăng nhập lại): GET /me → stores [].
+ 7. Token A: GET /api/v1/stores/{storeId}/history → STAFF_* với actorRole OWNER/STAFF.
+
+5. GIỚI HẠN / LỆCH CÓ CHỦ ĐÍCH
+- Mail thiết lập dùng chung trang reset-password của client (link …/reset-password#token=…); client cần hiểu là "đặt mật khẩu lần đầu".
+- Quyền staff chưa được dùng trong nghiệp vụ (menu, hộp, bàn giao là T4.x/T7.x); các task đó gọi requirePermission với mã ở trên.
+- Lời mời không hết hạn; owner thu hồi để hủy lời mời INVITED.
+- Smoke để lại trên DB dev: tài khoản t34-*@example.test (t34-admin có ADMIN), store ACTIVE "T34 Cửa hàng". DB dev đã áp V7.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- AuthTestFixtures trước đây TRUNCATE cả bảng seed; đã thêm REFERENCE_TABLES. Task seed bảng khác (food_category, financial_policy…)
+  phải thêm tên bảng vào danh sách.
+- Đăng nhập trả 400 (không phải 401) khi body sai tên trường — hành vi chung của handler, không đổi.

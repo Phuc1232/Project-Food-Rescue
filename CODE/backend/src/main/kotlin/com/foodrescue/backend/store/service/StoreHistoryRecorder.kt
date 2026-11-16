@@ -20,6 +20,7 @@ class StoreHistoryRecorder(private val audit: AuditService, private val mapper: 
     companion object {
         const val STORE = "STORE"
         const val CHANGE_REQUEST = "STORE_CHANGE_REQUEST"
-        val ENTITY_TYPES = listOf(STORE, CHANGE_REQUEST)
+        /** T3.4 Q8: staff changes are part of the store history. */
+        val ENTITY_TYPES = listOf(STORE, CHANGE_REQUEST, "STAFF_ASSIGNMENT")
     }
 }

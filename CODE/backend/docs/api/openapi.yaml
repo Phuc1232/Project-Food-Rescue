@@ -3016,6 +3016,519 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/staff": {
+      "get": {
+        "operationId": "get_stores_storeId_staff",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List staff (owner)",
+        "description": "Staff, permissions and access status of the owner's store (UC-43).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AssignmentStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Staff",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffMemberView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_stores_storeId_staff",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add a staff member (owner)",
+        "description": "Existing active account: an INVITED assignment the person must accept (UC-44 A1). Unknown email: a new account is created, the assignment is ACTIVE and a setup link (SET_PASSWORD, 72h) is emailed; the person sets a password through POST /api/v1/auth/reset-password. Only staff permissions can be granted (BR-03).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffInviteRequest"
+              },
+              "examples": {
+                "newAccount": {
+                  "value": {
+                    "email": "nhanvien@example.com",
+                    "displayName": "Nguyễn Văn A",
+                    "permissions": [
+                      "BOX_PACK",
+                      "PICKUP_HANDLE"
+                    ]
+                  }
+                },
+                "existingAccount": {
+                  "value": {
+                    "email": "ban@example.com",
+                    "permissions": [
+                      "BOX_MANAGE"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMemberView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: permissions[i] not grantable, email invalid or the owner, displayName missing for a new account",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "description": "CONFLICT: already staff or invited, account locked/unverified, or 50 open assignments reached",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/staff/{assignmentId}/permissions": {
+      "put": {
+        "operationId": "put_stores_storeId_staff_assignmentId_permissions",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replace staff permissions (owner)",
+        "description": "Applies on the staff member's next request (UC-45).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Staff assignment id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffPermissionsRequest"
+              },
+              "examples": {
+                "packAndHandover": {
+                  "value": {
+                    "permissions": [
+                      "BOX_PACK",
+                      "PICKUP_HANDLE"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMemberView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/staff/{assignmentId}/revoke": {
+      "post": {
+        "operationId": "post_stores_storeId_staff_assignmentId_revoke",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Revoke staff access (owner)",
+        "description": "Immediate, even for an open session (UC-46). The account itself stays active. Revoking again returns the current state.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Staff assignment id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffRevokeRequest"
+              },
+              "examples": {
+                "leave": {
+                  "value": {
+                    "reason": "Nghỉ việc"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Revoked",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMemberView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/staff/assignments": {
+      "get": {
+        "operationId": "get_staff_assignments",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "My invitations and stores (staff)",
+        "description": "INVITED and ACTIVE assignments of the signed-in account.",
+        "responses": {
+          "200": {
+            "description": "Assignments",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyAssignmentView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/api/v1/staff/assignments/{assignmentId}/accept": {
+      "post": {
+        "operationId": "post_staff_assignments_assignmentId_accept",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Accept an invitation",
+        "description": "INVITED -> ACTIVE; permissions apply from the next request.",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Staff assignment id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAssignmentView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/staff/assignments/{assignmentId}/decline": {
+      "post": {
+        "operationId": "post_staff_assignments_assignmentId_decline",
+        "tags": [
+          "Staff"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Decline an invitation",
+        "description": "INVITED -> DECLINED.",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Staff assignment id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Declined",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAssignmentView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4461,7 +4974,13 @@
               "STORE_CHANGE_APPROVED",
               "STORE_CHANGE_REJECTED",
               "STORE_SUSPENDED",
-              "STORE_REACTIVATED"
+              "STORE_REACTIVATED",
+              "STAFF_INVITED",
+              "STAFF_ACCOUNT_CREATED",
+              "STAFF_INVITATION_ACCEPTED",
+              "STAFF_INVITATION_DECLINED",
+              "STAFF_PERMISSIONS_CHANGED",
+              "STAFF_REVOKED"
             ]
           },
           "occurredAt": {
@@ -4472,7 +4991,8 @@
             "type": "string",
             "enum": [
               "OWNER",
-              "ADMIN"
+              "ADMIN",
+              "STAFF"
             ]
           },
           "actorId": {
@@ -4745,6 +5265,162 @@
             "description": "Newest 50, with actorId"
           }
         }
+      },
+      "StaffPermissionCode": {
+        "type": "string",
+        "enum": [
+          "MENU_VIEW",
+          "BOX_PACK",
+          "BOX_MANAGE",
+          "PICKUP_HANDLE",
+          "ORDER_VIEW",
+          "NO_SHOW_CONFIRM"
+        ],
+        "description": "Staff-grantable permissions; price, commission, policy, owner and admin rights do not exist for staff"
+      },
+      "AssignmentStatus": {
+        "type": "string",
+        "enum": [
+          "INVITED",
+          "ACTIVE",
+          "DECLINED",
+          "REVOKED"
+        ]
+      },
+      "StaffInviteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "permissions"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Required when no account exists for the email"
+          },
+          "permissions": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/StaffPermissionCode"
+            }
+          }
+        }
+      },
+      "StaffPermissionsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "permissions"
+        ],
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/StaffPermissionCode"
+            }
+          }
+        }
+      },
+      "StaffRevokeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "StaffMemberView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assignmentId",
+          "account",
+          "status",
+          "permissions",
+          "assignedAt",
+          "accountCreated"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "account": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AssignmentStatus"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermissionCode"
+            }
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "accountCreated": {
+            "type": "boolean",
+            "description": "true when this call created the account and sent a setup link"
+          }
+        }
+      },
+      "MyAssignmentView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assignmentId",
+          "store",
+          "status",
+          "permissions",
+          "assignedAt"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "store": {
+            "$ref": "#/components/schemas/StoreSummary"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AssignmentStatus"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermissionCode"
+            }
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     },
     "responses": {
@@ -4950,6 +5626,10 @@
     {
       "name": "Admin stores",
       "description": "Store list, change request review, suspension and reactivation (UC-77; ADMIN only)"
+    },
+    {
+      "name": "Staff",
+      "description": "Store staff and permissions (UC-43..46): owner management and the staff member's own invitations"
     },
     {
       "name": "Health"
