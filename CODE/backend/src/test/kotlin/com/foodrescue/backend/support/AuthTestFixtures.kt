@@ -36,6 +36,9 @@ object TestAuthKeys {
         r.add("files.storage-dir") { fileRoot.toString() }
         // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.
         r.add("orders.expiry-job-enabled") { "false" }
+        // T6.1: prod-profile tests build the payOS adapter; dummy credentials and an unreachable URL, never the real provider.
+        r.add("payos.client-id") { "test-client" }; r.add("payos.api-key") { "test-api-key" }; r.add("payos.checksum-key") { "test-checksum-key" }
+        r.add("payos.base-url") { "http://127.0.0.1:9" }
     }
     /** T3.1: uploaded test files live in a throwaway directory, never in the developer's real storage. */
     val fileRoot: java.nio.file.Path=Files.createTempDirectory("foodrescue-test-files")

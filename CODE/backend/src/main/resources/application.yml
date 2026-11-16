@@ -73,3 +73,15 @@ auth:
     issuer: ${JWT_ISSUER:foodrescue}
     audience: ${JWT_AUDIENCE:foodrescue-api}
     access-ttl: ${JWT_ACCESS_TTL:15m}
+# T6.1: payment provider. fake = in-memory (local/tests); payos needs the three keys from .env (never committed).
+payment:
+  gateway: ${PAYMENT_GATEWAY:fake}
+payos:
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  base-url: ${PAYOS_BASE_URL:https://api-merchant.payos.vn}
+  return-url: ${PAYOS_RETURN_URL:http://localhost:3000/payment/return}
+  cancel-url: ${PAYOS_CANCEL_URL:http://localhost:3000/payment/cancel}
+  connect-timeout: ${PAYOS_CONNECT_TIMEOUT:5s}
+  read-timeout: ${PAYOS_READ_TIMEOUT:10s}
