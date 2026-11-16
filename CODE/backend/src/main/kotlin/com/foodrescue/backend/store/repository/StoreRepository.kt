@@ -1,7 +1,10 @@
-// AC-01,04,10,12: StoreRepository responsibility.
+// AC-01,04,10,12 (T3.3 AC-15): StoreRepository responsibility.
 package com.foodrescue.backend.store.repository
 
+import com.foodrescue.backend.store.StoreStatus
 import com.foodrescue.backend.store.entity.Store
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
@@ -20,4 +23,8 @@ interface StoreRepository : JpaRepository<Store, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Store s where s.id = :id")
     fun findForUpdate(@Param("id") id: UUID): Store?
+
+    /** T3.3 admin search; an empty name matches every store. */
+    fun findAllByNameContainingIgnoreCase(name: String, pageable: Pageable): Page<Store>
+    fun findAllByStatusAndNameContainingIgnoreCase(status: StoreStatus, name: String, pageable: Pageable): Page<Store>
 }

@@ -2004,6 +2004,1018 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}": {
+      "get": {
+        "operationId": "get_stores_storeId",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "View an active store (customers)",
+        "description": "Any signed-in account. Only ACTIVE stores are visible; suspended, pending, closed or unknown stores return 404.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public store data",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePublicView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/profile": {
+      "get": {
+        "operationId": "get_stores_storeId_profile",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "View my store (owner)",
+        "description": "Owner of an ACTIVE or SUSPENDED store (UC-40). Staff and other accounts get 403. Includes the suspension reason and the pending change request.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Store profile",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProfileView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch_stores_storeId_profile",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update description and opening hours (owner)",
+        "description": "Applied immediately with history (UC-41). Requires the current `version`; a stale version returns 409. Name, address and location need a change request; status cannot be changed by the owner (UC-41 E2).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreProfileUpdateRequest"
+              },
+              "examples": {
+                "hours": {
+                  "value": {
+                    "version": 3,
+                    "description": "Bánh mì nóng mỗi sáng",
+                    "openingHours": [
+                      {
+                        "dayOfWeek": 1,
+                        "opensAt": "06:00",
+                        "closesAt": "10:00"
+                      },
+                      {
+                        "dayOfWeek": 1,
+                        "opensAt": "16:00",
+                        "closesAt": "21:00"
+                      },
+                      {
+                        "dayOfWeek": 6,
+                        "opensAt": "18:00",
+                        "closesAt": "02:00"
+                      }
+                    ]
+                  }
+                },
+                "clearDescription": {
+                  "value": {
+                    "version": 4,
+                    "description": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProfileView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED naming the field (overlapping/empty shifts, non-editable field, missing version) or INVALID_REQUEST",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "description": "CONFLICT: the store changed since `version`; reload",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/change-requests": {
+      "post": {
+        "operationId": "post_stores_storeId_change_requests",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Request a reviewed change (owner)",
+        "description": "Name, address and location are bound to approved D04 documents: they become a PENDING request and are not applied until an admin approves (UC-41 A1). Optional D04 documents (files uploaded through POST /api/v1/files). One pending request per store.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreChangeRequestRequest"
+              },
+              "examples": {
+                "move": {
+                  "value": {
+                    "address": "99 Hai Bà Trưng, Quận 1, TP.HCM",
+                    "latitude": 10.78,
+                    "longitude": 106.705,
+                    "note": "Chuyển địa điểm",
+                    "documents": [
+                      {
+                        "type": "FOOD_SAFETY",
+                        "fileId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f"
+                      }
+                    ]
+                  }
+                },
+                "rename": {
+                  "value": {
+                    "name": "Bánh mì Cô Ba - Chi nhánh 1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Request created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRequestView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (field `changes` when nothing differs, latitude/longitude pair, documents[i])",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "description": "CONFLICT: a request is already pending",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get_stores_storeId_change_requests",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List change requests (owner)",
+        "description": "Newest first.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requests",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeRequestView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/change-requests/{requestId}/cancel": {
+      "post": {
+        "operationId": "post_stores_storeId_change_requests_requestId_cancel",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Cancel a pending change request (owner)",
+        "description": "Only PENDING requests; otherwise 409.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Change request id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRequestView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/history": {
+      "get": {
+        "operationId": "get_stores_storeId_history",
+        "tags": [
+          "Stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Store change history (owner)",
+        "description": "Profile updates, change requests and admin status decisions with before/after values (BR-56). Owners see the actor role, not admin ids.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History page",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreHistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/stores": {
+      "get": {
+        "operationId": "get_admin_stores",
+        "tags": [
+          "Admin stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List stores (ADMIN)",
+        "description": "Filter by status and name (case-insensitive contains); newest first.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_APPROVAL",
+                "ACTIVE",
+                "SUSPENDED",
+                "CLOSED"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Part of the store name"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stores",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStorePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/stores/{storeId}": {
+      "get": {
+        "operationId": "get_admin_stores_storeId",
+        "tags": [
+          "Admin stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Store detail (ADMIN)",
+        "description": "Profile, owner, sale batches and orders by status, newest 50 history entries (UC-77 steps 1-2).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Store detail",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStoreDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/stores/{storeId}/status": {
+      "post": {
+        "operationId": "post_admin_stores_storeId_status",
+        "tags": [
+          "Admin stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Suspend or reactivate a store (ADMIN)",
+        "description": "SUSPEND: ACTIVE -> SUSPENDED; the store is hidden from customers, cannot open sales or take new orders, and its DRAFT/OPEN/PAUSED batches without orders become BLOCKED. Batches with orders and confirmed orders are left untouched (handled in T7.5). REACTIVATE: SUSPENDED -> ACTIVE; blocked batches stay blocked. Reason is required. Admins cannot change their own store.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreStatusRequest"
+              },
+              "examples": {
+                "suspend": {
+                  "value": {
+                    "action": "SUSPEND",
+                    "reason": "Nhiều phản ánh về an toàn thực phẩm"
+                  }
+                },
+                "reactivate": {
+                  "value": {
+                    "action": "REACTIVATE",
+                    "reason": "Đã nộp giấy ATTP mới, kiểm tra đạt"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New state",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStoreDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "description": "CONFLICT: the store is not in the expected status (e.g. suspending a suspended or pending store)",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/store-change-requests": {
+      "get": {
+        "operationId": "get_admin_store_change_requests",
+        "tags": [
+          "Admin stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List store change requests (ADMIN)",
+        "description": "Newest first.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StoreChangeRequestStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requests",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChangeRequestPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/store-change-requests/{id}": {
+      "get": {
+        "operationId": "get_admin_store_change_requests_id",
+        "tags": [
+          "Admin stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Change request detail (ADMIN)",
+        "description": "Current vs proposed values and documents (download through GET /api/v1/files/{fileId}/content).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Change request id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChangeRequestView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/store-change-requests/{id}/decision": {
+      "post": {
+        "operationId": "post_admin_store_change_requests_id_decision",
+        "tags": [
+          "Admin stores"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Approve or reject a change request (ADMIN)",
+        "description": "Only PENDING requests (otherwise 409). APPROVE applies the proposed values to the store in the same transaction; REJECT requires a reason. Admins cannot decide requests of their own store.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Change request id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeDecisionRequest"
+              },
+              "examples": {
+                "approve": {
+                  "value": {
+                    "decision": "APPROVE"
+                  }
+                },
+                "reject": {
+                  "value": {
+                    "decision": "REJECT",
+                    "reason": "Thiếu giấy ĐKKD theo địa chỉ mới"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision recorded",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChangeRequestView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3134,6 +4146,605 @@
             }
           }
         }
+      },
+      "StoreChangeRequestStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "REJECTED",
+          "CANCELLED"
+        ]
+      },
+      "StoreChangeValues": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "description": "D04-bound store fields; null = not part of the change."
+      },
+      "ChangeRequestView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "current",
+          "proposed",
+          "documents",
+          "requestedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StoreChangeRequestStatus"
+          },
+          "current": {
+            "$ref": "#/components/schemas/StoreChangeValues"
+          },
+          "proposed": {
+            "$ref": "#/components/schemas/StoreChangeValues"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            }
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resolutionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StoreProfileView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "address",
+          "latitude",
+          "longitude",
+          "timezone",
+          "status",
+          "version",
+          "openingHours"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_APPROVAL",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ]
+          },
+          "statusReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusChangedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningHourView"
+            }
+          },
+          "pendingChangeRequest": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChangeRequestView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "StorePublicView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "address",
+          "latitude",
+          "longitude",
+          "timezone",
+          "openingHours"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningHourView"
+            }
+          }
+        }
+      },
+      "StoreProfileUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "description": "Only these fields are accepted. name/address/latitude/longitude need a change request; status, timezone and any other field return 400 naming the field.",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "From GET .../profile"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "null or blank clears it"
+          },
+          "openingHours": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 21,
+            "items": {
+              "$ref": "#/components/schemas/OpeningHourRequest"
+            },
+            "description": "Replaces every shift; same rules as the partner application"
+          }
+        }
+      },
+      "StoreChangeRequestRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Send only the fields to change; latitude and longitude go together. At least one value must differ from the store.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "documents": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/ApplicationDocumentRequest"
+            }
+          }
+        }
+      },
+      "StoreHistoryItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "occurredAt",
+          "actorRole"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "STORE_PROFILE_UPDATED",
+              "STORE_CHANGE_REQUESTED",
+              "STORE_CHANGE_CANCELLED",
+              "STORE_CHANGE_APPROVED",
+              "STORE_CHANGE_REJECTED",
+              "STORE_SUSPENDED",
+              "STORE_REACTIVATED"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorRole": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "ADMIN"
+            ]
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Admin views only"
+          },
+          "before": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "after": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "StoreHistoryPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreHistoryItem"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminChangeRequestView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request",
+          "store",
+          "requestedBy"
+        ],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ChangeRequestView"
+          },
+          "store": {
+            "$ref": "#/components/schemas/StoreSummary"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "resolvedBy": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AccountSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AdminChangeRequestPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminChangeRequestView"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "ChangeDecisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "REJECT"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Required for REJECT"
+          }
+        }
+      },
+      "StoreStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "reason"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "SUSPEND",
+              "REACTIVATE"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "AdminStoreSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "status",
+          "owner",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_APPROVAL",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ]
+          },
+          "owner": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "statusChangedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminStorePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminStoreSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminStoreDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "owner",
+          "saleBatchCounts",
+          "orderCounts",
+          "recentHistory"
+        ],
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/StoreProfileView"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "saleBatchCounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Sale batches by status"
+          },
+          "orderCounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Orders by status"
+          },
+          "recentHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreHistoryItem"
+            },
+            "description": "Newest 50, with actorId"
+          }
+        }
       }
     },
     "responses": {
@@ -3331,6 +4942,14 @@
     {
       "name": "Admin partner applications",
       "description": "Review partner applications (UC-66, UC-67; ADMIN only)"
+    },
+    {
+      "name": "Stores",
+      "description": "Store profile, opening hours, reviewed changes, history (UC-40, UC-41) and the customer store view"
+    },
+    {
+      "name": "Admin stores",
+      "description": "Store list, change request review, suspension and reactivation (UC-77; ADMIN only)"
     },
     {
       "name": "Health"

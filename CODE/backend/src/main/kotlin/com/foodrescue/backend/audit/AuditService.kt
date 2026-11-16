@@ -1,4 +1,4 @@
-// AC-14 (T3.2): AuditService responsibility.
+// AC-14 (T3.2), AC-13 (T3.3): AuditService responsibility.
 package com.foodrescue.backend.audit
 
 import com.foodrescue.backend.account.entity.Account
@@ -13,8 +13,9 @@ import java.util.UUID
 /** General business audit (T3.2 Q7). Call inside the transaction that performs the audited change. */
 @Service
 class AuditService(private val logs: AuditLogRepository, private val clock: Clock) {
-    fun record(actor: Account, entityType: String, entityId: UUID, action: String, store: Store? = null, afterState: String? = null) {
+    fun record(actor: Account, entityType: String, entityId: UUID, action: String, store: Store? = null, afterState: String? = null,
+               beforeState: String? = null) {
         logs.save(AuditLog(actor = actor, store = store, entityType = entityType, entityId = entityId, action = action,
-            afterState = afterState, correlationId = MDC.get("requestId"), occurredAt = clock.instant()))
+            beforeState = beforeState, afterState = afterState, correlationId = MDC.get("requestId"), occurredAt = clock.instant()))
     }
 }

@@ -1,0 +1,169 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T3.3: THÔNG TIN CỬA HÀNG, GIỜ MỞ CỬA, KHÓA/MỞ CỬA HÀNG
+Ngày: 2026-11-15 | Trạng thái: DONE
+Card: docs/specs/roadmap-3-9.md#t33 | Gate A: 01-business-definition.md | Plan: 02-plan.md
+Nhánh: feature/t3-3-store-profile (tách từ origin/master 6947d48, đã gồm T3.2/PR #13)
+Tài liệu: UC-40, UC-41, UC-77 (phần trạng thái), BR-55; tham chiếu UC-61 E1/E2, UC-07 bước 2, BR-02, BR-03, BR-54, BR-56, D04
+
+1. KẾT QUẢ
+- Owner (chỉ chủ store ACTIVE/SUSPENDED; mã quyền STORE_PROFILE_MANAGE không seed nên staff luôn 403):
+  GET/PATCH /api/v1/stores/{storeId}/profile — xem; sửa ngay mô tả và toàn bộ giờ hoạt động (nhiều ca/ngày, ca qua nửa đêm,
+  tái dùng OpeningHoursValidator) với `version` bắt buộc (cũ → 409). PATCH parse JSON thô: name/address/latitude/longitude →
+  400 "Requires review", status/timezone/trường lạ → 400 nêu tên trường (UC-41 E2).
+  POST/GET /api/v1/stores/{storeId}/change-requests, POST .../{requestId}/cancel — tên/địa chỉ/tọa độ (D04) thành yêu cầu
+  PENDING, store không đổi; chỉ lưu trường khác giá trị hiện tại; tọa độ đi theo cặp; 0–10 tài liệu D04 tùy chọn; một PENDING
+  mỗi store (khóa dòng store + unique index); owner hủy được.
+  GET /api/v1/stores/{storeId}/history — lịch sử phân trang (hành động, thời điểm, vai trò OWNER/ADMIN, before/after JSON),
+  không lộ id admin.
+- Khách (đăng nhập bất kỳ, D10): GET /api/v1/stores/{storeId} — chỉ store ACTIVE, còn lại 404.
+- Admin (ROLE_ADMIN): GET /api/v1/admin/stores (lọc status, q theo tên, phân trang), GET .../{storeId} (profile, chủ, số đợt
+  và số đơn theo trạng thái, 50 lịch sử gần nhất có actorId), POST .../{storeId}/status {SUSPEND|REACTIVATE, reason};
+  GET /api/v1/admin/store-change-requests (lọc status), GET .../{id}, POST .../{id}/decision {APPROVE|REJECT, reason}.
+- Khóa (SUSPEND, chỉ từ ACTIVE): store SUSPENDED + status_reason + status_changed_at; đợt DRAFT/OPEN/PAUSED chưa có đơn →
+  BLOCKED cùng transaction (BR-55); đợt có đơn, đơn đã xác nhận giữ nguyên (T7.5). Kích hoạt lại (chỉ từ SUSPENDED): ACTIVE,
+  xóa lý do hiện hành, đợt BLOCKED vẫn BLOCKED (UC-77 A1). ADMIN không xử lý store/yêu cầu của chính mình (403).
+- StoreSalesPolicy: quy tắc duy nhất "được bán / hiện cho khách" = ACTIVE; requireSellable → 409 STORE_NOT_ACTIVE. Đã ghi
+  lưu ý vào card T4.3, T5.1, T5.2, T7.5.
+- Lịch sử: audit_log (bất biến) với before_state/after_state; AuditService.record thêm tham số beforeState (mặc định null).
+  Hành động: STORE_PROFILE_UPDATED, STORE_CHANGE_REQUESTED/CANCELLED/APPROVED/REJECTED, STORE_SUSPENDED, STORE_REACTIVATED.
+- Migration V6: store.description (backfill từ businessDescription revision mới nhất), status_reason, status_changed_at;
+  bảng store_change_request (+ unique index PENDING/store, CHECK PENDING ⇔ resolved_at null);
+  attachment.store_change_request_id + CHECK attachment_check gồm cột mới.
+- Sửa nhỏ code T3.2 (đã nêu Gate A Q6, plan P8): nộp hồ sơ ghi store.description; ApplicationDocumentValidator có
+  requireMandatory (mặc định true).
+- Version khi chỉ đổi ca (P1): store khóa PESSIMISTIC_WRITE, đổi ca không làm entity bẩn → EntityManager.lock(
+  PESSIMISTIC_FORCE_INCREMENT) để version tăng; sửa đồng thời cùng version → một 200, một 409.
+
+2. KIỂM CHỨNG
+Baseline trước thay đổi (6947d48): 97 tests, 96 PASS, 1 SKIPPED, 0 failures/errors.
+Build cuối: sh ./gradlew cleanTest build --console=plain → BUILD SUCCESSFUL
+Kết quả đọc từ build/test-results: 113 tests, 112 PASS, 1 SKIPPED (opt-in SWAGGER_BROWSER_SMOKE như baseline), 0 failures/errors.
+Suite | Tests | Skipped | Failures | Errors
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0      (5 → 6 migration)
+FileStorageFailureTests | 1 | 0 | 0 | 0
+FileTypeDetectorTests | 3 | 0 | 0 | 0
+FileUploadTests | 8 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0      (5 → 6 migration; 40 → 41 entity)
+JwtSecurityTests | 1 | 0 | 0 | 0
+LocalDiskFileStorageTests | 5 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+OpeningHoursValidatorTests | 3 | 0 | 0 | 0
+PartnerApplicationTests | 11 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 0 | 0 | 0
+ProfileUpdateRequestParserTests | 6 | 0 | 0 | 0
+ProfileUpdateTests | 9 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+StoreChangeRequestTests | 3 | 0 | 0 | 0      (mới: AC-05, AC-06, AC-07)
+StoreProfileTests | 6 | 0 | 0 | 0      (mới: AC-01..04, AC-08, AC-13)
+StoreSalesPolicyTests | 1 | 0 | 0 | 0      (mới: AC-12)
+StoreStatusTests | 6 | 0 | 0 | 0      (mới: AC-09..12, AC-14, AC-15)
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0      (23 → 34 paths, 9 → 11 tags)
+Test đồng thời: sửa cùng version (AC-04), hai yêu cầu thay đổi (AC-06), duyệt ‖ hủy và duyệt ‖ từ chối (AC-07),
+khóa ‖ khóa và khóa ‖ kích hoạt (AC-10). Chạy lại riêng Store* + PartnerApplicationTests lần 2: xanh.
+Kiểm tra test có ý nghĩa: tạm bỏ EntityManager.lock(PESSIMISTIC_FORCE_INCREMENT) → StoreProfileTests AC-02 và AC-04 FAILED;
+khôi phục → PASS.
+
+Smoke HTTP trên app profile dev (DB Compose, V6 áp thành công lúc khởi động; Mailpit; tài khoản mới t33-owner-*, t33-admin-*
+(ADMIN cấp bằng SQL trên DB dev), t33-customer-*@example.test; không in token) — 24/24 bước đúng mã mong đợi:
+nộp hồ sơ 201 → duyệt 200 → profile 200 (description lấy từ hồ sơ) → PATCH mô tả + giờ (có ca qua đêm) 200 → version cũ 409
+→ PATCH name/status 400 [name, status] → ca chồng 400 [openingHours[1]] → người lạ xem profile 403 → yêu cầu đổi địa chỉ +
+tọa độ + tài liệu 201 → yêu cầu thứ hai 409 → địa chỉ store chưa đổi → admin list PENDING 200 → REJECT không lý do 400 →
+APPROVE 200 → khách xem thấy địa chỉ mới → owner gọi API khóa 403 → SUSPEND 200 → khách xem 404 → owner thấy lý do → SUSPEND
+lần hai 409 → REACTIVATE 200 → history 5 mục (REACTIVATED/SUSPENDED/CHANGE_APPROVED: ADMIN; CHANGE_REQUESTED/PROFILE_UPDATED:
+OWNER) → admin list q=t33 1 kết quả → non-admin list 403. /openapi.yaml: 34 path, 11 tag; /docs 302 → Swagger UI.
+Backfill V6: 2 store cũ trên DB dev có businessDescription rỗng → description NULL (đúng); biểu thức backfill thử trên JSON mẫu
+(" Bánh mì ", "  ", thiếu khóa) → "Bánh mì", NULL, NULL.
+
+3. FILE | NEW/MODIFIED | GHI CHÚ | AC/TEST
+(đường dẫn Kotlin tương đối với src/main|test/kotlin/com/foodrescue/backend/)
+resources/db/migration/V6__store_profile_and_change_requests.sql | New | Cột store, bảng yêu cầu, attachment | AC-05..10 / AuthMigrationTests
+store/StoreChangeRequestStatus.kt, ChangeRequestDecision.kt, StoreStatusAction.kt | New | Enum | AC-05..10
+store/entity/Store.kt | Modified | description, statusReason, statusChangedAt | AC-01,02,09,10
+store/entity/StoreChangeRequest.kt | New | Entity yêu cầu thay đổi | AC-05..07
+file/entity/Attachment.kt | Modified | storeChangeRequest | AC-05,07
+store/repository/StoreRepository.kt | Modified | Tìm kiếm admin | AC-15
+store/repository/StoreChangeRequestRepository.kt | New | Truy vấn + khóa dòng | AC-05..07
+audit/AuditService.kt, audit/repository/AuditLogRepository.kt | Modified | beforeState; lịch sử theo store | AC-13
+store/service/ApplicationDocumentValidator.kt, PartnerApplicationService.kt | Modified | requireMandatory; ghi description | AC-05, AC-01
+store/service/StoreProfileUpdateParser.kt | New | Parse PATCH, trường không được sửa | AC-03,11
+store/service/StoreProfileService.kt | New | Xem/sửa/lịch sử/công khai | AC-01..04,08,12,13
+store/service/StoreChangeRequestService.kt | New | Gửi/xem/hủy yêu cầu | AC-05,06
+store/service/StoreChangeReviewService.kt | New | Admin duyệt/từ chối | AC-07
+store/service/StoreStatusService.kt | New | Khóa/kích hoạt | AC-09..11
+store/service/StoreAdminQueryService.kt | New | Danh sách/chi tiết admin | AC-15
+store/service/SaleBatchBlocker.kt, StoreSalesPolicy.kt | New | BR-55; quy tắc bán chung | AC-09, AC-12
+store/service/StoreViews.kt, StoreHistoryRecorder.kt | New | Dựng view; ghi audit before/after | AC-01,13
+store/service/StoreChangeAttachmentPolicy.kt | New | Owner + ADMIN đọc tài liệu yêu cầu | AC-07,08
+store/dto/* (12 file) | New | Request/response DTO | AC-01..15
+store/controller/StoreProfileController.kt, PublicStoreController.kt, AdminStoreController.kt, AdminStoreChangeRequestController.kt | New | HTTP | AC-01..15
+docs/api/openapi.yaml | Modified | 11 path, 2 tag (Stores, Admin stores), 16 schema | AC-15
+test StoreProfileTests.kt, StoreChangeRequestTests.kt, StoreStatusTests.kt, StoreSalesPolicyTests.kt | New | Mục 2 | AC-01..15
+test support/StoreTestFixtures.kt | New | Tạo store qua API T3.2; chèn sale_batch/customer_order bằng SQL | —
+test AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt | Modified | Hằng số (P9) | —
+docs/specs/t3-3-store-profile/* | New | Gate A/B, báo cáo | —
+docs/specs/roadmap-3-9.md | Modified | [x] T3.3; lưu ý cho T4.3, T5.1, T5.2, T7.5 | —
+.gitignore | Modified | Whitelist docs/specs/t3-3-store-profile/ | —
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+Chuẩn bị:
+  cd CODE/backend
+  docker compose up -d db && docker start foodrescue_mailpit
+  sh ./gradlew bootRun --args="--spring.profiles.active=dev"
+  Mở http://localhost:8080/docs ; mail thử: http://localhost:8025
+  Cần 3 tài khoản: A (chủ cửa hàng), B (admin), C (khách). Cấp ADMIN cho B (chỉ DB dev):
+    docker exec -it foodrescue_db_container sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "insert into account_role(id,created_at,updated_at,version,account_id,role) select gen_random_uuid(),now(),now(),0,id,'"'"'ADMIN'"'"' from account where login_identifier='"'"'<email B>'"'"'"'
+  Có sẵn trên DB dev: store ACTIVE của t33-owner-*@example.test (mật khẩu thử Long-password-123!) nếu không muốn tạo mới.
+Bước:
+ 1. Tạo cửa hàng ACTIVE cho A theo kịch bản T3.2 (Files › POST 2 file, Partner applications › POST, token B duyệt APPROVE).
+    Ghi lại store.id.
+ 2. Token A: Stores › GET /api/v1/stores/{storeId}/profile → status ACTIVE, description, openingHours, version (ghi lại).
+ 3. PATCH .../profile ví dụ "hours", sửa "version" theo bước 2 → 200, 3 ca (ca Thứ 7 18:00–02:00 closesNextDay=true), version tăng.
+ 4. Gửi lại đúng request ở bước 3 (version cũ) → 409 CONFLICT.
+ 5. PATCH với {"version": <mới>, "name": "X", "status": "ACTIVE"} → 400, fieldErrors name ("Requires review...") và status.
+ 6. PATCH với 2 ca chồng nhau cùng ngày (08:00–12:00 và 11:00–13:00) → 400 field openingHours[1].
+ 7. POST .../change-requests ví dụ "move" (thay fileId bằng file A upload) → 201 PENDING; GET .../profile: address chưa đổi,
+    pendingChangeRequest có yêu cầu. POST lần nữa → 409.
+ 8. Token B: Admin stores › GET /api/v1/admin/store-change-requests?status=PENDING → thấy yêu cầu; GET .../{id} xem current vs
+    proposed; tải tài liệu qua Files › GET /api/v1/files/{fileId}/content.
+ 9. POST .../{id}/decision {"decision":"REJECT"} → 400 field reason; ví dụ "approve" → 200 APPROVED. Token A: GET .../profile →
+    address mới. (Thử hủy: tạo yêu cầu khác, POST .../change-requests/{requestId}/cancel → CANCELLED; hủy lần hai → 409.)
+10. Token C: Stores › GET /api/v1/stores/{storeId} → 200 thông tin công khai (không có owner/version/status).
+11. Token A: POST /api/v1/admin/stores/{storeId}/status → 403 (owner không tự đổi trạng thái).
+12. Token B: Admin stores › POST /api/v1/admin/stores/{storeId}/status ví dụ "suspend" → 200, profile.status SUSPENDED,
+    statusReason; gửi lại → 409. GET /api/v1/admin/stores/{storeId} → saleBatchCounts/orderCounts, recentHistory có actorId.
+13. Token C: GET /api/v1/stores/{storeId} → 404. Token A: GET .../profile → vẫn xem được, thấy statusReason.
+14. Token B: ví dụ "reactivate" → 200 ACTIVE. Token A: GET /api/v1/stores/{storeId}/history → các mục mới nhất trước, actorRole
+    ADMIN/OWNER, không có actorId.
+15. Token B: GET /api/v1/admin/stores?status=ACTIVE&q=<một phần tên> → thấy cửa hàng. Token A gọi cùng API → 403.
+(Đợt bán bị BLOCKED khi khóa chưa thử được trên Swagger vì chưa có API đợt bán (T4.3); đã kiểm bằng StoreStatusTests AC-09.)
+
+5. GIỚI HẠN / LỆCH CÓ CHỦ ĐÍCH
+- UC-77 bước 3/E1 (phương án đơn tồn khi khóa), bước 5–6 (xử lý đơn đã xác nhận, thông báo): T7.5, T8.2 (Gate A Q8, Q13).
+  API khóa hiện chỉ bắt buộc lý do.
+- Chưa có API đợt bán/đơn: khóa chặn mở bán/nhận đơn mới qua StoreSalesPolicy mà T4.3/T5.1/T5.2 phải gọi (đã ghi vào card).
+- Đổi giờ hoạt động không kiểm tra đợt đã có (Q10); đơn giữ snapshot nơi/giờ nhận (V1 + trigger V3), T3.3 không chạm đơn.
+- Không sửa được múi giờ, SĐT liên hệ (vẫn trong snapshot hồ sơ T3.2), không đóng cửa hàng (CLOSED).
+- Yêu cầu thay đổi không có "cần bổ sung": owner hủy rồi gửi lại (Q4).
+- Lịch sử sắp theo created_at của audit_log (gán Instant.now() ở BaseEntity), không theo occurred_at (Clock); trong thực tế
+  trùng nhau.
+- Smoke để lại trên DB dev: tài khoản t33-owner/admin/customer-*@example.test (admin có ADMIN), 1 store ACTIVE "T33 Bánh mì"
+  (địa chỉ 99 Hai Bà Trưng), 3 file thử trong ~/.foodrescue/files. DB dev đã áp V6.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI (không sửa)
+- FoodRescueApplicationTests khẳng định số entity JPA (nay 41) ngoài số migration — task thêm entity phải sửa hằng số này.
+- StoreAuthorizationService.requirePermission trả 403 (không phải 404) cho storeId không tồn tại; giữ nguyên vì không lộ
+  việc store có tồn tại hay không.
+- BaseEntity.createdAt dùng Instant.now() thay vì Clock (CLAUDE.md §4 yêu cầu inject Clock cho nghiệp vụ); không ảnh hưởng
+  T3.3 nhưng test với Clock cố định sẽ thấy created_at là giờ thật.
