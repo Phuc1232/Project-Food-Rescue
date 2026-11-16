@@ -7388,6 +7388,440 @@
           }
         }
       }
+    },
+    "/api/v1/admin/refund-requests": {
+      "get": {
+        "operationId": "get_admin_refund_requests",
+        "tags": [
+          "Admin refunds"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Refund obligations",
+        "description": "Newest first.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED",
+                "FULFILLED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obligations",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/refund-requests/{id}": {
+      "get": {
+        "operationId": "get_admin_refund_requests_id",
+        "tags": [
+          "Admin refunds"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Refund obligation detail",
+        "description": "Original payment, refundable amount, attempts, customer contact.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Refund obligation id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obligation",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/refund-requests/{id}/approve": {
+      "post": {
+        "operationId": "post_admin_refund_requests_id_approve",
+        "tags": [
+          "Admin refunds"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Decide the refund amount",
+        "description": "Amount <= requested and <= what can still be refunded from the original payment (UC-72 E1).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Refund obligation id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundApproveRequest"
+              },
+              "examples": {
+                "full": {
+                  "value": {
+                    "amount": 30000,
+                    "note": "Hoàn toàn bộ do đơn đã hủy"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approved",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/refund-requests/{id}/confirm": {
+      "post": {
+        "operationId": "post_admin_refund_requests_id_confirm",
+        "tags": [
+          "Admin refunds"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record a completed bank transfer",
+        "description": "After you transferred the approved amount: records the refund once (SUCCEEDED), closes the obligation, writes REFUND_SUCCEEDED and, for money that was order revenue, a negative CUSTOMER_REFUND ledger entry. Concurrent confirmations: one succeeds, the other gets 409; a reused bank transaction id is 409.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Refund obligation id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundConfirmRequest"
+              },
+              "examples": {
+                "transfer": {
+                  "value": {
+                    "bankTransactionId": "FT26320123456",
+                    "transferredAt": "2026-11-16T05:00:00Z",
+                    "evidenceFileId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f",
+                    "note": "Chuyển qua Vietcombank"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Refunded",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/refund-requests/{id}/fail": {
+      "post": {
+        "operationId": "post_admin_refund_requests_id_fail",
+        "tags": [
+          "Admin refunds"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record a failed transfer",
+        "description": "Keeps the obligation APPROVED so it can be retried (UC-72 E3).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Refund obligation id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundFailRequest"
+              },
+              "examples": {
+                "wrongAccount": {
+                  "value": {
+                    "note": "Sai số tài khoản người nhận"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/refunds": {
+      "get": {
+        "operationId": "get_orders_orderId_refunds",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Refunds of my order",
+        "description": "Shows obligations and recorded transfers; money counts as refunded only after an administrator recorded the transfer (UC-74).",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Order id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refunds",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RefundRequestView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11850,6 +12284,280 @@
             "type": "integer"
           }
         }
+      },
+      "RefundAttemptView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "amount",
+          "evidenceFileIds",
+          "recordedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PROCESSING",
+              "SUCCEEDED",
+              "FAILED"
+            ]
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "bankTransactionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transferredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "verifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidenceFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RefundRequestView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "orderId",
+          "orderCode",
+          "status",
+          "reason",
+          "requestedAmount",
+          "refundedAmount",
+          "createdAt",
+          "attempts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "FULFILLED"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedAmount": {
+            "type": "integer"
+          },
+          "approvedAmount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "refundedAmount": {
+            "type": "integer",
+            "description": "Recorded successful transfers only"
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "paymentReference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paymentAmount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "refundableFromPayment": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "customerName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Admin views only"
+          },
+          "customerEmail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Admin views only"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundAttemptView"
+            }
+          }
+        }
+      },
+      "RefundRequestPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundRequestView"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "RefundApproveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amount",
+          "note"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Whole VND; may be less than requested (UC-72 A3)"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "RefundConfirmRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bankTransactionId",
+          "transferredAt",
+          "evidenceFileId"
+        ],
+        "properties": {
+          "bankTransactionId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{4,64}$",
+            "description": "Bank transaction reference of your transfer; never reusable"
+          },
+          "transferredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidenceFileId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "File you uploaded via POST /api/v1/files"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "RefundFailRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "note"
+        ],
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
       }
     },
     "responses": {
@@ -12099,6 +12807,10 @@
     {
       "name": "Admin payments",
       "description": "Received money lookup, unmatched payments, reconciliation with the provider (UC-14 E1/E2/E4; ADMIN only)"
+    },
+    {
+      "name": "Admin refunds",
+      "description": "Manual refunds (roadmap D3): approve, transfer outside the system, record the result (UC-72, UC-74; ADMIN only)"
     },
     {
       "name": "Health"

@@ -38,5 +38,16 @@ class Refund(
     var idempotencyKey: String,
 
     @field:Column(name = "verified_at", nullable = true)
-    var verifiedAt: Instant? = null
+    var verifiedAt: Instant? = null,
+
+    // T6.5 (D3): the administrator who recorded the manual bank transfer, when it was made, and a note.
+    @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @field:JoinColumn(name = "recorded_by_id", nullable = true)
+    var recordedBy: com.foodrescue.backend.account.entity.Account? = null,
+
+    @field:Column(name = "transferred_at", nullable = true)
+    var transferredAt: Instant? = null,
+
+    @field:Column(name = "note", nullable = true, columnDefinition = "text")
+    var note: String? = null
 ) : MutableEntity()
