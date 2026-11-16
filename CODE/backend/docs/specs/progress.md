@@ -1,6 +1,6 @@
 # Tiến độ backend FoodRescue (giai đoạn 3–9)
 
-**Cập nhật:** 2026-11-15
+**Cập nhật:** 2026-11-16 (dừng sau T6.5 theo yêu cầu người dùng; task kế tiếp T7.1)
 **Nguồn chi tiết:** [roadmap-3-9.md](roadmap-3-9.md) (card từng task), thư mục `docs/specs/<task>/` (Gate A, Gate B, báo cáo).
 
 Ký hiệu: ✅ xong (build xanh, đã commit) · 🔄 đang làm · ⬜ chưa làm · ⏸️ tạm dừng / cần người dùng quyết.
@@ -30,7 +30,7 @@ task trước) vì task trước chưa được merge vào `master`.
 | T6.2 | Tạo yêu cầu thanh toán | ✅ | `feature/t6-2-payment-request` | 5964b72, 123622f | 198 / 197 / 1 / 0 | [t6-2-payment-request](t6-2-payment-request/) |
 | T6.3 | Webhook xác nhận thanh toán | ✅ | `feature/t6-3-payment-webhook` | 293491e, 3be9a49 | 204 / 203 / 1 / 0 | [t6-3-payment-webhook](t6-3-payment-webhook/) |
 | T6.4 | Tiền đến muộn, sai số tiền, đối chiếu | ✅ | `feature/t6-4-payment-reconciliation` | 6d017b6, 6d1a199 | 208 / 207 / 1 / 0 | [t6-4-payment-reconciliation](t6-4-payment-reconciliation/) |
-| T6.5 | Hoàn tiền có kiểm soát | ✅ | `feature/t6-5-manual-refund` | | 214 / 213 / 1 / 0 | [t6-5-manual-refund](t6-5-manual-refund/) |
+| T6.5 | Hoàn tiền có kiểm soát | ✅ | `feature/t6-5-manual-refund` | 807d2f7, 91cafcb | 214 / 213 / 1 / 0 | [t6-5-manual-refund](t6-5-manual-refund/) |
 | T7.1 | Mã nhận hàng | ⬜ | | | | |
 | T7.2 | Phiên bàn giao và sự cố | ⬜ | | | | |
 | T7.3 | Hủy đơn | ⬜ | | | | |
@@ -68,4 +68,6 @@ task trước) vì task trước chưa được merge vào `master`.
 
 ## Việc cần người dùng làm / xem lại
 
-- Push các nhánh và mở PR theo thứ tự (T3.3 → T3.4 → ...), hoặc cho phép agent làm.
+- Push các nhánh và mở PR theo thứ tự (T3.3 → T3.4 → … → T6.5; mỗi nhánh tách từ nhánh trước), hoặc cho phép agent làm.
+- Thử thanh toán thật payOS (hướng dẫn ở `t6-3-payment-webhook/03-implementation-control.txt` mục 4B): cần khóa kênh thanh toán trong `.env` + đường hầm công khai.
+- Chạy build khi máy cắm sạc / mở nắp: máy ngủ giữa test gây lỗi 401 ngẫu nhiên.
