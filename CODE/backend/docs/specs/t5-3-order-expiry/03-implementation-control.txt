@@ -1,0 +1,48 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T5.3: HẾT HẠN GIỮ HỘP VÀ THEO DÕI ĐƠN
+Ngày: 2026-11-16 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t5-3-order-expiry (từ feature/t5-2-order-hold 7e1c26c)
+Tài liệu: UC-13 E2, UC-17 A2, UC-19, UC-20, UC-22, UC-54, UC-55, BR-23, BR-24, BR-26
+
+1. KẾT QUẢ
+- OrderExpiryJob (@Scheduled, orders.expiry-scan-ms mặc định 30 s, tắt bằng orders.expiry-job-enabled=false) → OrderExpiryService.expireDue(now):
+  chọn đơn PENDING_PAYMENT có hold_expires_at ≤ now bằng FOR UPDATE SKIP LOCKED (lô 100) → EXPIRED, status_reason HOLD_EXPIRED, allocation HELD →
+  RELEASED (released_at, release_reason), hộp RESERVED → AVAILABLE (công thức khả dụng T4.3 quyết định có bán lại không — BR-24). Audit ORDER_EXPIRED
+  với actor NULL (lịch sử cửa hàng hiển thị actorRole SYSTEM).
+- POST /api/v1/orders/{id}/cancel {reason}: chỉ PENDING_PAYMENT (khóa dòng đơn) → CANCELLED, nhả hộp, không tạo refund (UC-17 A2); đơn khác trạng
+  thái → 409 (hủy đơn đã thanh toán: T7.3).
+- GET /api/v1/orders (của tôi; status, from/to theo accepted_at, size ≤ 50), GET /api/v1/orders/{id}/money (tổng, đã xác minh, còn phải trả, đã hoàn,
+  đang hoàn, giữ lại no-show theo chính sách đã chấp nhận). OrderView thêm statusReason, statusChangedAt.
+- GET /api/v1/stores/{storeId}/orders, GET .../orders/{orderId} (owner hoặc staff ORDER_VIEW): snapshot, tên hiển thị khách (không email), hộp được
+  giữ/phân bổ, khoản tiền.
+- V14: customer_order.status_reason, status_changed_at; CREATE OR REPLACE protect_order_terms cho phép đổi hai cột này (điều khoản vẫn bất biến).
+- Khóa cho T6.3: mọi chuyển trạng thái đơn khóa dòng đơn và kiểm lại trạng thái; job dùng SKIP LOCKED nên đơn đang bị webhook khóa được bỏ qua và đọc lại lần sau.
+- AuditService/StoreHistoryRecorder nhận actor NULL (hệ thống).
+
+2. KIỂM CHỨNG
+Baseline 7e1c26c: 178 tests, 177 PASS, 1 SKIPPED. Build cuối (máy thức, caffeinate): BUILD SUCCESSFUL trong 150 s, 184 tests, 183 PASS, 1 SKIPPED, 0 fail.
+OrderLifecycleTests 6 (mới, AC-01..06; đồng thời: 3 lần quét song song, job ‖ khách hủy); migration 13 → 14; Swagger 69 → 73 paths.
+Ghi chú: ba lần build trước đó (36 phút – 1 giờ 12 phút) có 1–2 test 401 ở suite khác nhau mỗi lần — do máy ngủ giữa test (pmset log: Maintenance Sleep
+khi chạy pin) làm access token hết hạn; chạy lúc máy thức thì xanh. Không phải lỗi code.
+Smoke dev (V14; app chạy với orders.hold-minutes=1, orders.expiry-scan-ms=5000; t53-*) 9/9 + job thật: đặt A, B; hủy A 200 CANCELLED; hủy lại 409;
+danh sách 2; money 30 000 / đã trả 0 / giữ lại 15 000; cửa hàng thấy 2 đơn, chi tiết 1 hộp; khách đọc đơn cửa hàng 403. Sau ~1 phút job chuyển B sang
+EXPIRED (3 s sau hạn giữ), allocation RELEASED/HOLD_EXPIRED, hộp AVAILABLE. Các đơn PENDING_PAYMENT cũ của smoke T5.2 trên DB dev cũng được job nhả.
+
+3. FILE
+resources/db/migration/V14__order_status_reason.sql · order/entity/CustomerOrder.kt, order/repository/BoxAllocationRepository.kt, order/dto/OrderView.kt,
+order/service/OrderViews.kt, order/controller/OrderController.kt (M) · order/service/{OrderReleaser,OrderExpiryService,OrderExpiryJob,OrderQueryService,
+OrderCancellationService,OrderMoneyReader}.kt · order/dto/{OrderSummary,OrderMoneyView,StoreOrderDetail,AllocatedBoxView,OrderCancelRequest}.kt ·
+order/controller/StoreOrderController.kt · audit/AuditService.kt, store/service/{StoreHistoryRecorder,StoreViews}.kt (M) · openapi (4 path mới + GET /orders) ·
+test OrderLifecycleTests.kt, support/AuthTestFixtures.kt (tắt job), hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Đặt đơn như T5.2. Orders › GET /api/v1/orders → thấy đơn PENDING_PAYMENT; GET /api/v1/orders/{id}/money.
+ 2. POST /api/v1/orders/{id}/cancel ví dụ "changedMind" → CANCELLED; gọi lại → 409.
+ 3. Token owner: GET /api/v1/stores/{storeId}/orders, GET .../orders/{orderId} → hộp đã nhả (RELEASED).
+ 4. Muốn thấy job: chạy app với --orders.hold-minutes=1 --orders.expiry-scan-ms=5000, đặt đơn, chờ ~1 phút, GET /api/v1/orders/{id} → EXPIRED.
+
+5. GIỚI HẠN
+- Khung khoản tiền đọc payment/refund (giai đoạn 6) — hiện bằng 0. Mã nhận hàng (UC-21) ở T7.1. Hủy đơn đã thanh toán ở T7.3.
+- Smoke để lại trên DB dev: t53-*, store "T53 Bánh", 1 đơn CANCELLED, 1 đơn EXPIRED.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Máy dev chạy pin + gập nắp → Maintenance Sleep làm test tích hợp hỏng ngẫu nhiên (401). Chạy build khi cắm sạc / mở nắp.

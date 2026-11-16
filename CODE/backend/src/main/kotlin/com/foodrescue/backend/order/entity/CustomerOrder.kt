@@ -92,5 +92,12 @@ class CustomerOrder(
 
     // T5.2: Idempotency-Key of the creating request (unique per customer); written once.
     @field:Column(name = "idempotency_key", nullable = true, length = 64, updatable = false)
-    val idempotencyKey: String? = null
+    val idempotencyKey: String? = null,
+
+    // T5.3: reason/time of the last status change (allowed by the V14 trigger; terms stay immutable).
+    @field:Column(name = "status_reason", nullable = true, columnDefinition = "text")
+    var statusReason: String? = null,
+
+    @field:Column(name = "status_changed_at", nullable = true)
+    var statusChangedAt: Instant? = null
 ) : MutableEntity()

@@ -52,6 +52,7 @@ class StoreViews(
     fun history(log: AuditLog, store: Store, withActorId: Boolean): StoreHistoryItem {
         val actorId = log.actor?.id
         val role = when {
+            actorId == null -> "SYSTEM"
             actorId == store.owner.id -> "OWNER"
             actorId != null && roles.existsByAccountIdAndRole(actorId, PlatformRole.ADMIN) -> "ADMIN"
             log.entityType == "CUSTOMER_ORDER" -> "CUSTOMER"

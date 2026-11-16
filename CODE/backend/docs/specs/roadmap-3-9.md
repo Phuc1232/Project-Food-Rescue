@@ -47,7 +47,7 @@ lựa chọn đề xuất trong Gate A.
 | 0. Baseline | [x] T0 · [x] T2.1 |
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
-| 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [ ] T5.3 |
+| 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [ ] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
@@ -217,7 +217,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   key trả đúng đơn cũ; snapshot không đổi khi giá/chính sách đổi.
 - **Lưu ý từ T3.3:** trong transaction giữ hộp, đọc/khóa store và gọi `StoreSalesPolicy.requireSellable` để khóa cửa hàng chặn đơn mới.
 
-### [ ] T5.3 — Hết hạn giữ hộp và theo dõi đơn
+### [x] T5.3 — Hết hạn giữ hộp và theo dõi đơn
 - **Phụ thuộc:** T5.2. **Tài liệu:** UC-17 A2, UC-19..22, UC-54, UC-55, BR-24.
 - **Phạm vi:** job quét đơn `PENDING_PAYMENT` quá hạn → `EXPIRED`, allocation `RELEASED`, hộp về `AVAILABLE` chỉ nếu
   còn đủ điều kiện bán; khách hủy đơn chưa thanh toán (không tạo hoàn 0đ); khách xem danh sách/lịch sử/chi tiết đơn,

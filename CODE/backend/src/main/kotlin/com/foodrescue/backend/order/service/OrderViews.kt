@@ -14,5 +14,5 @@ class OrderViews {
         o.unitPrice.setScale(0), o.totalAmount.setScale(0), o.minimumValue.setScale(0), o.currency, o.safetyWarningsSnapshot,
         o.pickupAddressSnapshot, o.pickupStartsAt, o.pickupEndsAt, o.holdExpiresAt, o.acceptedAt,
         PolicySummary(o.policy.policyVersion, o.noShowRetentionRate.stripTrailingZeros(), MoneyRounding.applyRate(o.totalAmount, o.noShowRetentionRate),
-            o.disputeWindowHours, o.cancellationTermsSnapshot, o.refundTermsSnapshot))
+            o.disputeWindowHours, o.cancellationTermsSnapshot, o.refundTermsSnapshot), o.statusReason, o.statusChangedAt)
 }

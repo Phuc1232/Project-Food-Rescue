@@ -3,7 +3,13 @@ package com.foodrescue.backend.order.controller
 
 import com.foodrescue.backend.common.security.CurrentAccount
 import com.foodrescue.backend.order.dto.*
+import com.foodrescue.backend.common.response.PageResponse
+import com.foodrescue.backend.order.OrderStatus
+import com.foodrescue.backend.order.service.OrderCancellationService
 import com.foodrescue.backend.order.service.OrderPlacementService
+import com.foodrescue.backend.order.service.OrderQueryService
+import org.springframework.format.annotation.DateTimeFormat
+import java.time.Instant
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -12,7 +18,26 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/orders")
-class OrderController(private val placement: OrderPlacementService, private val current: CurrentAccount) {
+class OrderController(
+    private val placement: OrderPlacementService,
+    private val queries: OrderQueryService,
+    private val cancellation: OrderCancellationService,
+    private val current: CurrentAccount
+) {
+    @GetMapping
+    fun mine(@RequestParam(required = false) status: OrderStatus?,
+             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) from: Instant?,
+             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) to: Instant?,
+             @RequestParam(defaultValue = "0") page: Int, @RequestParam(defaultValue = "20") size: Int): PageResponse<OrderSummary> =
+        queries.mine(current.get().accountId, status, from, to, page, size)
+
+    @GetMapping("/{orderId}/money")
+    fun money(@PathVariable orderId: UUID): OrderMoneyView = queries.myMoney(current.get().accountId, orderId)
+
+    @PostMapping("/{orderId}/cancel")
+    fun cancel(@PathVariable orderId: UUID, @Valid @RequestBody r: OrderCancelRequest): OrderView =
+        cancellation.cancelUnpaid(current.get().accountId, orderId, r.reason!!)
+
     @PostMapping("/preview")
     fun preview(@Valid @RequestBody r: OrderPreviewRequest): OrderPreview = placement.preview(current.get().accountId, r)
 
