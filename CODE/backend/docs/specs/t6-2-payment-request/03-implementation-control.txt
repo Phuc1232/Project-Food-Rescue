@@ -1,0 +1,35 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T6.2: TẠO YÊU CẦU THANH TOÁN
+Ngày: 2026-11-16 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t6-2-payment-request (từ feature/t6-1-payment-gateway 1d7fb44) | Tài liệu: UC-14 bước 1–3, A1, A3; UC-15; BR-28, BR-29
+
+1. KẾT QUẢ
+- POST /api/v1/orders/{orderId}/payment (chủ đơn): 3 bước — PaymentRequestStore.reserve (transaction, khóa đơn; kiểm PENDING_PAYMENT và còn ≥ 60 s giữ;
+  có yêu cầu READY → trả luôn 200; có PENDING → dùng lại mã; không có → PENDING mới với mã số từ sequence) → PaymentGateway.createLink ngoài transaction
+  → PaymentRequestStore.complete (READY + paymentLinkId, checkoutUrl, qrCode) / fail (FAILED). Trùng mã hoặc TIMEOUT/NETWORK/UNAVAILABLE → getLink(mã)
+  trước (UC-15 E1); không thấy → 503 PAYMENT_PROVIDER_UNAVAILABLE (giữ PENDING, lần sau tra cứu lại); từ chối dứt khoát → 502 PAYMENT_PROVIDER_REJECTED
+  (FAILED, lần sau mã mới). Số tiền = total_amount; hạn link = hold_expires_at; nội dung chuyển khoản "FR"+mã (≤ 9 ký tự).
+- GET /api/v1/orders/{orderId}/payment: yêu cầu mới nhất + orderStatus (chỉ CONFIRMED là đã xác minh — UC-14 A3).
+- V15: sequence payment_order_code_seq (từ 100000), payment_request.provider_order_code UNIQUE, qr_code, unique index một yêu cầu PENDING/READY mỗi đơn.
+- 409 ORDER_NOT_PAYABLE cho đơn không PENDING_PAYMENT hoặc còn < 60 s; đơn người khác → 404.
+
+2. KIỂM CHỨNG
+Baseline 1d7fb44: 192 tests, 191 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m58s), 198 tests, 197 PASS, 1 SKIPPED, 0 fail.
+PaymentRequestTests 6 (mới, AC-01..06; đồng thời: 3 request cùng lúc → 1 yêu cầu, 1 link). Migration 14 → 15; Swagger 73 → 74 paths.
+Lỗi khi làm: 500 do gọi method @Transactional nội bộ cùng bean (self-invocation, không có transaction → lazy load hỏng) → chuyển dựng view sang
+PaymentRequestStore.
+Smoke dev (V15; fake gateway; t62-*) 4/4: tạo link READY mã 100000, 30 000, "FR100000"; gọi lại cùng link; người khác 404; current orderStatus PENDING_PAYMENT.
+
+3. FILE
+resources/db/migration/V15__payment_request_order_code.sql · payment/entity/PaymentRequest.kt, payment/repository/PaymentRequestRepository.kt (M) ·
+payment/dto/PaymentRequestView.kt · payment/service/{PaymentRequestStore,PaymentRequestService}.kt · payment/controller/OrderPaymentController.kt ·
+openapi (1 path, 1 schema) · test PaymentRequestTests.kt, hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Đặt đơn (T5.2). Orders › POST /api/v1/orders/{orderId}/payment → 201 READY (checkoutUrl, qrCode, providerOrderCode). Gọi lại → 200 cùng id.
+ 2. GET /api/v1/orders/{orderId}/payment → orderStatus PENDING_PAYMENT cho tới khi webhook xác nhận (T6.3).
+ 3. Với payOS thật (PAYMENT_GATEWAY=payos + khóa trong .env): checkoutUrl mở trang thanh toán payOS; qrCode là chuỗi VietQR.
+
+5. GIỚI HẠN
+- Link không bị hủy ở payOS khi đơn hết hạn (link tự hết hạn theo expiredAt); tiền đến muộn xử lý ở T6.4.
+- Khi tra cứu lại (E1) payOS không trả qrCode → chỉ có checkoutUrl.
+- Smoke để lại: t62-*, 1 đơn PENDING_PAYMENT (job T5.3 sẽ cho hết hạn) và payment_request READY trên DB dev.

@@ -26,9 +26,9 @@ task trước) vì task trước chưa được merge vào `master`.
 | T5.1 | Tìm kiếm Surprise Box và cửa hàng | ✅ | `feature/t5-1-search` | dcc2773, 2bfd3d6 | 170 / 169 / 1 / 0 | [t5-1-search](t5-1-search/) |
 | T5.2 | Tạo đơn và giữ hộp | ✅ | `feature/t5-2-order-hold` | b38a791, 7e1c26c | 178 / 177 / 1 / 0 | [t5-2-order-hold](t5-2-order-hold/) |
 | T5.3 | Hết hạn giữ hộp và theo dõi đơn | ✅ | `feature/t5-3-order-expiry` | 0ebd64b, ae38956 | 184 / 183 / 1 / 0 | [t5-3-order-expiry](t5-3-order-expiry/) |
-| T6.1 | Port thanh toán và adapter payOS | ✅ | `feature/t6-1-payment-gateway` | | 192 / 191 / 1 / 0 | [t6-1-payment-gateway](t6-1-payment-gateway/) |
-| T6.2 | Tạo yêu cầu thanh toán | 🔄 |  | |  |  |
-| T6.3 | Webhook xác nhận thanh toán | ⬜ | | | | |
+| T6.1 | Port thanh toán và adapter payOS | ✅ | `feature/t6-1-payment-gateway` | a771a49, 1d7fb44 | 192 / 191 / 1 / 0 | [t6-1-payment-gateway](t6-1-payment-gateway/) |
+| T6.2 | Tạo yêu cầu thanh toán | ✅ | `feature/t6-2-payment-request` | | 198 / 197 / 1 / 0 | [t6-2-payment-request](t6-2-payment-request/) |
+| T6.3 | Webhook xác nhận thanh toán | 🔄 |  | |  |  |
 | T6.4 | Tiền đến muộn, sai số tiền, đối chiếu | ⬜ | | | | |
 | T6.5 | Hoàn tiền có kiểm soát | ⬜ | | | | |
 | T7.1 | Mã nhận hàng | ⬜ | | | | |
@@ -61,6 +61,7 @@ task trước) vì task trước chưa được merge vào `master`.
 - T5.2: Giữ hộp: khóa account → store/batch FOR SHARE → hộp FOR UPDATE SKIP LOCKED; tối đa 5 hộp/đơn; chủ cửa hàng không tự đặt; acceptedPolicyVersion bắt buộc.
 - T5.3: Job hết hạn 30 s (FOR UPDATE SKIP LOCKED); hủy đơn đã thanh toán để T7.3; cửa hàng thấy tên hiển thị khách, không email; V14 thay trigger để thêm status_reason.
 - T6.1: payment.gateway=fake mặc định (dev/test), prod bắt buộc payos + 3 khóa; expiredAt gửi epoch giây; chữ ký webhook khớp vector tài liệu payOS.
+- T6.2: Mã số provider từ sequence (từ 100000), nội dung FR+mã; ghi ý định → gọi payOS ngoài transaction → ghi kết quả; lỗi không rõ tra cứu theo mã trước khi tạo lại.
 
 ## Việc cần người dùng làm / xem lại
 

@@ -37,5 +37,12 @@ class PaymentRequest(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "status", nullable = false, length = 50)
-    var status: PaymentRequestStatus
+    var status: PaymentRequestStatus,
+
+    // T6.2: numeric code sent to the provider (payOS orderCode) and the VietQR payload returned by it.
+    @field:Column(name = "provider_order_code", nullable = true, unique = true)
+    var providerOrderCode: Long? = null,
+
+    @field:Column(name = "qr_code", nullable = true, columnDefinition = "text")
+    var qrCode: String? = null
 ) : MutableEntity()

@@ -48,7 +48,7 @@ lựa chọn đề xuất trong Gate A.
 | 3. Cửa hàng và nhân viên | [x] T3.1 · [x] T3.2 · [x] T3.3 · [x] T3.4 · [x] T3.5 |
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
-| 6. Thanh toán và hoàn tiền | [x] T6.1 · [ ] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
+| 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [ ] T6.3 · [ ] T6.4 · [ ] T6.5 |
 | 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
@@ -239,7 +239,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** sai checksum → từ chối; lỗi mạng/timeout → lỗi có kiểu rõ ràng, không lộ key.
 - **Test:** checksum với vector mẫu từ docs payOS; adapter test với HTTP server giả.
 
-### [ ] T6.2 — Tạo yêu cầu thanh toán
+### [x] T6.2 — Tạo yêu cầu thanh toán
 - **Phụ thuộc:** T5.3, T6.1. **Tài liệu:** UC-14 (bước 1–3), UC-15, BR-28, BR-29.
 - **Phạm vi:** khách lấy/tạo QR/link cho đơn của mình, `PENDING_PAYMENT`, còn hạn giữ; ánh xạ đơn → `orderCode` số duy
   nhất; số tiền = `total_amount`; hạn link ≤ `hold_expires_at`; còn yêu cầu hợp lệ → trả lại cùng QR (UC-15 A1);

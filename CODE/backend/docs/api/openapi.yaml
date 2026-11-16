@@ -6855,6 +6855,144 @@
           }
         }
       }
+    },
+    "/api/v1/orders/{orderId}/payment": {
+      "post": {
+        "operationId": "post_orders_orderId_payment",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get or create the payment QR/link",
+        "description": "Owner of a PENDING_PAYMENT order with at least 60 s of hold left. Reuses the live request (200) or creates one (201) for exactly the order total, expiring with the hold. The provider is called outside database transactions; after an unclear failure the code is looked up before creating again (UC-15 E1).",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Order id"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Link created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestView"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Existing live link",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "502": {
+            "description": "PAYMENT_PROVIDER_REJECTED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      },
+      "get": {
+        "operationId": "get_orders_orderId_payment",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Current payment request",
+        "description": "Latest request of my order.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Order id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10925,6 +11063,91 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 1000
+          }
+        }
+      },
+      "PaymentRequestView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "orderId",
+          "orderCode",
+          "provider",
+          "status",
+          "amount",
+          "currency",
+          "expiresAt",
+          "orderStatus"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "providerOrderCode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "PAYOS",
+              "FAKE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "READY",
+              "EXPIRED",
+              "FAILED"
+            ]
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "checkoutUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "qrCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "VietQR payload to render as a QR image"
+          },
+          "transferDescription": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Transfer content (FR + code)"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "orderStatus": {
+            "$ref": "#/components/schemas/OrderStatus",
+            "description": "Only CONFIRMED means the payment was verified; returning to the app does not (UC-14 A3)"
           }
         }
       }
