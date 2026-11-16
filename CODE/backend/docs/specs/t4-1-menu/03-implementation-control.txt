@@ -1,0 +1,56 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T4.1: MENU NỘI BỘ VÀ LỊCH SỬ GIÁ
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt (01, 02) | Nhánh: feature/t4-1-menu (từ feature/t3-5-account-admin b2125e8)
+Tài liệu: UC-24, UC-50..53, UC-75 (phần xem), BR-04..08
+
+1. KẾT QUẢ
+- V9: seed 9 nhóm thực phẩm (BAKERY, COOKED_MEAL, NOODLE_SOUP, RICE_DISH, FRESH_PRODUCE, DAIRY, DESSERT, BEVERAGE, MIXED);
+  bảng price_reference_document; attachment.price_document_id + CHECK attachment_check mới.
+- GET /api/v1/food-categories (đăng nhập bất kỳ).
+- /api/v1/stores/{storeId}/menu-items: GET (lọc status, categoryCode), POST (owner); /{itemId}: GET (kèm lịch sử giá, tài liệu), PATCH
+  (owner, version bắt buộc, khóa dòng; giá mới cần priceChangeReason, ghi menu_price_history cùng transaction); /{itemId}/status
+  (owner, ACTIVE ⇄ DISCONTINUED, lý do; mở lại kiểm dữ liệu + nhóm còn hoạt động).
+- /api/v1/stores/{storeId}/price-documents: GET, POST (owner; file của owner; phạm vi một món hoặc toàn menu; replacesDocumentId → tài liệu cũ
+  replacedBy, vẫn liệt kê; thay tài liệu đã bị thay → 409).
+- Quyền: đọc = owner, staff MENU_VIEW, ADMIN (mọi cửa hàng); ghi = owner (MENU_MANAGE không seed); khách 403 (BR-05).
+  PriceDocumentAttachmentPolicy: tải file tài liệu theo cùng quyền đọc menu.
+- Giá: nguyên đồng 1..100.000.000; phiên bản ban đầu = history previous = new, lý do "Initial price". Lịch sử bất biến (trigger V3).
+- Audit MENU_ITEM_CREATED / UPDATED (before/after) / STATUS_CHANGED, PRICE_DOCUMENT_ADDED; hiện trong lịch sử cửa hàng (T3.3).
+- Test fixture: REFERENCE_TABLES thêm food_category.
+
+2. KIỂM CHỨNG
+Baseline b2125e8: 128 tests, 127 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m23s), 136 tests, 135 PASS, 1 SKIPPED, 0 fail.
+MenuTests 8 (mới, AC-01..10; đồng thời AC-04; UPDATE/DELETE history bị DB từ chối AC-05); AuthMigrationTests/FoodRescueApplicationTests
+8 → 9 migration, 41 → 42 entity; SwaggerUiTests 43 → 48 paths, 13 → 14 tags.
+Lỗi phát hiện và sửa trong lúc làm:
+- Tải tài liệu bằng tài khoản không có quyền → 500: MenuAccess.canRead bắt ApiException ném từ requirePermission (@Transactional) nên
+  transaction ngoài (FileAccessService) bị rollback-only → UnexpectedRollbackException. Sửa: canRead dùng contexts(), không ném.
+  Lần build có lỗi này chạy 9m47s (StoreStatusTests AC-09 chờ 497s ở TRUNCATE); sau khi sửa build 1m21s–1m23s, không lặp lại.
+- Smoke dev bắt lỗi PATCH giá lẻ đồng → 500 (normalize vẫn chạy khi đã có lỗi) → sửa, thêm ca test 1500.5/0/-1/quá trần cho PATCH.
+Smoke dev (V9 áp lúc khởi động; t41-owner/admin/customer-*) 11/11: nhóm 9; tạo món 201; giá lẻ 400; thiếu lý do 400; đổi giá 200;
+version cũ 409; ngừng bán 200; tài liệu 201; khách đọc menu 403; admin xem lịch sử 2, tài liệu 1; khách tải tài liệu 404.
+
+3. FILE
+resources/db/migration/V9__menu_catalogue_and_price_documents.sql · catalog/entity/PriceReferenceDocument.kt (New) ·
+catalog/repository/{FoodCategory,MenuItem,MenuPriceHistory,PriceReferenceDocument}Repository.kt · catalog/dto/* (9, New) ·
+catalog/service/{MenuAccess,MenuItemService,MenuQueryService,PriceDocumentService,PriceValidator,MenuViews,PriceDocumentAttachmentPolicy}.kt (New) ·
+catalog/controller/{FoodCategoryController,MenuItemController}.kt (New) · file/entity/Attachment.kt, store/service/StoreHistoryRecorder.kt (Modified) ·
+docs/api/openapi.yaml (5 path, tag Menu, 10 schema) · test MenuTests.kt (New), support/AuthTestFixtures.kt, hằng số 3 test.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Token owner: Menu › GET /api/v1/food-categories.
+ 2. POST /api/v1/stores/{storeId}/menu-items ví dụ "banhMi" → 201, priceHistory 1 dòng "Initial price".
+ 3. PATCH .../menu-items/{itemId} ví dụ "price" (sửa version theo bước 2) → 200, priceHistory 2 dòng. Gửi lại (version cũ) → 409.
+    Bỏ priceChangeReason → 400; listedPrice 1500.5 → 400.
+ 4. POST .../{itemId}/status ví dụ "stop" → DISCONTINUED.
+ 5. Files › POST /api/v1/files (PDF/ảnh bảng giá) → Menu › POST /api/v1/stores/{storeId}/price-documents ví dụ "menuBoard" (thay fileId).
+ 6. Token ADMIN: GET .../menu-items/{itemId} → lịch sử giá + tài liệu; tải file qua Files › GET /api/v1/files/{fileId}/content.
+ 7. Token khách: GET .../menu-items → 403.
+
+5. GIỚI HẠN
+- Sửa cảnh báo an toàn / ngừng vì an toàn chưa kiểm hộp đang bán (UC-51 A1, UC-52 A2) → T4.4/T7.5.
+- "Giá đã lưu trong hộp" (UC-75 bước 3) có khi T4.4 tạo hộp.
+- Smoke để lại trên DB dev: t41-*@example.test, store "T41 Bánh mì", 1 món, 1 tài liệu. DB dev đã áp V9.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Mẫu "bắt exception từ service @Transactional rồi trả false" làm hỏng transaction ngoài; dùng kiểm tra không ném (đã ghi bộ nhớ).

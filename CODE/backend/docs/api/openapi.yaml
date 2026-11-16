@@ -3788,6 +3788,578 @@
           }
         }
       }
+    },
+    "/api/v1/food-categories": {
+      "get": {
+        "operationId": "get_food_categories",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Food categories",
+        "description": "Active categories for menu items and box templates.",
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FoodCategoryView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/menu-items": {
+      "get": {
+        "operationId": "get_stores_storeId_menu_items",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List menu items",
+        "description": "Owner, staff with MENU_VIEW or ADMIN; customers get 403 (BR-05).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MenuItemStatus"
+            }
+          },
+          {
+            "name": "categoryCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MenuItemView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_stores_storeId_menu_items",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add a menu item (owner)",
+        "description": "Creates the item and its initial price version. Staff get 403 (UC-50 E2).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuItemCreateRequest"
+              },
+              "examples": {
+                "banhMi": {
+                  "value": {
+                    "name": "Bánh mì thịt",
+                    "categoryCode": "BAKERY",
+                    "listedPrice": 25000,
+                    "ingredients": "Bánh mì, thịt, pate, rau",
+                    "safetyWarnings": "Có gluten"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/menu-items/{itemId}": {
+      "get": {
+        "operationId": "get_stores_storeId_menu_items_itemId",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Menu item detail",
+        "description": "Owner, staff with MENU_VIEW or ADMIN; customers get 403 (BR-05). Includes price history and reference documents (UC-75).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Menu item id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuItemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch_stores_storeId_menu_items_itemId",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update a menu item or its price (owner)",
+        "description": "Requires the current version (stale -> 409, UC-51 E2). A new listedPrice needs priceChangeReason and is recorded in the append-only price history; boxes packed earlier keep their prices (BR-07).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Menu item id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuItemUpdateRequest"
+              },
+              "examples": {
+                "price": {
+                  "value": {
+                    "version": 0,
+                    "listedPrice": 30000,
+                    "priceChangeReason": "Giá nguyên liệu tăng"
+                  }
+                },
+                "warnings": {
+                  "value": {
+                    "version": 1,
+                    "safetyWarnings": "Có gluten, đậu phộng"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/menu-items/{itemId}/status": {
+      "post": {
+        "operationId": "post_stores_storeId_menu_items_itemId_status",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Discontinue or reopen (owner)",
+        "description": "DISCONTINUED items cannot be chosen for new boxes (BR-06). Reopening checks the data and the category (UC-52 A1).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Menu item id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuItemStatusRequest"
+              },
+              "examples": {
+                "stop": {
+                  "value": {
+                    "version": 1,
+                    "status": "DISCONTINUED",
+                    "reason": "Hết nguyên liệu"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/price-documents": {
+      "get": {
+        "operationId": "get_stores_storeId_price_documents",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Price reference documents",
+        "description": "Owner, staff with MENU_VIEW or ADMIN; customers get 403 (BR-05).",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PriceDocumentView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_stores_storeId_price_documents",
+        "tags": [
+          "Menu"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add a price reference document (owner)",
+        "description": "Registers a file uploaded through POST /api/v1/files as listed-price evidence (UC-53). replacesDocumentId keeps the old document as replaced. Registering does not mark prices as verified.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Store id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceDocumentRequest"
+              },
+              "examples": {
+                "menuBoard": {
+                  "value": {
+                    "fileId": "8b0c6f1e-2a4d-4c3b-9e7f-1d2c3b4a5e6f",
+                    "description": "Ảnh bảng giá tại quầy",
+                    "appliesFrom": "2026-11-01"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceDocumentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5919,6 +6491,314 @@
             "description": "Required to LOCK an account with unfinished orders"
           }
         }
+      },
+      "MenuItemStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "DISCONTINUED"
+        ]
+      },
+      "FoodCategoryView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "MenuItemCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "categoryCode",
+          "listedPrice",
+          "ingredients",
+          "safetyWarnings"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "listedPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "description": "Listed (normal) price, whole VND (BR-04)"
+          },
+          "ingredients": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "safetyWarnings": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Required; write \"Không có\" when none"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true,
+            "description": "false = prepared but not selling (UC-50 A1)"
+          }
+        }
+      },
+      "MenuItemUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "listedPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "description": "Listed (normal) price, whole VND (BR-04)"
+          },
+          "priceChangeReason": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Required when listedPrice changes"
+          },
+          "ingredients": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "safetyWarnings": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "MenuItemStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "status",
+          "reason"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MenuItemStatus"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      },
+      "MenuItemView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "categoryCode",
+          "categoryName",
+          "listedPrice",
+          "ingredients",
+          "safetyWarnings",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "listedPrice": {
+            "type": "integer"
+          },
+          "ingredients": {
+            "type": "string"
+          },
+          "safetyWarnings": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MenuItemStatus"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PriceHistoryView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previousPrice",
+          "newPrice",
+          "changedAt",
+          "changedById",
+          "reason"
+        ],
+        "properties": {
+          "previousPrice": {
+            "type": "integer"
+          },
+          "newPrice": {
+            "type": "integer"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "changedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PriceDocumentView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fileId",
+          "originalName",
+          "description",
+          "appliesFrom",
+          "uploadedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "menuItemId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "appliesFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replacedById": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "MenuItemDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "priceHistory",
+          "documents"
+        ],
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/MenuItemView"
+          },
+          "priceHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceHistoryView"
+            }
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceDocumentView"
+            }
+          }
+        }
+      },
+      "PriceDocumentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fileId",
+          "description",
+          "appliesFrom"
+        ],
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "menuItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "appliesFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "replacesDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       }
     },
     "responses": {
@@ -6132,6 +7012,10 @@
     {
       "name": "Admin accounts",
       "description": "Find, inspect, lock and unlock user accounts (UC-68..70; ADMIN only)"
+    },
+    {
+      "name": "Menu",
+      "description": "Internal menu, listed prices with history and price reference documents (UC-24, UC-50..53, UC-75)"
     },
     {
       "name": "Health"

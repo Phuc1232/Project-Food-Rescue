@@ -44,7 +44,7 @@ object TestAuthKeys {
 abstract class AuthTestFixtures {
     companion object {
         /** Tables holding migration-seeded reference data; never truncated. */
-        val REFERENCE_TABLES=setOf("permission")
+        val REFERENCE_TABLES=setOf("permission","food_category")
         private val postgres=PostgreSQLContainer("postgres:16-alpine").apply { start() }
         @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) {
             r.add("spring.datasource.url",postgres::getJdbcUrl); r.add("spring.datasource.username",postgres::getUsername)
