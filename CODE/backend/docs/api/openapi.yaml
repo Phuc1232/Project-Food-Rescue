@@ -5633,6 +5633,170 @@
           }
         }
       }
+    },
+    "/api/v1/financial-policies/current": {
+      "get": {
+        "operationId": "get_financial_policies_current",
+        "tags": [
+          "Financial policy"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Policy in force",
+        "description": "Any signed-in account: owners see the commission rate (BR-46), customers the no-show retention and terms before checkout (UC-85).",
+        "responses": {
+          "200": {
+            "description": "Policy",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialPolicyView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/financial-policies": {
+      "get": {
+        "operationId": "get_admin_financial_policies",
+        "tags": [
+          "Financial policy"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "All versions (ADMIN)",
+        "description": "Newest first, with ACTIVE / SCHEDULED / SUPERSEDED state.",
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FinancialPolicyView"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_admin_financial_policies",
+        "tags": [
+          "Financial policy"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create a policy version (ADMIN)",
+        "description": "Versions are never edited. effectiveFrom may be in the future (SCHEDULED). Orders keep the version accepted at checkout (BR-33).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinancialPolicyRequest"
+              },
+              "examples": {
+                "raise": {
+                  "value": {
+                    "basedOnVersion": 1,
+                    "commissionRate": 0.12,
+                    "noShowRetentionRate": 0.4,
+                    "disputeWindowHours": 48,
+                    "cancellationTerms": "Khách hủy trước giờ nhận được hoàn toàn bộ",
+                    "refundTerms": "Hoàn theo giao dịch gốc",
+                    "reason": "Điều chỉnh theo thị trường"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialPolicyView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "description": "CONFLICT: newer version exists, effectiveFrom in the past or not after the latest version",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8754,6 +8918,133 @@
             "$ref": "#/components/schemas/MenuItemStatus"
           }
         }
+      },
+      "FinancialPolicyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "basedOnVersion",
+          "commissionRate",
+          "noShowRetentionRate",
+          "disputeWindowHours",
+          "cancellationTerms",
+          "refundTerms",
+          "reason"
+        ],
+        "properties": {
+          "basedOnVersion": {
+            "type": "integer",
+            "description": "Latest version you reviewed; a newer one -> 409"
+          },
+          "commissionRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Fraction, at most 4 decimals (0.125 = 12.5%)"
+          },
+          "noShowRetentionRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Fraction, at most 4 decimals (0.125 = 12.5%)"
+          },
+          "disputeWindowHours": {
+            "type": "integer",
+            "enum": [
+              48
+            ]
+          },
+          "cancellationTerms": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "refundTerms": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Defaults to now; must be after the start of the latest version"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "FinancialPolicyView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "state",
+          "effectiveFrom",
+          "commissionRate",
+          "noShowRetentionRate",
+          "disputeWindowHours",
+          "cancellationTerms",
+          "refundTerms",
+          "rounding",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SCHEDULED",
+              "SUPERSEDED"
+            ]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "commissionRate": {
+            "type": "number"
+          },
+          "noShowRetentionRate": {
+            "type": "number"
+          },
+          "disputeWindowHours": {
+            "type": "integer"
+          },
+          "cancellationTerms": {
+            "type": "string"
+          },
+          "refundTerms": {
+            "type": "string"
+          },
+          "rounding": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdById": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     },
     "responses": {
@@ -8983,6 +9274,10 @@
     {
       "name": "Boxes",
       "description": "Packing physical Surprise Boxes, box list and detail (UC-25, UC-26, UC-32, UC-33)"
+    },
+    {
+      "name": "Financial policy",
+      "description": "Versioned commission, no-show retention, cancellation and refund policy (UC-84..87)"
     },
     {
       "name": "Health"

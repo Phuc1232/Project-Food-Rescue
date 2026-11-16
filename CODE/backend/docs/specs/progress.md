@@ -21,9 +21,9 @@ task trước) vì task trước chưa được merge vào `master`.
 | T4.1 | Menu nội bộ và lịch sử giá | ✅ | `feature/t4-1-menu` | 87265ba, 523d093 | 136 / 135 / 1 / 0 | [t4-1-menu](t4-1-menu/) |
 | T4.2 | Mẫu Surprise Box | ✅ | `feature/t4-2-box-template` | 467a724, 7debb84 | 141 / 140 / 1 / 0 | [t4-2-box-template](t4-2-box-template/) |
 | T4.3 | Đợt mở bán | ✅ | `feature/t4-3-sale-batch` | 2be0955, 3796e4f | 149 / 148 / 1 / 0 | [t4-3-sale-batch](t4-3-sale-batch/) |
-| T4.4 | Đóng gói hộp thực tế | ✅ | `feature/t4-4-box-packing` | | 158 / 157 / 1 / 0 | [t4-4-box-packing](t4-4-box-packing/) |
-| T4.5 | Chính sách tài chính theo phiên bản | 🔄 |  | |  |  |
-| T5.1 | Tìm kiếm Surprise Box và cửa hàng | ⬜ | | | | |
+| T4.4 | Đóng gói hộp thực tế | ✅ | `feature/t4-4-box-packing` | 4d4e892, e76dd84 | 158 / 157 / 1 / 0 | [t4-4-box-packing](t4-4-box-packing/) |
+| T4.5 | Chính sách tài chính theo phiên bản | ✅ | `feature/t4-5-financial-policy` | | 164 / 163 / 1 / 0 | [t4-5-financial-policy](t4-5-financial-policy/) |
+| T5.1 | Tìm kiếm Surprise Box và cửa hàng | 🔄 |  | |  |  |
 | T5.2 | Tạo đơn và giữ hộp | ⬜ | | | | |
 | T5.3 | Hết hạn giữ hộp và theo dõi đơn | ⬜ | | | | |
 | T6.1 | Port thanh toán và adapter payOS | ⬜ | | | | |
@@ -56,6 +56,7 @@ task trước) vì task trước chưa được merge vào `master`.
 - T4.2: Không xóa mẫu (chỉ ngừng); giá trị tối thiểu mặc định ≥ giá bán; ảnh bìa cho khách để T5.1.
 - T4.3: saleDate suy ra từ giờ nhận; khung nhận trong giờ mở cửa ≤ 24h; sửa chỉ khi DRAFT/PAUSED; admin BLOCKED vĩnh viễn; BatchAvailability là định nghĩa tồn khả dụng.
 - T4.4: Đóng hộp 1 lệnh với requestKey; không đạt giá trị/an toàn → 400 không tạo; kiểm tra thực phẩm không đạt → hộp BLOCKED; giá đổi → 409 PRICE_CHANGED.
+- T4.5: Seed hoa hồng 10%, giữ lại no-show 50% (giả định, tài liệu không nêu số); hiệu lực = effective_from mới nhất ≤ t; giờ phản ánh cố định 48.
 
 ## Việc cần người dùng làm / xem lại
 

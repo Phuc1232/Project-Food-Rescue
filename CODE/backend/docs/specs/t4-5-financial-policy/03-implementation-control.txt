@@ -1,0 +1,36 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T4.5: CHÍNH SÁCH TÀI CHÍNH THEO PHIÊN BẢN
+Ngày: 2026-11-15 | Trạng thái: DONE
+Gate A/B: tự chốt | Nhánh: feature/t4-5-financial-policy (từ feature/t4-4-box-packing e76dd84)
+Tài liệu: UC-84..87, BR-33, BR-42, BR-43, BR-46, BR-47, NFR làm tròn
+
+1. KẾT QUẢ
+- V12: financial_policy.reason, created_by_id cho phép NULL; seed phiên bản 1 (hoa hồng 0,10; giữ lại no-show 0,50; 48h; điều khoản hủy/hoàn
+  tiếng Việt; người tạo = hệ thống).
+- GET /api/v1/financial-policies/current (mọi tài khoản đăng nhập). GET/POST /api/v1/admin/financial-policies (ADMIN): danh sách có state
+  ACTIVE/SCHEDULED/SUPERSEDED; tạo phiên bản max+1 với basedOnVersion (E2), effectiveFrom (mặc định now, không quá khứ, phải sau effectiveFrom
+  của phiên bản mới nhất), lý do; tỷ lệ [0,1] ≤ 4 chữ số lẻ; giờ phản ánh = 48. Khóa tư vấn pg_advisory_xact_lock tuần tự hóa người tạo.
+- FinancialPolicyResolver.at(t) (phiên bản có effective_from lớn nhất ≤ t) cho T5.2; MoneyRounding.applyRate (HALF_UP về đồng) cho T6–T8.
+- Audit FINANCIAL_POLICY_CREATED. Bảng vẫn bất biến (trigger V3); phiên bản lịch tương lai không hủy được, chỉ thay bằng phiên bản mới hơn.
+- Test fixture: sau TRUNCATE chạy lại đúng câu INSERT seed lấy từ file V12 (AuthTestFixtures.FINANCIAL_POLICY_SEED).
+
+2. KIỂM CHỨNG
+Baseline e76dd84: 158 tests, 157 PASS, 1 SKIPPED. Build cuối: BUILD SUCCESSFUL (1m42s), 164 tests, 163 PASS, 1 SKIPPED, 0 fail.
+FinancialPolicyTests 6 (mới, AC-01..07; đồng thời AC-05; UPDATE/DELETE bị từ chối AC-06); migration 11 → 12; Swagger 59 → 61 paths, 17 → 18 tags.
+Smoke dev (V12 áp; t45-*) 7/7: current v1 0.1/0.5; admin list 1; tỷ lệ 1.5 → 400; user tạo → 403; lên lịch 2030 → 201 SCHEDULED; basedOnVersion
+cũ → 409; current vẫn v1. Sau smoke đã gỡ phiên bản 2030 khỏi DB dev (tắt trigger tạm thời trong một transaction) để không chặn phiên bản dev sau này.
+
+3. FILE
+resources/db/migration/V12__financial_policy_seed.sql · finance/entity/FinancialPolicy.kt (M) · finance/repository/FinancialPolicyRepository.kt (M) ·
+finance/dto/{FinancialPolicyRequest,FinancialPolicyView}.kt · finance/service/{FinancialPolicyService,FinancialPolicyResolver,MoneyRounding}.kt ·
+finance/controller/{FinancialPolicyController,AdminFinancialPolicyController}.kt · openapi (2 path, tag Financial policy, 2 schema) ·
+test FinancialPolicyTests.kt, support/AuthTestFixtures.kt, hằng số.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+ 1. Token bất kỳ: Financial policy › GET /api/v1/financial-policies/current → v1.
+ 2. Token ADMIN: GET /api/v1/admin/financial-policies → basedOnVersion = version đầu danh sách.
+ 3. POST ví dụ "raise" (basedOnVersion đúng) → 201 ACTIVE v2; gửi lại → 409 (basedOnVersion cũ). Thử effectiveFrom tương lai → SCHEDULED.
+    LƯU Ý trên DB dùng chung: phiên bản tương lai không xóa được qua API.
+
+5. GIỚI HẠN
+- Hoa hồng riêng từng cửa hàng (tài liệu dòng 148) chưa làm — card chỉ yêu cầu chính sách chung.
+- Số mặc định 10% / 50% là giả định (tài liệu không nêu); admin đổi bằng phiên bản 2.

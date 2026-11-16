@@ -45,6 +45,8 @@ abstract class AuthTestFixtures {
     companion object {
         /** Tables holding migration-seeded reference data; never truncated. */
         val REFERENCE_TABLES=setOf("permission","food_category")
+        val FINANCIAL_POLICY_SEED: String = AuthTestFixtures::class.java.getResource("/db/migration/V12__financial_policy_seed.sql")!!.readText()
+            .let { it.substring(it.indexOf("INSERT INTO financial_policy")).trimEnd().removeSuffix(";") }
         private val postgres=PostgreSQLContainer("postgres:16-alpine").apply { start() }
         @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) {
             r.add("spring.datasource.url",postgres::getJdbcUrl); r.add("spring.datasource.username",postgres::getUsername)
@@ -63,6 +65,8 @@ abstract class AuthTestFixtures {
         val tables=jdbc.queryForList("select tablename from pg_tables where schemaname='public' and tablename <> 'flyway_schema_history'",String::class.java).filterNotNull()
             .filter { it !in REFERENCE_TABLES }
         jdbc.execute("TRUNCATE "+tables.joinToString(",") { "\""+it+"\"" }+" CASCADE")
+        // T4.5: financial_policy is insert-only, so it is truncated and re-seeded with the exact INSERT of migration V12.
+        jdbc.execute(FINANCIAL_POLICY_SEED)
         mail.messages.clear(); mail.fail=false
     }
     fun call(path: String,method: String="GET",body: Any?=null,token: String?=null): HttpResponse<String> {
