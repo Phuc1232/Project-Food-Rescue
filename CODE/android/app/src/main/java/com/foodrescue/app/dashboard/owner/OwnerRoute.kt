@@ -19,6 +19,9 @@ import com.foodrescue.app.feature.store.domain.StorePayoutAccount
 import com.foodrescue.app.feature.store.presentation.*
 import com.foodrescue.app.feature.store.presentation.component.*
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 
 @Composable
 internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer: () -> Unit, onLogout: () -> Unit,
@@ -47,7 +50,8 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
     SideEffect { window?.let { WindowCompat.getInsetsController(it, it.decorView).apply {
         isAppearanceLightStatusBars = true; isAppearanceLightNavigationBars = true
     } } }
-    LaunchedEffect(vm) { vm.load() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(vm, lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.load(force = true) } }
     LaunchedEffect(state.saved) {
         val result = state.saved ?: return@LaunchedEffect
         vm.consumeSaved()
@@ -95,7 +99,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 if (state.error == null) CircularProgressIndicator() else {
                     StoreErrorMessage(state.error)
-                    FoodRescueButton("Thử lại", vm::load, Modifier.padding(top = 16.dp))
+                    FoodRescueButton("Thử lại", { vm.load() }, Modifier.padding(top = 16.dp))
                     TextButton(onClick = onCustomer) { Text("Quay lại tài khoản") }
                 }
             }
@@ -103,7 +107,7 @@ internal fun OwnerRoute(email: String, vm: StoreManagementViewModel, onCustomer:
                 back, { vm.selectLocation(it); page = locationReturn })
             registering -> StoreProfileFormScreen(state, email, true, vm::edit, vm::accept, vm::nextStep, back, vm::submit, vm::saveDraft,
                 onChooseLocation = chooseLocation)
-            !approved || page == OwnerPage.REVIEW -> StoreReviewScreen(store, email, back, { page = OwnerPage.REGISTER })
+            !approved || page == OwnerPage.REVIEW -> StoreReviewScreen(store, email, back, { vm.beginProfileEdit(); page = OwnerPage.REGISTER })
             page == OwnerPage.PROFILE -> OwnerStoreProfileScreen(store, email, back, { vm.beginProfileEdit(); page = OwnerPage.EDIT_PROFILE })
             page == OwnerPage.EDIT_PROFILE -> StoreProfileFormScreen(state, email, false, vm::edit, vm::accept, vm::nextStep, back, vm::saveProfile, vm::saveDraft,
                 onChooseLocation = chooseLocation)

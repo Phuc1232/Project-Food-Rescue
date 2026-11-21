@@ -22,6 +22,16 @@ import com.foodrescue.app.core.util.money
 import com.foodrescue.app.feature.menu.domain.*
 import com.foodrescue.app.feature.menu.presentation.label
 
+internal val MenuCategory.label: String get() = when (this) {
+    MenuCategory.BAKERY -> "Bánh"; MenuCategory.MEAL -> "Món chính"; MenuCategory.DRINK -> "Đồ uống"
+    MenuCategory.SNACK -> "Ăn nhẹ"; MenuCategory.GROCERY -> "Thực phẩm"; MenuCategory.OTHER -> "Khác"
+}
+
+internal val MenuUnit.label: String get() = when (this) {
+    MenuUnit.PORTION -> "phần"; MenuUnit.PIECE -> "cái"; MenuUnit.CUP -> "ly"; MenuUnit.BOTTLE -> "chai"
+    MenuUnit.BOX -> "hộp"; MenuUnit.PACK -> "gói"; MenuUnit.KILOGRAM -> "kg"
+}
+
 internal val MenuForest = Color(0xFF133E32)
 internal val MenuMint = Color(0xFFD8EDB4)
 

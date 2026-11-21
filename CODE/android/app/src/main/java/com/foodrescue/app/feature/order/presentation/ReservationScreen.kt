@@ -1,5 +1,7 @@
 package com.foodrescue.app.feature.order.presentation
 
+import com.foodrescue.app.feature.order.presentation.component.label
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -67,6 +69,9 @@ internal fun ReservationScreen(
             }
         }
         reservation.refund?.let { RefundSummaryCard(it, onRefund) }
+        reservation.adminRefunds.sortedByDescending { it.updatedAtMillis }.forEach {
+            com.foodrescue.app.feature.refund.presentation.component.ManagedRefundSummary(it)
+        }
         if (status == OrderStatus.WAITING_PICKUP && nowMillis >= reservation.pickup.endMillis) {
             FoodRescueCard {
                 Text("Đã qua giờ nhận hộp", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
@@ -121,6 +126,13 @@ internal fun ReservationScreen(
             }
         }
         OrderTimeline(reservation, nowMillis)
+        reservation.financialTerms?.let { terms -> FoodRescueCard {
+            Text("Chính sách của đơn", style = MaterialTheme.typography.titleMedium)
+            Text("Hạn hủy: " + bookingTimestamp(reservation.pickup.startMillis - terms.cancellationMinutes * 60_000L))
+            Text("Hoàn khi hủy hợp lệ: " + com.foodrescue.app.core.util.percentageRate(terms.cancellationRefundBps))
+            Text("No-show: chờ thêm ${terms.noShowGraceMinutes} phút · hoàn " +
+                com.foodrescue.app.core.util.percentageRate(terms.noShowRefundBps), style = MaterialTheme.typography.bodySmall)
+        } }
         if (reservation.isPaid && reservation.cancelledAtMillis == null && reservation.collectedAtMillis == null && reservation.ownerCancellation == null) {
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Hủy đơn và hoàn tiền") }
         }

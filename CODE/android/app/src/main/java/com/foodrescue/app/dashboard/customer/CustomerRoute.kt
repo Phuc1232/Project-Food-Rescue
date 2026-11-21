@@ -46,7 +46,7 @@ private val NavigationSaver = Saver<CustomerNavigation, ArrayList<String>>(
 @Composable
 internal fun CustomerRoute(
     profile: CustomerProfile,
-    onProfile: (String, String) -> Boolean,
+    onProfile: suspend (String, String) -> Boolean,
     onLogout: () -> Unit,
     vm: DiscoveryViewModel,
     booking: BookingViewModel,
@@ -111,7 +111,7 @@ internal fun CustomerRoute(
             onSubmitted = { navigation = navigation.back().open("complaints").open("complaint:$it") },
             onOrders = { navigation = navigation.selectTab(2) }, modifier = modifier)
     } else if (navigation.current == "profile") {
-        EditCustomerProfileScreen(profile, back) { name, phone -> if (onProfile(name, phone)) back() }
+        EditCustomerProfileScreen(profile, back, onProfile)
     } else if (cancelId != null) {
         CancelOrderScreen(bookingState, cancelId, back, booking::chooseCancellationReason, booking::changeCancellationNote,
             onConfirm = { if (booking.cancelPaidOrder(cancelId)) navigation = navigation.back().open("refund:$cancelId") },

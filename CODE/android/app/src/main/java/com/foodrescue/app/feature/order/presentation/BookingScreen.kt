@@ -105,12 +105,12 @@ internal fun BookingScreen(
             }, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
     }
-    if (policyOpen) BookingPolicySheet(box, onDismiss = { policyOpen = false })
+    if (policyOpen) BookingPolicySheet(box, state.financialTerms, onDismiss = { policyOpen = false })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BookingPolicySheet(box: CatalogBox, onDismiss: () -> Unit) {
+private fun BookingPolicySheet(box: CatalogBox, terms: com.foodrescue.app.feature.finance.domain.FinancialTerms, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)
@@ -125,8 +125,10 @@ private fun BookingPolicySheet(box: CatalogBox, onDismiss: () -> Unit) {
             Text("Hộp được giữ tối đa 10 phút để hoàn tất thanh toán. Khi hết hạn hoặc đến giờ nhận, lượt giữ tự kết thúc.",
                 style = MaterialTheme.typography.bodyMedium)
             Text("Hủy và hoàn tiền", style = MaterialTheme.typography.titleMedium)
-            Text("Hủy hợp lệ trước giờ nhận được hoàn khoản đã thanh toán qua ứng dụng. Sau giờ nhận, yêu cầu cần được xem xét. Khoản hoàn có trạng thái xử lý riêng.",
+            Text("Hủy trước giờ nhận ${terms.cancellationMinutes} phút được hoàn ${com.foodrescue.app.core.util.percentageRate(terms.cancellationRefundBps)} khoản đã thanh toán. Khoản hoàn có trạng thái xử lý riêng.",
                 style = MaterialTheme.typography.bodyMedium)
+            Text("Khách không đến nhận", style = MaterialTheme.typography.titleMedium)
+            Text("Sau khi kết thúc giờ nhận và chờ thêm ${terms.noShowGraceMinutes} phút, cửa hàng xác minh No-show. Tỷ lệ hoàn theo chính sách: ${com.foodrescue.app.core.util.percentageRate(terms.noShowRefundBps)}.")
             FoodRescueButton("Đã hiểu", onDismiss, Modifier.fillMaxWidth())
         }
     }

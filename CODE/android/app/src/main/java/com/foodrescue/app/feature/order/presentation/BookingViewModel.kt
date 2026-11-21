@@ -10,6 +10,7 @@ import com.foodrescue.app.feature.order.domain.*
 import com.foodrescue.app.feature.payment.domain.*
 import com.foodrescue.app.feature.refund.domain.*
 import com.foodrescue.app.feature.surprisebox.domain.CatalogBox
+import com.foodrescue.app.feature.finance.domain.*
 import java.util.UUID
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -24,6 +25,7 @@ internal data class BookingUiState(
     val cancellationDraft: CancellationDraft? = null,
     val cancellationIssue: CancellationIssue? = null,
     val dataError: String? = null,
+    val financialTerms: FinancialTerms = FinancialTerms(),
 ) {
     val visibleOrders: List<BoxReservation> get() = orderFilter.select(reservations, nowMillis)
     val box: CatalogBox? get() = catalog.firstOrNull { it.id == draft?.boxId }
@@ -42,6 +44,7 @@ internal class BookingViewModel(
     private val payments: PaymentRepository,
     private val history: OrderHistoryStore? = null,
     private val refunds: RefundRepository = RefundRepository { RefundResult.UNAVAILABLE },
+    private val policies: FinancialTermsSource = FinancialTermsSource { FinancialTerms() },
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private var initialError: String? = null
@@ -104,6 +107,7 @@ internal class BookingViewModel(
             UUID.randomUUID().toString(), draft.boxId, draft.quantity, draft.pickup,
             state.nowMillis, holdDeadline(state.nowMillis, draft.pickup),
             unitPrice = requireNotNull(state.box).price, boxSnapshot = state.box?.takeIf { it.batchId != null },
+            financialTerms = state.financialTerms,
         )
         val reserved = try { history?.reserve(reservation) != false } catch (_: Exception) {
             state = state.copy(dataError = WRITE_ERROR)
@@ -187,10 +191,11 @@ internal class BookingViewModel(
         }
         val cancelled = requireNotNull(order).copy(cancelledAtMillis = state.nowMillis,
             cancellationReason = requireNotNull(draft).reason, cancellationNote = draft.note.trim(),
-            refund = OrderRefund(requireNotNull(quote).amount, RefundStatus.PROCESSING, state.nowMillis, state.nowMillis))
+            refund = requireNotNull(quote).amount.takeIf { it > 0 }?.let {
+                OrderRefund(it, RefundStatus.PROCESSING, state.nowMillis, state.nowMillis) })
         val stored = update(state.copy(reservations = state.reservations.map { if (it.id == id) cancelled else it },
             cancellationDraft = null, cancellationIssue = null))
-        return stored && state.reservations.any { it.id == id && it.cancelledAtMillis != null && it.refund != null }
+        return stored && state.reservations.any { it.id == id && it.cancelledAtMillis != null }
     }
 
     fun retryRefund(id: String) {
@@ -238,7 +243,12 @@ internal class BookingViewModel(
 
     private fun refreshCatalog(): Boolean {
         if (state.dataError != null) return false
-        return try { state = state.copy(catalog = catalog.getBoxes(), nowMillis = clock()); true }
+        return try {
+            val now = clock(); val terms = policies.at(now)
+            state = state.copy(catalog = catalog.getBoxes(), nowMillis = now, financialTerms = terms,
+                draft = if (terms != state.financialTerms) state.draft?.copy(accepted = false) else state.draft)
+            true
+        }
         catch (_: Exception) { state = state.copy(dataError = READ_ERROR); false }
     }
 
@@ -295,7 +305,9 @@ internal class BookingViewModel(
                 listOf(it.cancelledAtMillis ?: "", it.collectedAtMillis ?: "", it.cancellationReason?.name.orEmpty(),
                     URLEncoder.encode(it.cancellationNote, "UTF-8")) +
                 (it.refund?.let { refund -> listOf(refund.amount, refund.status.name, refund.requestedAtMillis, refund.updatedAtMillis) }
-                    ?: listOf("", "", "", ""))).joinToString("|")
+                    ?: listOf("", "", "", "")) +
+                (it.financialTerms?.let { terms -> listOf(terms.version, terms.commissionBps, terms.cancellationMinutes,
+                    terms.cancellationRefundBps, terms.noShowGraceMinutes, terms.noShowRefundBps) } ?: emptyList())).joinToString("|")
         })
         return true
     }
@@ -313,7 +325,7 @@ internal class BookingViewModel(
         }.getOrNull()
         fun restoreReservation(row: String, boxes: List<CatalogBox>): BoxReservation? = runCatching {
             val parts = row.split('|')
-            require(parts.size in listOf(7, 12, 14, 20))
+            require(parts.size in listOf(7, 12, 14, 20, 26))
             require(parts[1].toInt() >= 0) // Negative IDs belong to durable, batch-backed orders.
             val price = if (parts.size == 7) boxes.firstOrNull { it.id == parts[1].toInt() }?.price ?: 0 else parts[7].toInt()
             val payment = if (parts.size >= 12 && parts[8].isNotBlank()) {
@@ -325,8 +337,10 @@ internal class BookingViewModel(
                 parts.getOrNull(13)?.takeIf { it.isNotBlank() }?.toLong(),
                 parts.getOrNull(14)?.takeIf(String::isNotBlank)?.let(CancellationReason::valueOf),
                 parts.getOrNull(15)?.let { URLDecoder.decode(it, "UTF-8") }.orEmpty(),
-                if (parts.size == 20 && parts[16].isNotBlank()) OrderRefund(parts[16].toLong(),
-                    RefundStatus.valueOf(parts[17]), parts[18].toLong(), parts[19].toLong()) else null)
+                if (parts.size >= 20 && parts[16].isNotBlank()) OrderRefund(parts[16].toLong(),
+                    RefundStatus.valueOf(parts[17]), parts[18].toLong(), parts[19].toLong()) else null,
+                financialTerms = if (parts.size == 26) FinancialTerms(parts[20].toLong(), parts[21].toInt(), parts[22].toInt(),
+                    parts[23].toInt(), parts[24].toInt(), parts[25].toInt()) else null)
         }.getOrNull()
     }
 }

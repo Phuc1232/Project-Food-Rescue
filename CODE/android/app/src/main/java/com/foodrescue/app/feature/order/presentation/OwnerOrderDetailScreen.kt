@@ -1,5 +1,7 @@
 package com.foodrescue.app.feature.order.presentation
 
+import com.foodrescue.app.feature.order.presentation.component.label
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -54,6 +56,9 @@ internal fun OwnerOrderDetailScreen(order: BoxReservation, now: Long, onBack: ()
             Text(refund.status.label); BookingAmount("Số tiền", refund.amount)
         } }
         HandoverHistory(order)
+        order.adminRefunds.sortedByDescending { it.updatedAtMillis }.forEach {
+            com.foodrescue.app.feature.refund.presentation.component.ManagedRefundSummary(it)
+        }
         OrderTimeline(order, now)
     }
 }

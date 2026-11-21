@@ -20,12 +20,20 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
+import com.foodrescue.app.core.designsystem.component.FoodRescuePage
+import com.foodrescue.app.core.designsystem.component.FoodRescueButton
 
 @Composable
 fun AuthRoute(
     modifier: Modifier = Modifier,
     viewModel: AuthViewModel = viewModel(),
     onAuthenticated: (name: String, email: String) -> Unit = { _, _ -> },
+    onRegistered: suspend (name: String, email: String) -> Unit = { _, _ -> },
 ) {
     val state = viewModel.uiState
     val screenStates = rememberSaveableStateHolder()
@@ -88,7 +96,11 @@ fun AuthRoute(
                         onResend = viewModel::resend,
                         onBack = viewModel::back,
                     )
-                    AuthPage.REGISTER_SUCCESS, AuthPage.RESET_SUCCESS -> AuthSuccessScreen(
+                    AuthPage.REGISTER_SUCCESS -> RegisteredAccountContent(state.form.name, state.form.email,
+                        onRegistered, { viewModel.navigate(AuthPage.LOGIN) }) {
+                        AuthSuccessScreen(state.copy(page = page), { viewModel.navigate(AuthPage.LOGIN) })
+                    }
+                    AuthPage.RESET_SUCCESS -> AuthSuccessScreen(
                         state = state.copy(page = page),
                         onLogin = { viewModel.navigate(AuthPage.LOGIN) },
                     )
@@ -110,5 +122,29 @@ fun AuthRoute(
                 onConfirm = { viewModel.enterPreview(onAuthenticated) },
             )
         }
+    }
+}
+
+/** Registration success is shown only after the account profile has been saved. */
+@Composable
+private fun RegisteredAccountContent(name: String, email: String,
+    onRegister: suspend (String, String) -> Unit, onBack: () -> Unit, content: @Composable () -> Unit) {
+    var complete by rememberSaveable(email) { mutableStateOf(false) }
+    var error by remember { mutableStateOf(false) }
+    var attempt by remember { mutableIntStateOf(0) }
+    val register by rememberUpdatedState(onRegister)
+    LaunchedEffect(email, name, attempt) {
+        if (!complete) {
+            error = false
+            try { register(name, email); complete = true }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { error = true }
+        }
+    }
+    if (complete) content() else FoodRescuePage("Hoàn tất tài khoản", onBack) {
+        if (error) {
+            Text("Chưa hoàn tất được tài khoản. Vui lòng thử lại hoặc quay lại đăng nhập.")
+            FoodRescueButton("Thử lại", { attempt++ })
+        } else { CircularProgressIndicator(); Text("Đang lưu thông tin tài khoản…") }
     }
 }

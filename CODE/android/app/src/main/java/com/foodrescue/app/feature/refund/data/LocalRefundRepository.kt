@@ -15,3 +15,12 @@ internal class LocalRefundRepository(context: Context) : RefundRepository {
         } else RefundResult.UNAVAILABLE
     }
 }
+
+/** Replaceable frontend adapter; no payment-provider request is sent. */
+internal class LocalRefundProcessor(context: Context) : RefundProcessor {
+    private val repository = LocalRefundRepository(context)
+    override fun check(key: String, paymentReference: String, amount: Long): RefundResult {
+        require(key.isNotBlank() && paymentReference.isNotBlank() && amount > 0)
+        return repository.check(OrderRefund(amount, RefundStatus.PROCESSING, 0, 0))
+    }
+}
