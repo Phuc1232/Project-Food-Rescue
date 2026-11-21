@@ -12,7 +12,7 @@ import kotlinx.coroutines.CancellationException
 
 /** Resolves the frontend identity before any role surface is opened. */
 internal suspend fun accountRole(email: String, isOwner: Boolean, employees: StaffAccessRepository): RoleNavigation.Role =
-    if (isOwner) RoleNavigation.Role.OWNER else if (employees.find(email) != null) RoleNavigation.Role.STAFF else RoleNavigation.Role.CUSTOMER
+    if (com.foodrescue.app.feature.auth.domain.AdminIdentity.matches(email)) RoleNavigation.Role.ADMIN else if (isOwner) RoleNavigation.Role.OWNER else if (employees.find(email) != null) RoleNavigation.Role.STAFF else RoleNavigation.Role.CUSTOMER
 
 @Composable
 internal fun AccountEntry(email: String, isOwner: Boolean, employees: StaffAccessRepository,

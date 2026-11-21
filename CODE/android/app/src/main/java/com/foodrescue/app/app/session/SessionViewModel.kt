@@ -6,7 +6,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.foodrescue.app.app.navigation.RoleNavigation
+import com.foodrescue.app.feature.auth.domain.AdminIdentity
 import com.foodrescue.app.feature.account.domain.CustomerProfile
+import com.foodrescue.app.feature.account.domain.AccountLogin
 import com.foodrescue.app.feature.account.domain.isValidCustomerName
 import com.foodrescue.app.feature.account.domain.isValidCustomerPhone
 
@@ -26,6 +28,16 @@ class SessionViewModel(private val saved: SavedStateHandle) : ViewModel() {
     val role: RoleNavigation.Role? get() = profile?.let { selectedRole }
     internal var isStaffIdentity by mutableStateOf(saved.get<Boolean>(STAFF_IDENTITY) ?: false)
         private set
+    internal var accessVersion by mutableStateOf(saved.get<Long>(ACCESS_VERSION) ?: -1L)
+        private set
+    internal fun signIn(login: AccountLogin, role: RoleNavigation.Role) {
+        if (role == RoleNavigation.Role.ADMIN) require(AdminIdentity.matches(login.profile.email))
+        selectedRole = role
+        isStaffIdentity = role == RoleNavigation.Role.STAFF
+        accessVersion = login.accessVersion
+        saved[ACCESS_VERSION] = accessVersion
+        save(login.profile)
+    }
 
     fun signInCustomer(name: String, email: String) {
         require(email.isNotBlank())
@@ -47,9 +59,15 @@ class SessionViewModel(private val saved: SavedStateHandle) : ViewModel() {
         selectedRole = RoleNavigation.Role.STAFF
         save(CustomerProfile(name.trim().ifBlank { email.trim().substringBefore('@') }, email.trim()))
     }
+    fun signInAdmin(name: String, email: String) {
+        require(AdminIdentity.matches(email))
+        isStaffIdentity = false
+        selectedRole = RoleNavigation.Role.ADMIN
+        save(CustomerProfile(name.trim().ifBlank { "Quản trị viên" }, email.trim()))
+    }
     fun switchToStaff() { if (isStaffIdentity) profile?.let { selectedRole = RoleNavigation.Role.STAFF; save(it) } }
-    fun switchToOwner() { if (!isStaffIdentity) profile?.let { selectedRole = RoleNavigation.Role.OWNER; save(it) } }
-    fun switchToCustomer() { profile?.let { selectedRole = RoleNavigation.Role.CUSTOMER; save(it) } }
+    fun switchToOwner() { if (!isStaffIdentity && selectedRole != RoleNavigation.Role.ADMIN) profile?.let { selectedRole = RoleNavigation.Role.OWNER; save(it) } }
+    fun switchToCustomer() { if (selectedRole != RoleNavigation.Role.ADMIN) profile?.let { selectedRole = RoleNavigation.Role.CUSTOMER; save(it) } }
 
     fun updateProfile(name: String, phone: String): Boolean {
         val current = profile ?: return false
@@ -65,6 +83,8 @@ class SessionViewModel(private val saved: SavedStateHandle) : ViewModel() {
         saved.remove<String>(PHONE)
         saved.remove<String>(ROLE)
         saved.remove<Boolean>(STAFF_IDENTITY)
+        saved.remove<Long>(ACCESS_VERSION)
+        accessVersion = -1L
         isStaffIdentity = false
         selectedRole = RoleNavigation.Role.CUSTOMER
     }
@@ -84,5 +104,6 @@ class SessionViewModel(private val saved: SavedStateHandle) : ViewModel() {
         const val PHONE = "customer.phone"
         const val ROLE = "session.role"
         const val STAFF_IDENTITY = "session.staffIdentity"
+        const val ACCESS_VERSION = "session.accessVersion"
     }
 }

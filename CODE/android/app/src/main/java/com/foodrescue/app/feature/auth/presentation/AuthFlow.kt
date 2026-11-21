@@ -1,6 +1,7 @@
 package com.foodrescue.app.feature.auth.presentation
 
 import com.foodrescue.app.R
+import com.foodrescue.app.feature.auth.domain.AdminIdentity
 
 /** Deterministic, in-memory preview transitions. Never stores or verifies real credentials. */
 internal object AuthFlow {
@@ -31,6 +32,7 @@ internal object AuthFlow {
             if (state.page != AuthPage.NEW_PASSWORD && !emailPattern.matches(form.email.trim())) {
                 put(AuthField.EMAIL, R.string.auth_error_email)
             }
+            if (state.page == AuthPage.REGISTER && AdminIdentity.matches(form.email)) put(AuthField.EMAIL, R.string.auth_error_reserved_account)
             if (state.page != AuthPage.FORGOT_PASSWORD) {
                 when {
                     form.password.isBlank() -> put(AuthField.PASSWORD, R.string.auth_error_password_required)
