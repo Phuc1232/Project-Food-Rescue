@@ -28,7 +28,7 @@ private val CancellationIssue.message: String get() = when (this) {
     CancellationIssue.NOT_PAID -> "Đơn này chưa thanh toán. Bạn có thể thôi giữ hộp trong chi tiết đơn."
     CancellationIssue.ALREADY_CANCELLED -> "Đơn này đã được hủy."
     CancellationIssue.COLLECTED -> "Đơn đã nhận hộp không thể hủy. Bạn có thể gửi khiếu nại nếu cần hỗ trợ."
-    CancellationIssue.PICKUP_STARTED -> "Đã đến giờ nhận hộp. Yêu cầu hủy và hoàn tiền cần được xem xét qua khiếu nại."
+    CancellationIssue.PICKUP_STARTED -> "Đã hết hạn hủy của đơn. Yêu cầu hoàn tiền cần được xem xét qua khiếu nại."
     CancellationIssue.REASON_REQUIRED -> "Vui lòng chọn lý do hủy đơn."
     CancellationIssue.NOTE_TOO_LONG -> "Ghi chú tối đa 500 ký tự."
 }
@@ -68,9 +68,10 @@ internal fun CancelOrderScreen(
         }
         FoodRescueCard {
             Text("Điều kiện hủy", style = MaterialTheme.typography.titleMedium)
-            Text("Hủy trước " + bookingTimestamp(quote.deadlineMillis) + " được hoàn toàn bộ khoản đã thanh toán.",
+            Text("Hủy trước " + bookingTimestamp(quote.deadlineMillis) + " được hoàn " +
+                com.foodrescue.app.core.util.percentageRate(order.financialTerms?.cancellationRefundBps ?: 10000) + " khoản đã thanh toán.",
                 style = MaterialTheme.typography.bodyMedium)
-            Text("Từ giờ nhận trở đi hoặc khi đã nhận hộp, yêu cầu cần được xem xét.",
+            Text("Sau hạn hủy hoặc khi đã nhận hộp, yêu cầu cần được xem xét.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             quote.issue?.let { Text(it.message, color = MaterialTheme.colorScheme.error) }
         }
@@ -80,7 +81,7 @@ internal fun CancelOrderScreen(
                 Text(money(quote.amount), style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text("Đã thanh toán: " + money(order.total), style = MaterialTheme.typography.bodyMedium)
-                Text("Phí hủy: 0 đ", style = MaterialTheme.typography.bodyMedium)
+                Text("Khoản không hoàn: " + money(order.total - quote.amount), style = MaterialTheme.typography.bodyMedium)
                 Text("Hoàn về phương thức thanh toán ban đầu qua VNPAY.", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
