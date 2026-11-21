@@ -231,6 +231,9 @@ internal class OwnerBoxesViewModel(private val saved: SavedStateHandle, private 
             try { withContext(NonCancellable) { block() } }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (invalid: BoxValidationException) { state = state.copy(fields = invalid.fields, error = "Kiểm tra lại thông tin được đánh dấu.") }
+            catch (_: com.foodrescue.app.feature.store.domain.RestrictedStoreSale) {
+                state = state.copy(error = "Đang có hạn chế bán từ FoodRescue. Xem lý do ở Tổng quan và khắc phục trước khi mở bán lại.")
+            }
             catch (_: Exception) { state = state.copy(error = "Chưa lưu được thay đổi. Kiểm tra trạng thái đợt bán và thử lại.") }
             finally { state = state.copy(busy = false, now = clock()) }
         }

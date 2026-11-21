@@ -5,6 +5,7 @@ import android.content.Context
 import com.foodrescue.app.core.datastore.LocalCommerceLock
 import com.foodrescue.app.feature.discovery.domain.CatalogRepository
 import com.foodrescue.app.feature.store.domain.PublicStore
+import com.foodrescue.app.feature.store.data.LocalStoreRecords
 import com.foodrescue.app.feature.surprisebox.domain.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -23,10 +24,12 @@ internal class LocalSaleCatalogRepository(context: Context, private val stores: 
         directory.all.flatMap { (key, id) ->
             val store = (id as? Int)?.let(profiles::get) ?: return@flatMap emptyList()
             if (!key.startsWith("store.")) return@flatMap emptyList()
+            val governance = LocalStoreRecords(context).read(key.removePrefix("store."))?.governance
+                ?: return@flatMap emptyList()
             val raw = context.getSharedPreferences("owner_boxes_" + key.removePrefix("store."), Context.MODE_PRIVATE)
                 .getString("catalog.v1", null) ?: return@flatMap emptyList()
             OwnerBoxJson.decode(raw).batches.filter {
-                it.control == BatchControl.PUBLISHED && now >= it.salesStart && now < it.salesEnd
+                it.control == BatchControl.PUBLISHED && now >= it.salesStart && now < it.salesEnd && governance.permitsNewSales(it.id)
             }.map { batch ->
                 val counts = stock.stock(store.id, batch.id, now)
                 val time = SimpleDateFormat("HH:mm", Locale.ROOT).apply { timeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh") }
