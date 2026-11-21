@@ -29,7 +29,9 @@ internal fun OwnerStore.submit(profile: OwnerStoreProfile, nowMillis: Long): Own
     check(status == StoreReviewStatus.DRAFT || status == StoreReviewStatus.CHANGES_REQUIRED)
     require(profile.validationErrors().isEmpty())
     return copy(profile = profile.normalized(), status = StoreReviewStatus.PENDING,
-        submittedAtMillis = nowMillis, reviewNote = "")
+        submittedAtMillis = nowMillis, reviewNote = "", revision = revision + 1,
+        reviewHistory = reviewHistory + StoreReviewEvent(StoreReviewAction.SUBMITTED, nowMillis,
+            "Chủ cửa hàng", submittedProfile = profile.normalized()))
 }
 
 internal fun OwnerStore.updateProfile(profile: OwnerStoreProfile): OwnerStore {

@@ -2,6 +2,7 @@ package com.foodrescue.app.feature.store.data
 
 import android.annotation.SuppressLint
 import android.content.Context
+import com.foodrescue.app.core.datastore.LocalCommerceLock
 import com.foodrescue.app.core.common.PickupLocation
 import com.foodrescue.app.feature.store.domain.PublicStore
 import com.foodrescue.app.feature.store.domain.PublicStoreRepository
@@ -27,7 +28,14 @@ internal class LocalPublicStoreRepository(context: Context) : PublicStoreReposit
 
     override suspend fun getStores(): List<PublicStore> = withContext(Dispatchers.IO) { readStores() }
 
-    internal fun readStores(): List<PublicStore> =
+    internal fun registeredAccounts(): Map<String, Int> = synchronized(lock) {
+        index.all.mapNotNull { (key, id) ->
+            val hash = key.removePrefix("store.")
+            if (key.startsWith("store.") && id is Int && hash.matches(Regex("[0-9a-f]{64}"))) hash to id else null
+        }.toMap()
+    }
+
+    internal fun readStores(): List<PublicStore> = synchronized(LocalCommerceLock) {
         index.all.mapNotNull { (key, value) ->
             if (!key.startsWith("store.") || value !is Int) return@mapNotNull null
             val hash = key.removePrefix("store.")
@@ -37,6 +45,7 @@ internal class LocalPublicStoreRepository(context: Context) : PublicStoreReposit
                     ?: return@runCatching null
                 val store = JSONObject(raw)
                 if (store.optString("status") != "APPROVED") return@runCatching null
+                if (OwnerStoreJson.decode(raw).governance.suspension != null) return@runCatching null
                 val profile = store.getJSONObject("profile")
                 val pin = profile.optJSONObject("location") ?: return@runCatching null
                 val lat = pin.getDouble("latitude")
@@ -47,6 +56,7 @@ internal class LocalPublicStoreRepository(context: Context) : PublicStoreReposit
                     PickupLocation(lat, pin.getDouble("longitude"), address), profile.optString("contactEmail"))
             }.getOrNull()
         }.sortedByDescending { it.id }
+    }
 
     private companion object { val lock = Any() }
 }

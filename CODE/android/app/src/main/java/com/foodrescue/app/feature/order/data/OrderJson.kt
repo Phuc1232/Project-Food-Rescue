@@ -4,6 +4,7 @@ import com.foodrescue.app.core.common.PickupLocation
 import com.foodrescue.app.feature.order.domain.*
 import com.foodrescue.app.feature.payment.domain.*
 import com.foodrescue.app.feature.refund.domain.*
+import com.foodrescue.app.feature.refund.data.ManagedRefundJson
 import com.foodrescue.app.feature.surprisebox.domain.*
 import org.json.JSONObject
 import org.json.JSONArray
@@ -33,8 +34,12 @@ internal object OrderJson {
             NoShowReceipt(receipt.getString("request"), (0 until ids.length()).map(ids::getString), receipt.getString("note"),
                 receipt.getString("employee"), receipt.getString("employeeName"), receipt.getLong("at"))
         },
+        ManagedRefundJson.read(row.optJSONArray("adminRefunds")),
+        row.optJSONObject("financialTerms")?.let(com.foodrescue.app.feature.finance.data.FinancialPolicyJson::terms),
     )
     fun write(order: BoxReservation) = JSONObject().apply {
+        order.financialTerms?.let { put("financialTerms", com.foodrescue.app.feature.finance.data.FinancialPolicyJson.terms(it)) }
+        if (order.adminRefunds.isNotEmpty()) put("adminRefunds", ManagedRefundJson.write(order.adminRefunds))
         put("id", order.id); put("boxId", order.boxId); put("quantity", order.quantity); put("unitPrice", order.unitPrice)
         put("pickupStart", order.pickup.startMillis); put("pickupEnd", order.pickup.endMillis)
         put("createdAt", order.createdAtMillis); put("expiresAt", order.expiresAtMillis)

@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import com.foodrescue.app.feature.store.domain.OwnerStoreRepository
 import com.foodrescue.app.feature.store.domain.StoreReviewStatus
+import com.foodrescue.app.feature.store.data.LocalStoreRecords
+import com.foodrescue.app.feature.store.domain.RestrictedStoreSale
 import com.foodrescue.app.feature.surprisebox.domain.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -22,6 +24,7 @@ internal class LocalOwnerBoxRepository(context: Context, email: String, private 
     private val key = MessageDigest.getInstance("SHA-256").digest(email.trim().lowercase(Locale.ROOT).toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
     private val preferences = context.applicationContext.getSharedPreferences("owner_boxes_$key", Context.MODE_PRIVATE)
+    private val storeRecords = LocalStoreRecords(context)
     private val mutex = locks.getOrPut(key) { Mutex() }
     override suspend fun load(): OwnerBoxCatalog = withContext(Dispatchers.IO) { mutex.withLock { synchronized(LocalCommerceLock) { read() } } }
     internal suspend fun <T> withCurrentCatalog(block: (OwnerBoxCatalog) -> T): T = withContext(Dispatchers.IO) {
@@ -29,7 +32,13 @@ internal class LocalOwnerBoxRepository(context: Context, email: String, private 
     }
     override suspend fun saveTemplate(draft: BoxTemplateDraft) = change { it.saveTemplate(draft, UUID.randomUUID().toString()) }
     override suspend fun saveBatch(draft: SaleBatchDraft) = change { it.saveBatch(draft, clock(), UUID.randomUUID().toString()) }
-    override suspend fun operate(id: String, action: BatchAction) = change { it.operate(id, action, clock()) }
+    override suspend fun operate(id: String, action: BatchAction) = change {
+        if (action == BatchAction.PUBLISH || action == BatchAction.RESUME) {
+            val governance = storeRecords.read(key)?.governance
+            if (governance != null && !governance.permitsNewSales(id)) throw RestrictedStoreSale()
+        }
+        it.operate(id, action, clock())
+    }
     override suspend fun setTemplateActive(id: String, active: Boolean) = change { catalog ->
         check(catalog.templates.any { it.id == id })
         catalog.copy(templates = catalog.templates.map { if (it.id == id) it.copy(active = active) else it })

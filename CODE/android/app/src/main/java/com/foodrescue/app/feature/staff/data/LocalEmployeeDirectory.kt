@@ -16,6 +16,9 @@ internal class LocalEmployeeDirectory(context: Context) : StaffAccessRepository 
     private val preferences = this.context.getSharedPreferences("employee_directory.v1", Context.MODE_PRIVATE)
 
     internal suspend fun read(): List<EmployeeRecord> = withContext(Dispatchers.IO) { lock.withLock { readLocked() } }
+    internal suspend fun <T> withRecords(block: (List<EmployeeRecord>) -> T): T = withContext(Dispatchers.IO) {
+        lock.withLock { block(readLocked()) }
+    }
     @SuppressLint("UseKtx")
     internal suspend fun update(transform: suspend (List<EmployeeRecord>) -> List<EmployeeRecord>): List<EmployeeRecord> = withContext(Dispatchers.IO) {
         lock.withLock {

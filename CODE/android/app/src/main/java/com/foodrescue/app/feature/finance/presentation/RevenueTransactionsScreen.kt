@@ -57,6 +57,11 @@ internal fun RevenueTransactionScreen(entry: RevenueEntry, onBack: () -> Unit, o
             RevenueMoneyLine("Cửa hàng được hưởng", entry.net, emphasized = true)
         }
         Text(entry.explanation, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (entry.settlementAdjustment > 0) FoodRescueCard {
+            RevenueMoneyLine("Chờ bù trừ sau đối soát", entry.settlementAdjustment)
+            Text("Khoản hoàn mới làm giảm tiền được hưởng. Kỳ đối soát đã xác nhận vẫn giữ nguyên và cần được xử lý điều chỉnh.")
+        }
+        entry.order.adminRefunds.forEach { com.foodrescue.app.feature.refund.presentation.component.ManagedRefundSummary(it) }
         FoodRescueCard {
             StoreValue("Thanh toán thành công", revenueDate(entry.paidAt, "HH:mm · dd/MM/yyyy"))
             entry.order.collectedAtMillis?.let { StoreValue("Đã giao hộp", revenueDate(it, "HH:mm · dd/MM/yyyy")) }

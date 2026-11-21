@@ -48,6 +48,7 @@ internal fun OwnerOverviewScreen(store: OwnerStore, summary: OwnerOverviewUiStat
                 }
             }
         }
+        OwnerGovernanceNotice(store.governance)
         StoreHeroCard("ĐÃ THANH TOÁN HÔM NAY", money(summary.revenue)) {
             HorizontalDivider(color = Color.White.copy(alpha = .16f))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

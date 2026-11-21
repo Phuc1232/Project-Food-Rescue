@@ -24,7 +24,7 @@ import java.util.TimeZone
 
 internal fun bookingDate(millis: Long): String = bookingTime(millis, "EEEE, dd/MM/yyyy")
 internal fun bookingClock(millis: Long): String = bookingTime(millis, "HH:mm")
-internal fun bookingTimestamp(millis: Long): String = bookingTime(millis, "HH:mm · dd/MM/yyyy")
+internal fun bookingTimestamp(millis: Long): String = com.foodrescue.app.core.util.vietnamTimestamp(millis)
 internal fun bookingHours(pickup: PickupWindow): String =
     bookingTime(pickup.startMillis, "HH:mm") + " – " + bookingTime(pickup.endMillis, "HH:mm")
 private fun bookingTime(millis: Long, pattern: String): String =

@@ -38,6 +38,7 @@ internal fun StoreReviewScreen(store: OwnerStore, email: String, onBack: () -> U
             ReviewStep("Kết quả xét duyệt", if (approved) "Cửa hàng đã được duyệt" else if (changes) "Cần bổ sung thông tin" else "Chưa có kết quả", approved)
         }
         FoodRescueCard { StoreSectionTitle(store.profile.name); StoreProfileValues(store.profile, email) }
+        if (store.reviewHistory.isNotEmpty()) FoodRescueCard { StoreReviewTimeline(store.reviewHistory) }
     }
 }
 

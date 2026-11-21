@@ -9,8 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
@@ -61,7 +59,7 @@ internal class LocalMenuRepository(context: Context, email: String, private val 
             check(owner.load().status == StoreReviewStatus.APPROVED) { "Store must be approved" }
             val before = read()
             val after = update(before)
-            check(preferences.edit().putString("menu.v1", encode(after)).commit()) { "Menu write failed" }
+            check(preferences.edit().putString("menu.v1", MenuJson.encode(after)).commit()) { "Menu write failed" }
             // Cleanup never changes the result of a successful metadata commit.
             val removed = (before.items.mapNotNull { it.photo } + before.documents).filter { it.id !in after.assetIds }
             removed.forEach { assets.remove(it) }
@@ -69,38 +67,17 @@ internal class LocalMenuRepository(context: Context, email: String, private val 
         }
     }
 
-    private fun read(): StoreMenu {
-        val raw = preferences.getString("menu.v1", null) ?: return StoreMenu()
-        val root = JSONObject(raw)
-        require(root.getInt("version") == 1)
-        val items = root.getJSONArray("items")
-        val docs = root.getJSONArray("documents")
-        return StoreMenu((0 until items.length()).map { index ->
-            val json = items.getJSONObject(index)
-            MenuItem(json.getString("id"), json.getString("name"), MenuCategory.valueOf(json.getString("category")),
-                MenuUnit.valueOf(json.getString("unit")), json.getLong("price"), json.getString("description"),
-                MenuStatus.valueOf(json.getString("status")), json.optJSONObject("photo")?.let(::readAsset),
-                json.getLong("created"), json.getLong("updated"))
-        }, (0 until docs.length()).map { readAsset(docs.getJSONObject(it)) })
+    private fun read(): StoreMenu = preferences.getString("menu.v1", null)?.let { MenuJson.decode(it, assets) } ?: StoreMenu()
+
+    companion object {
+        private val locks = ConcurrentHashMap<String, Mutex>()
+        /** Account-scoped read uses the same mutex and codec as owner edits; it cannot create or prune assets. */
+        suspend fun readForAccount(context: Context, key: String): StoreMenu = withContext(Dispatchers.IO) {
+            require(key.matches(Regex("[0-9a-f]{64}")))
+            locks.getOrPut(key) { Mutex() }.withLock {
+                context.getSharedPreferences("owner_menu_$key", Context.MODE_PRIVATE).getString("menu.v1", null)
+                    ?.let { MenuJson.decode(it, LocalMenuAssetStore.forAccountKey(context, key)) } ?: StoreMenu()
+            }
+        }
     }
-
-    private fun readAsset(json: JSONObject) = assets.restore(json.getString("id"), json.getString("name"),
-        json.getString("mime"), json.getLong("bytes"), json.optInt("pages", 1))
-
-    private fun assetJson(asset: MenuAsset) = JSONObject().apply {
-        put("id", asset.id); put("name", asset.name); put("mime", asset.mimeType); put("bytes", asset.byteCount); put("pages", asset.pageCount)
-    }
-
-    private fun encode(menu: StoreMenu) = JSONObject().apply {
-        put("version", 1)
-        put("items", JSONArray().apply { menu.items.forEach { item -> put(JSONObject().apply {
-            put("id", item.id); put("name", item.name); put("category", item.category.name); put("unit", item.unit.name)
-            put("price", item.price); put("description", item.description); put("status", item.status.name)
-            put("created", item.createdAtMillis); put("updated", item.updatedAtMillis)
-            item.photo?.let { put("photo", assetJson(it)) }
-        }) } })
-        put("documents", JSONArray().apply { menu.documents.forEach { put(assetJson(it)) } })
-    }.toString()
-
-    private companion object { val locks = ConcurrentHashMap<String, Mutex>() }
 }

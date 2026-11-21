@@ -24,7 +24,9 @@ class ArchitectureBoundaryTest {
         sources.forEach { file ->
             val relative = file.relativeTo(root).invariantSeparatorsPath
             val feature = relative.split('/').takeIf { it.first() == "feature" }?.get(1)
-            val imports = Regex("(?m)^import ([\\w.*]+)").findAll(file.readText()).map { it.groupValues[1] }
+            val text = file.readText()
+            val imports = (Regex("(?m)^import ([\\w.*]+)").findAll(text).map { it.groupValues[1] } +
+                Regex("\\bcom\\.foodrescue\\.app\\.[\\w.*]+").findAll(text).map { it.value }).distinct()
             imports.forEach { imported ->
                 val forbidden = when {
                     relative.startsWith("core/") -> imported.matches(Regex("com\\.foodrescue\\.app\\.(app|dashboard|feature|di)\\..*"))

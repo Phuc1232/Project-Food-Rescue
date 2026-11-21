@@ -1,5 +1,7 @@
 package com.foodrescue.app.di
 
+import com.foodrescue.app.feature.store.presentation.StoreApplicationsViewModel
+import com.foodrescue.app.feature.store.data.LocalStoreApplicationRepository
 import android.content.Context
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -51,8 +53,48 @@ import com.foodrescue.app.feature.finance.presentation.RevenueViewModel
 
 /** Composition root for frontend local dependencies. */
 object RepositoryModule {
-    // Temporary frontend behavior requested by the user. Set false to restore application review.
-    private const val AUTO_APPROVE_STORE_APPLICATIONS = true
+    internal fun adminFinanceViewModelFactory(email: String) = viewModelFactory {
+        initializer { com.foodrescue.app.feature.finance.presentation.AdminFinanceViewModel(createSavedStateHandle(),
+            com.foodrescue.app.feature.finance.data.LocalAdminSettlementRepository(checkNotNull(this[APPLICATION_KEY]), email)) }
+    }
+    internal fun financialPolicyViewModelFactory(email: String) = viewModelFactory {
+        initializer { com.foodrescue.app.feature.finance.presentation.FinancialPolicyViewModel(
+            com.foodrescue.app.feature.finance.data.LocalFinancialPolicyRepository(checkNotNull(this[APPLICATION_KEY]), email)) }
+    }
+    internal val accountAccessViewModelFactory = viewModelFactory {
+        initializer { com.foodrescue.app.feature.account.presentation.AccountAccessViewModel(
+            accountSessionRepository(checkNotNull(this[APPLICATION_KEY]))) }
+    }
+    internal fun accountSessionRepository(context: Context): com.foodrescue.app.feature.account.domain.AccountSessionRepository =
+        com.foodrescue.app.feature.account.data.LocalAccountSessionRepository(context)
+
+    internal fun adminUsersViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            com.foodrescue.app.feature.account.presentation.AdminUsersViewModel(createSavedStateHandle(),
+                com.foodrescue.app.feature.account.data.LocalAccountManagementRepository(checkNotNull(this[APPLICATION_KEY]), email))
+        }
+    }
+    internal fun storeSupervisionViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            com.foodrescue.app.feature.store.presentation.StoreSupervisionViewModel(createSavedStateHandle(),
+                com.foodrescue.app.feature.store.data.LocalStoreSupervisionRepository(checkNotNull(this[APPLICATION_KEY]), email))
+        }
+    }
+    internal fun adminRefundsViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            val context = checkNotNull(this[APPLICATION_KEY])
+            com.foodrescue.app.feature.refund.presentation.AdminRefundsViewModel(createSavedStateHandle(),
+                com.foodrescue.app.feature.refund.data.LocalAdminRefundRepository(context, email,
+                    com.foodrescue.app.feature.refund.data.LocalRefundProcessor(context)))
+        }
+    }
+    internal fun adminComplaintsViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            com.foodrescue.app.feature.complaint.presentation.AdminComplaintsViewModel(createSavedStateHandle(),
+                com.foodrescue.app.feature.complaint.data.LocalComplaintReviewRepository(checkNotNull(this[APPLICATION_KEY]), email))
+        }
+    }
+    private const val AUTO_APPROVE_STORE_APPLICATIONS = false
     // Owner revenue policy confirmed by the product owner: 20%, rounded per order.
     private const val OWNER_COMMISSION_BPS = 2000
     private fun catalogRepository(context: Context): CatalogRepository {
@@ -75,7 +117,8 @@ object RepositoryModule {
             val catalog = catalogRepository(context)
             BookingViewModel(createSavedStateHandle(), catalog,
                 LocalPaymentRepository(context), SharedOrderHistoryStore(email, LocalOrderLedger(context),
-                    LocalOrderHistoryStore(context, email), catalog), LocalRefundRepository(context))
+                    LocalOrderHistoryStore(context, email), catalog), LocalRefundRepository(context),
+                policies = com.foodrescue.app.feature.finance.data.LocalFinancialPolicyStore(context))
         }
     }
 
@@ -142,7 +185,14 @@ object RepositoryModule {
             val storeId = LocalPublicStoreRepository(context).register(LocalOrderLedger.accountKey(email))
             RevenueViewModel(createSavedStateHandle(), LocalRevenueRepository(storeId,
                 LocalOwnerStoreRepository(context, email), LocalOrderLedger(context), LocalSettlementStore(context),
-                LocalComplaintHolds(context), OWNER_COMMISSION_BPS))
+                LocalComplaintHolds(context), OWNER_COMMISSION_BPS,
+                policy = com.foodrescue.app.feature.finance.data.LocalFinancialPolicyStore(context)))
+        }
+    }
+    internal fun storeApplicationsViewModelFactory(email: String) = viewModelFactory {
+        initializer {
+            StoreApplicationsViewModel(createSavedStateHandle(),
+                LocalStoreApplicationRepository(checkNotNull(this[APPLICATION_KEY]), email))
         }
     }
     internal fun staffAccessRepository(context: Context): StaffAccessRepository = LocalEmployeeDirectory(context)

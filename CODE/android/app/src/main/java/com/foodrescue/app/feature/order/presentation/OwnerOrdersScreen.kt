@@ -1,5 +1,7 @@
 package com.foodrescue.app.feature.order.presentation
 
+import com.foodrescue.app.feature.order.presentation.component.label
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

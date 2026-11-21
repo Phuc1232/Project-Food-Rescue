@@ -25,6 +25,7 @@ internal fun OwnerStoreHubScreen(store: OwnerStore, email: String, onProfile: ()
                 style = MaterialTheme.typography.bodyMedium)
         }
         StoreSectionTitle("Quản lý cửa hàng")
+        OwnerGovernanceNotice(store.governance)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             StoreMenuRow("Thông tin cửa hàng", "Địa chỉ, liên hệ và giờ hoạt động", FoodRescueIcon.STORE, onProfile)
             StoreMenuRow("Menu nội bộ", "Món ăn, giá niêm yết và tài liệu", FoodRescueIcon.RECEIPT, onMenu)

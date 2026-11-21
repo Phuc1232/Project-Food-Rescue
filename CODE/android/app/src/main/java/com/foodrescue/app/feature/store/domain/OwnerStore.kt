@@ -38,6 +38,9 @@ internal data class OwnerStore(
     val submittedAtMillis: Long? = null,
     val reviewNote: String = "",
     val payout: StorePayoutAccount? = null,
+    val revision: Long = 0,
+    val reviewHistory: List<StoreReviewEvent> = emptyList(),
+    val governance: StoreGovernance = StoreGovernance(),
 )
 
 internal val storeCategories = listOf("Tiệm bánh", "Nhà hàng", "Quán ăn", "Cà phê & đồ uống", "Thực phẩm & tạp hóa")

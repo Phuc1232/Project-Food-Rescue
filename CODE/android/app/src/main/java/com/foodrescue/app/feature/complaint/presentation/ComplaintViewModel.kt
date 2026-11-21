@@ -117,6 +117,8 @@ internal class ComplaintViewModel(private val repository: ComplaintRepository, p
         state = ComplaintUiState(emptyList(), newDraft())
     }
 
+    fun refreshCases() { state = state.copy(cases = repository.load()) }
+
     private fun updateDraft(draft: ComplaintDraft) {
         repository.saveDraft(draft)
         state = state.copy(draft = draft, issue = null)

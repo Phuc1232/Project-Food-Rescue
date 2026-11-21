@@ -15,14 +15,6 @@ internal data class MenuUiState(
     val dirty: Boolean get() = draft != (menu.items.firstOrNull { it.id == draft.id }?.toDraft() ?: MenuDraft())
 }
 
-internal val MenuCategory.label: String get() = when (this) {
-    MenuCategory.BAKERY -> "Bánh"; MenuCategory.MEAL -> "Món chính"; MenuCategory.DRINK -> "Đồ uống"
-    MenuCategory.SNACK -> "Ăn nhẹ"; MenuCategory.GROCERY -> "Thực phẩm"; MenuCategory.OTHER -> "Khác"
-}
-internal val MenuUnit.label: String get() = when (this) {
-    MenuUnit.PORTION -> "phần"; MenuUnit.PIECE -> "cái"; MenuUnit.CUP -> "ly"; MenuUnit.BOTTLE -> "chai"
-    MenuUnit.BOX -> "hộp"; MenuUnit.PACK -> "gói"; MenuUnit.KILOGRAM -> "kg"
-}
 internal val MenuStatus.label: String get() = if (this == MenuStatus.ACTIVE) "Đang kinh doanh" else "Ngừng kinh doanh"
 internal val MenuSort.label: String get() = when (this) {
     MenuSort.UPDATED -> "Mới cập nhật"; MenuSort.NAME -> "Tên A–Z"; MenuSort.PRICE_ASC -> "Giá tăng dần"; MenuSort.PRICE_DESC -> "Giá giảm dần"

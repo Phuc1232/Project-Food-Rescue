@@ -41,6 +41,8 @@ internal fun StaffNoShowScreen(state: StaffNoShowUiState, onBack: () -> Unit, on
                         style = MaterialTheme.typography.headlineSmall, color = Color.White)
                     Text(order.reference, style = MaterialTheme.typography.titleSmall, color = Color(0xFFD8EDB4))
                     Text("Kết thúc nhận: ${boxDateTime(order.pickup.endMillis)}", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    if (order.noShowEligibleAt > order.pickup.endMillis) Text("Có thể xác minh từ ${boxDateTime(order.noShowEligibleAt)}",
+                        style = MaterialTheme.typography.bodySmall, color = Color.White)
                 }
             }
             FoodRescueCard {
@@ -120,7 +122,7 @@ private val NoShowIssue.noShowMessage: String get() = when (this) {
     NoShowIssue.ACCESS -> "Bạn chưa có quyền xác nhận đơn này."
     NoShowIssue.ORDER -> "Đơn không còn ở trạng thái cho phép xác nhận No-show."
     NoShowIssue.PAYMENT -> "Đơn chưa được xác nhận thanh toán đầy đủ."
-    NoShowIssue.EARLY -> "Chỉ xác minh No-show sau khi kết thúc giờ nhận."
+    NoShowIssue.EARLY -> "Chưa hết giờ nhận và thời gian chờ theo chính sách của đơn."
     NoShowIssue.INCIDENT -> "Đơn có sự cố bàn giao. Chuyển chủ cửa hàng xử lý, không xác nhận No-show."
     NoShowIssue.CHECKS -> "Đối chiếu và xác nhận đủ hai điều kiện tại cửa hàng."
     NoShowIssue.BOXES -> "Hộp đã chọn không còn phù hợp. Tải lại và chọn đúng hộp đã để riêng."

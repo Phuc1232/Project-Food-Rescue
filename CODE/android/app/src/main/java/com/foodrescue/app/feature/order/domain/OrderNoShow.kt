@@ -21,7 +21,7 @@ internal fun NoShowDraft.noShowIssues(access: StaffAccess?, order: BoxReservatio
     if (order.noShow != null || order.collectedAtMillis != null || order.cancelledAtMillis != null ||
         order.ownerCancellation != null || order.boxSnapshot?.batchId.isNullOrBlank()) add(NoShowIssue.ORDER)
     if (!order.isPaid || order.payment?.amount != order.total || order.total <= 0) add(NoShowIssue.PAYMENT)
-    if (now < order.pickup.endMillis) add(NoShowIssue.EARLY)
+    if (now < order.noShowEligibleAt) add(NoShowIssue.EARLY)
     if (order.handoverFailures.isNotEmpty()) add(NoShowIssue.INCIDENT)
     if (!customerAbsent || !storeReady) add(NoShowIssue.CHECKS)
     if (boxIds.size > order.quantity || boxIds.distinct().size != boxIds.size ||
@@ -34,3 +34,5 @@ internal fun BoxReservation.confirmNoShow(access: StaffAccess, draft: NoShowDraf
     if (issues.isNotEmpty()) throw NoShowException(issues)
     return copy(noShow = NoShowReceipt(draft.requestId, draft.boxIds.toList(), draft.note.trim(), access.employee.id, access.employee.name, now))
 }
+
+internal val BoxReservation.noShowEligibleAt: Long get() = pickup.endMillis + (financialTerms?.noShowGraceMinutes ?: 0) * 60_000L

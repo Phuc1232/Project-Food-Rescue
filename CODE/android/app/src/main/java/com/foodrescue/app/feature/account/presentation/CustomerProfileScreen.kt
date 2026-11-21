@@ -21,6 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 
 @Composable
@@ -69,21 +72,36 @@ internal fun CustomerProfileScreen(profile: CustomerProfile, onEdit: () -> Unit,
 }
 
 @Composable
-internal fun EditCustomerProfileScreen(profile: CustomerProfile, onBack: () -> Unit, onSave: (String, String) -> Unit) {
+internal fun EditCustomerProfileScreen(profile: CustomerProfile, onBack: () -> Unit, onSave: suspend (String, String) -> Boolean) {
     var name by rememberSaveable { mutableStateOf(profile.name) }
     var phone by rememberSaveable { mutableStateOf(profile.phone) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    BackHandler(busy) { }
     val nameError = !isValidCustomerName(name)
     val phoneError = !isValidCustomerPhone(phone)
-    FoodRescuePage("Thông tin cá nhân", onBack, footer = {
-        FoodRescueButton("Lưu thay đổi", { onSave(name.trim(), phone.trim()) }, Modifier.fillMaxWidth(), enabled = !nameError && !phoneError)
+    FoodRescuePage("Thông tin cá nhân", { if (!busy) onBack() }, footer = {
+        FoodRescueButton(if (busy) "Đang lưu…" else "Lưu thay đổi", {
+            if (!busy) {
+                busy = true; error = false
+                scope.launch {
+                    try { if (onSave(name.trim(), phone.trim())) onBack() else error = true }
+                    catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { error = true }
+                    finally { busy = false }
+                }
+            }
+        }, Modifier.fillMaxWidth(), enabled = !busy && !nameError && !phoneError)
     }) {
         Text("Để cửa hàng dễ liên hệ với bạn", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(name, { name = it.take(120) }, label = { Text("Họ và tên") }, singleLine = true,
+        if (error) Text("Chưa lưu được thông tin. Vui lòng thử lại.", color = MaterialTheme.colorScheme.error)
+        OutlinedTextField(name, { name = it.take(120) }, label = { Text("Họ và tên") }, singleLine = true, enabled = !busy,
             isError = nameError, supportingText = { if (nameError) Text("Nhập họ tên từ 2 đến 120 ký tự.") },
             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
         OutlinedTextField(profile.email, {}, readOnly = true, label = { Text("Email") }, singleLine = true,
             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
-        OutlinedTextField(phone, { phone = it.take(13) }, label = { Text("Số điện thoại") }, singleLine = true,
+        OutlinedTextField(phone, { phone = it.take(13) }, label = { Text("Số điện thoại") }, singleLine = true, enabled = !busy,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), isError = phoneError,
             supportingText = { if (phoneError) Text("Nhập 10 số bắt đầu bằng 0 hoặc số dạng +84.") },
             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))

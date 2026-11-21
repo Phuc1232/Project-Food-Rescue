@@ -19,8 +19,8 @@ internal class StoreManagementViewModel(
     var state by mutableStateOf(StoreManagementState(banks = banks))
         private set
 
-    fun load() {
-        if (!state.loading || state.busy) return
+    fun load(force: Boolean = false) {
+        if ((!force && !state.loading) || state.busy) return
         state = state.copy(busy = true, error = null)
         viewModelScope.launch {
             try {
