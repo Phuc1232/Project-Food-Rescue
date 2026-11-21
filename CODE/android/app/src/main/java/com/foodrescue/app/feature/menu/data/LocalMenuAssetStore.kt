@@ -18,9 +18,9 @@ import java.io.File
 import java.io.IOException
 import java.util.UUID
 
-internal class LocalMenuAssetStore(context: Context, email: String) : MenuAssetStore {
+internal class LocalMenuAssetStore private constructor(context: Context, private val directory: File) : MenuAssetStore {
+    constructor(context: Context, email: String) : this(context, File(context.applicationContext.filesDir, "owner-menu/" + menuAccountKey(email)))
     private val resolver = context.applicationContext.contentResolver
-    private val directory = File(context.applicationContext.filesDir, "owner-menu/" + menuAccountKey(email))
     private val validId = Regex("[a-f0-9-]{36}")
 
     override suspend fun import(sourceUri: String, allowPdf: Boolean): MenuAsset {
@@ -154,5 +154,11 @@ internal class LocalMenuAssetStore(context: Context, email: String) : MenuAssetS
         output.outputStream().use { if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 88, it)) throw IOException() }
     }
 
-    private companion object { val imageTypes = setOf("image/jpeg", "image/png", "image/webp", "image/heic", "image/heif") }
+    companion object {
+        private val imageTypes = setOf("image/jpeg", "image/png", "image/webp", "image/heic", "image/heif")
+        fun forAccountKey(context: Context, key: String): LocalMenuAssetStore {
+            require(key.matches(Regex("[0-9a-f]{64}")))
+            return LocalMenuAssetStore(context, File(context.applicationContext.filesDir, "owner-menu/$key"))
+        }
+    }
 }

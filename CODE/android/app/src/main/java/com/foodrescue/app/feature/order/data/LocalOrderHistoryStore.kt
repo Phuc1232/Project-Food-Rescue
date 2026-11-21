@@ -16,12 +16,18 @@ import java.security.MessageDigest
 import java.util.Locale
 
 /** Device-local customer history, kept separate from the session and from other accounts. */
-internal class LocalOrderHistoryStore(context: Context, email: String) : OrderHistoryStore {
-    private val preferences = context.applicationContext.getSharedPreferences(
+internal class LocalOrderHistoryStore private constructor(private val preferences: android.content.SharedPreferences) : OrderHistoryStore {
+    constructor(context: Context, email: String) : this(context.applicationContext.getSharedPreferences(
         "customer_orders_" + MessageDigest.getInstance("SHA-256")
             .digest(email.trim().lowercase(Locale.ROOT).toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }, Context.MODE_PRIVATE,
-    )
+    ))
+    companion object {
+        fun forAccountKey(context: Context, key: String): LocalOrderHistoryStore {
+            require(key.matches(Regex("[a-f0-9]{64}")))
+            return LocalOrderHistoryStore(context.applicationContext.getSharedPreferences("customer_orders_$key", Context.MODE_PRIVATE))
+        }
+    }
 
     override fun load(): List<BoxReservation> {
         val rows = runCatching { JSONArray(preferences.getString("orders.v1", "[]")) }.getOrNull() ?: return emptyList()
@@ -40,7 +46,8 @@ internal class LocalOrderHistoryStore(context: Context, email: String) : OrderHi
                 row.getLong("createdAt"), row.getLong("expiresAt"), row.getInt("unitPrice"), payment,
                 row.optionalLong("cancelledAt"), row.optionalLong("collectedAt"),
                 row.optString("cancellationReason").takeIf(String::isNotBlank)?.let(CancellationReason::valueOf),
-                row.optString("cancellationNote"), refund)
+                row.optString("cancellationNote"), refund,
+                financialTerms = row.optJSONObject("financialTerms")?.let(com.foodrescue.app.feature.finance.data.FinancialPolicyJson::terms))
         }.getOrNull() }.distinctBy { it.id }
     }
 
@@ -48,6 +55,7 @@ internal class LocalOrderHistoryStore(context: Context, email: String) : OrderHi
         val rows = JSONArray()
         orders.forEach { order ->
             rows.put(JSONObject().apply {
+                order.financialTerms?.let { put("financialTerms", com.foodrescue.app.feature.finance.data.FinancialPolicyJson.terms(it)) }
                 put("id", order.id); put("boxId", order.boxId); put("quantity", order.quantity)
                 put("pickupStart", order.pickup.startMillis); put("pickupEnd", order.pickup.endMillis)
                 put("createdAt", order.createdAtMillis); put("expiresAt", order.expiresAtMillis)

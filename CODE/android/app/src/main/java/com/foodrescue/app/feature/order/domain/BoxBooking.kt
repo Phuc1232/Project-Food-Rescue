@@ -4,6 +4,7 @@ import com.foodrescue.app.feature.surprisebox.domain.CatalogBox
 import com.foodrescue.app.feature.payment.domain.PaymentStatus
 import com.foodrescue.app.feature.payment.domain.QrPayment
 import com.foodrescue.app.feature.refund.domain.OrderRefund
+import com.foodrescue.app.feature.refund.domain.ManagedRefund
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -40,6 +41,8 @@ internal data class BoxReservation(
     val handover: HandoverReceipt? = null,
     val handoverFailures: List<HandoverFailure> = emptyList(),
     val noShow: NoShowReceipt? = null,
+    val adminRefunds: List<ManagedRefund> = emptyList(),
+    val financialTerms: com.foodrescue.app.feature.finance.domain.FinancialTerms? = null,
 ) {
     init {
         require(id.isNotBlank() && quantity > 0)
@@ -59,6 +62,10 @@ internal data class BoxReservation(
             noShow.boxIds.distinct().size == noShow.boxIds.size && noShow.boxIds.none(String::isBlank) &&
             noShow.note.length <= 500 && noShow.note.none { it.isISOControl() && it != '\n' }))
         require(refund == null || (isPaid && cancelledAtMillis == refund.requestedAtMillis && refund.amount <= total))
+        require(adminRefunds.distinctBy { it.id }.size == adminRefunds.size)
+        require(adminRefunds.isEmpty() || isPaid)
+        val reserved = adminRefunds.filter { it.reservesMoney }.fold(refund?.amount ?: 0L) { sum, item -> Math.addExact(sum, item.amount) }
+        require(reserved <= total)
     }
 
     val total: Long get() = bookingTotal(unitPrice, quantity)
