@@ -1,5 +1,10 @@
 package com.foodrescue.app.app.navigation
 
+import com.foodrescue.app.feature.store.presentation.StoreApplicationsViewModel
+import com.foodrescue.app.dashboard.admin.AdminRoute
+import androidx.compose.runtime.DisposableEffect
+import com.foodrescue.app.feature.account.domain.CustomerProfile
+import com.foodrescue.app.feature.account.presentation.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +40,7 @@ import com.foodrescue.app.feature.order.presentation.OwnerOrdersRoute
 import com.foodrescue.app.feature.order.presentation.OwnerOrderPage
 import com.foodrescue.app.feature.order.domain.OwnerOrderFilter
 import com.foodrescue.app.feature.complaint.presentation.ComplaintViewModel
+import com.foodrescue.app.feature.complaint.presentation.AdminComplaintsViewModel
 import com.foodrescue.app.feature.staff.presentation.EmployeeViewModel
 import com.foodrescue.app.feature.staff.presentation.EmployeeRoute
 import com.foodrescue.app.feature.staff.presentation.StaffPackingViewModel
@@ -51,10 +57,34 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     val session: SessionViewModel = viewModel()
     val auth: AuthViewModel = viewModel()
     val profile = session.profile
-    val destination = RoleNavigation.destinationFor(session.role)
     val context = LocalContext.current
     var accountRequest by rememberSaveable { mutableStateOf<List<String>?>(null) }
-    if (destination == Destinations.CUSTOMER && profile != null) {
+    val accounts = remember(context) { RepositoryModule.accountSessionRepository(context) }
+    if (profile != null) {
+        val access: AccountAccessViewModel = viewModel(key = "account.access:${profile.email}:${session.role}",
+            factory = RepositoryModule.accountAccessViewModelFactory)
+        AccountAccessGate(access, profile.email, session.accessVersion,
+            { accountRequest = null; auth.reset(); session.signOut() }, modifier) {
+            SignedInRoutes(profile, session, auth, modifier)
+        }
+    } else {
+        val request = accountRequest
+        if (request == null) AuthRoute(modifier = modifier, viewModel = auth,
+            onRegistered = accounts::register,
+            onAuthenticated = { name, email -> accountRequest = listOf(name, email) })
+        else AccountEntry(request[0], request[1], RepositoryModule.isStoreOwner(context, request[1]),
+            remember(context) { RepositoryModule.staffAccessRepository(context) }, accounts,
+            onResolved = { login, role -> session.signIn(login, role); accountRequest = null },
+            onCancel = { accountRequest = null; auth.reset() }, modifier = modifier)
+    }
+}
+
+@Composable
+private fun SignedInRoutes(profile: CustomerProfile, session: SessionViewModel, auth: AuthViewModel, modifier: Modifier) {
+    val context = LocalContext.current
+    val accounts = remember(context) { RepositoryModule.accountSessionRepository(context) }
+    val destination = RoleNavigation.destinationFor(session.role)
+    if (destination == Destinations.CUSTOMER) {
         val discovery: DiscoveryViewModel = viewModel(factory = RepositoryModule.discoveryViewModelFactory)
         val account = profile.email.trim().lowercase(Locale.ROOT)
         val bookingFactory = remember(account) { RepositoryModule.bookingViewModelFactory(account) }
@@ -70,18 +100,24 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 var tick = 0
                 while (true) {
                     booking.refreshTime()
-                    if (++tick % 5 == 0) { booking.restoreHistory(); discovery.refreshPublicStores() }
+                    if (++tick % 5 == 0) { booking.restoreHistory(); complaints.refreshCases(); discovery.refreshPublicStores() }
                     delay(1_000)
                 }
             }
         }
         val locationSource = remember(context) { RepositoryModule.locationSource(context) }
-        CustomerRoute(profile, session::updateProfile,
+        DisposableEffect(discovery, booking, complaints) {
+            onDispose { discovery.clear(); booking.clear(); complaints.clear() }
+        }
+        CustomerRoute(profile, { name, phone ->
+            val updated = accounts.updateProfile(profile.copy(name = name, phone = phone), session.accessVersion)
+            if (session.profile?.email == updated.email) session.updateProfile(updated.name, updated.phone) else false
+        },
             onLogout = { discovery.clear(); booking.clear(); complaints.clear(); auth.reset(); session.signOut() },
             vm = discovery, booking = booking, complaints = complaints, locationSource = locationSource, modifier = modifier,
             onPartner = session::switchToOwner, isPartner = RepositoryModule.isStoreOwner(context, account),
             onStaff = if (session.isStaffIdentity) session::switchToStaff else null)
-    } else if (destination == Destinations.OWNER && profile != null) {
+    } else if (destination == Destinations.OWNER) {
         val account = profile.email.trim().lowercase(Locale.ROOT)
         val factory = remember(account) { RepositoryModule.storeViewModelFactory(account) }
         val store: StoreManagementViewModel = viewModel(key = "owner.store:$account", factory = factory)
@@ -108,6 +144,9 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
             }
         }
+        DisposableEffect(store, menu, boxes, orders, employees, revenue) {
+            onDispose { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); employees.clear(); revenue.clear() }
+        }
         OwnerRoute(account, store,
             locationSource = remember(context) { RepositoryModule.locationSource(context) },
             onCustomer = { store.clearTransient(); menu.clearTransient(); boxes.clearTransient(); orders.clear(); employees.clear(); revenue.clear(); session.switchToCustomer() },
@@ -123,7 +162,34 @@ fun AppNavHost(modifier: Modifier = Modifier) {
             summary = OwnerOverviewUiState(sold = orders.state.paidToday.sumOf { it.quantity },
                 available = boxes.state.available, awaitingPickup = orders.state.count(OwnerOrderFilter.AWAITING_PICKUP),
                 revenue = orders.state.paidToday.sumOf { it.total }))
-    } else if (destination == Destinations.STAFF && profile != null) {
+    } else if (destination == Destinations.ADMIN) {
+        val account = profile.email.trim().lowercase(Locale.ROOT)
+        val factory = remember(account) { RepositoryModule.storeApplicationsViewModelFactory(account) }
+        val applications: StoreApplicationsViewModel =
+            viewModel(key = "admin.applications:$account", factory = factory)
+        val complaintsFactory = remember(account) { RepositoryModule.adminComplaintsViewModelFactory(account) }
+        val complaints: AdminComplaintsViewModel = viewModel(key = "admin.complaints:$account", factory = complaintsFactory)
+        val refundsFactory = remember(account) { RepositoryModule.adminRefundsViewModelFactory(account) }
+        val refunds: com.foodrescue.app.feature.refund.presentation.AdminRefundsViewModel =
+            viewModel(key = "admin.refunds:$account", factory = refundsFactory)
+        val supervisionFactory = remember(account) { RepositoryModule.storeSupervisionViewModelFactory(account) }
+        val supervision: com.foodrescue.app.feature.store.presentation.StoreSupervisionViewModel =
+            viewModel(key = "admin.supervision:$account", factory = supervisionFactory)
+        val usersFactory = remember(account) { RepositoryModule.adminUsersViewModelFactory(account) }
+        val users: AdminUsersViewModel = viewModel(key = "admin.users:$account", factory = usersFactory)
+        val financeFactory = remember(account) { RepositoryModule.adminFinanceViewModelFactory(account) }
+        val finance: com.foodrescue.app.feature.finance.presentation.AdminFinanceViewModel =
+            viewModel(key = "admin.finance:$account", factory = financeFactory)
+        val policyFactory = remember(account) { RepositoryModule.financialPolicyViewModelFactory(account) }
+        val policy: com.foodrescue.app.feature.finance.presentation.FinancialPolicyViewModel =
+            viewModel(key = "admin.policy:$account", factory = policyFactory)
+        DisposableEffect(applications, complaints, refunds, supervision, users, finance, policy) {
+            onDispose { applications.clear(); complaints.clear(); refunds.clear(); supervision.clear(); users.clear(); finance.clear(); policy.clear() }
+        }
+        AdminRoute(account, applications, complaints,
+            { applications.clear(); complaints.clear(); refunds.clear(); supervision.clear(); users.clear(); finance.clear(); policy.clear(); auth.reset(); session.signOut() },
+            modifier, refunds, supervision, users, finance, policy)
+    } else if (destination == Destinations.STAFF) {
         val account = profile.email.trim().lowercase(Locale.ROOT)
         val factory = remember(account) { RepositoryModule.staffPackingViewModelFactory(account) }
         val staff: StaffPackingViewModel = viewModel(key = "staff.packing:$account", factory = factory)
@@ -133,20 +199,10 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         val condition: StaffBoxConditionViewModel = viewModel(key = "staff.condition:$account", factory = conditionFactory)
         val noShowFactory = remember(account) { RepositoryModule.staffNoShowViewModelFactory(account) }
         val noShow: StaffNoShowViewModel = viewModel(key = "staff.noShow:$account", factory = noShowFactory)
+        DisposableEffect(staff, handover, condition, noShow) {
+            onDispose { staff.clear(); handover.clear(); condition.clear(); noShow.clear() }
+        }
         StaffRoute(staff, handover, condition, noShow, { staff.clear(); handover.clear(); condition.clear(); noShow.clear(); session.switchToCustomer() },
             { staff.clear(); handover.clear(); condition.clear(); noShow.clear(); auth.reset(); session.signOut() }, modifier)
-    } else {
-        val request = accountRequest
-        if (request == null) AuthRoute(modifier = modifier, viewModel = auth,
-            onAuthenticated = { name, email -> accountRequest = listOf(name, email) })
-        else AccountEntry(request[1], RepositoryModule.isStoreOwner(context, request[1]),
-            remember(context) { RepositoryModule.staffAccessRepository(context) }, onResolved = { role ->
-                when (role) {
-                    RoleNavigation.Role.OWNER -> session.signInOwner(request[0], request[1])
-                    RoleNavigation.Role.STAFF -> session.signInStaff(request[0], request[1])
-                    else -> session.signInCustomer(request[0], request[1])
-                }
-                accountRequest = null
-            }, onCancel = { accountRequest = null; auth.reset() }, modifier = modifier)
     }
 }
