@@ -15,3 +15,12 @@
 local.properties
 /android/**/build/
 /android/.idea/
+.gradle/
+build/
+.idea/
+*.iml
+.env
+.env.*
+docs/
+tmp/
+.agents/
