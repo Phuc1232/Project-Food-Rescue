@@ -63,7 +63,10 @@ internal fun RevenueSettlementScreen(record: RevenueSettlement, currentPayout: S
         if (record.status != SettlementStatus.PENDING) Text(record.id, style = MaterialTheme.typography.labelLarge)
         FoodRescueCard {
             RevenueMoneyLine("Tiền các đơn trong kỳ", record.gross)
+            val refunded = revenueSum(record.lines.map { it.refunded })
+            if (refunded > 0) RevenueMoneyLine("Khoản hoàn đã tính trong kỳ", refunded)
             RevenueMoneyLine("Hoa hồng FoodRescue", record.commission)
+            if (record.adjustment > 0) RevenueMoneyLine("Bù trừ hoàn tiền kỳ trước", record.adjustment)
             HorizontalDivider()
             RevenueMoneyLine("Số tiền chi trả", record.net, emphasized = true)
         }
@@ -73,6 +76,7 @@ internal fun RevenueSettlementScreen(record: RevenueSettlement, currentPayout: S
             SettlementStatus.PROCESSING -> "Lệnh chuyển tiền đang được xử lý. Trạng thái sẽ được cập nhật khi có kết quả."
             SettlementStatus.PAID -> "Khoản chi trả đã được xác nhận thành công."
             SettlementStatus.FAILED -> record.failureReason ?: "Chuyển tiền chưa thành công. Khoản này vẫn nằm trong số tiền chờ chi trả."
+            SettlementStatus.VOIDED -> "Kỳ đã hủy trước khi chi trả. Các đơn đủ điều kiện được tổng hợp lại; lịch sử kỳ này được giữ nguyên."
         }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (record.destination != null) {
             FoodRescueCard {

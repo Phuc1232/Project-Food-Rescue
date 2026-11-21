@@ -41,7 +41,7 @@ internal fun RevenueOverviewScreen(storeName: String, state: RevenueUiState, ban
                 } }
                 item { FoodRescueCard {
                     StoreSectionTitle("Chi tiết khoản được hưởng")
-                    RevenueMoneyLine("Tiền các đơn đủ điều kiện", report.earnedGross)
+                    RevenueMoneyLine("Giá trị còn lại sau hoàn tiền", report.earnedGross)
                     RevenueMoneyLine("Hoa hồng FoodRescue", report.commission)
                     HorizontalDivider()
                     RevenueMoneyLine("Cửa hàng được hưởng", report.net, emphasized = true)
@@ -64,6 +64,11 @@ internal fun RevenueOverviewScreen(storeName: String, state: RevenueUiState, ban
                     Text("Toàn bộ các kỳ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     RevenueMoneyLine("Đang chờ đối soát / chi trả", snapshot.awaitingPayout, emphasized = true)
                     RevenueMoneyLine("Đã chi trả", snapshot.paidOut)
+                    if (snapshot.settlementAdjustment > 0) {
+                        RevenueMoneyLine("Khoản cần điều chỉnh do hoàn tiền", snapshot.settlementAdjustment)
+                        Text("Khoản hoàn phát sinh sau đối soát sẽ được bù trừ khi xử lý đối soát. Số liệu kỳ đã xác nhận được giữ nguyên.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     TextButton(onSettlements) { Text("Xem các kỳ đối soát") }
                 } }
                 item {

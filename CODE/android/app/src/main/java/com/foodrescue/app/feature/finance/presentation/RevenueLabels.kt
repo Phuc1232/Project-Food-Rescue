@@ -10,7 +10,7 @@ internal fun revenueDate(time: Long, pattern: String = "dd/MM/yyyy"): String = S
     timeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
 }.format(Date(time))
 internal fun revenueRange(window: RevenueWindow): String = "${revenueDate(window.start, "dd/MM")} – ${revenueDate(window.endExclusive - 1)}"
-internal fun revenueRate(bps: Int): String = java.math.BigDecimal(bps).movePointLeft(2).stripTrailingZeros().toPlainString().replace('.', ',') + "%"
+internal fun revenueRate(bps: Int): String = com.foodrescue.app.core.util.percentageRate(bps)
 internal val RevenuePeriod.label: String get() = when (this) { RevenuePeriod.DAY -> "Ngày"; RevenuePeriod.WEEK -> "Tuần"; RevenuePeriod.MONTH -> "Tháng" }
 internal val RevenueBasis.label: String get() = when (this) { RevenueBasis.PAYMENT -> "Ngày thanh toán"; RevenueBasis.COLLECTION -> "Ngày giao hộp" }
 internal val RevenueFilter.label: String get() = when (this) {
@@ -29,6 +29,7 @@ internal val RevenueEntryStatus.label: String get() = when (this) {
 internal val SettlementStatus.label: String get() = when (this) {
     SettlementStatus.PENDING -> "Chờ đối soát"; SettlementStatus.READY -> "Chờ chi trả"
     SettlementStatus.PROCESSING -> "Đang chuyển tiền"; SettlementStatus.PAID -> "Đã chi trả"; SettlementStatus.FAILED -> "Chuyển tiền thất bại"
+    SettlementStatus.VOIDED -> "Đã hủy kỳ"
 }
 internal val RevenueEntry.explanation: String get() {
     val currentStatus = when (status) {
