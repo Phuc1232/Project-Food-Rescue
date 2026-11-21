@@ -20,9 +20,16 @@ internal fun complaintAccountKey(email: String): String = MessageDigest.getInsta
     .digest(email.trim().lowercase(Locale.ROOT).toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
 /** Copies only explicitly selected images. Original and bounded preview remain private to this account. */
-internal class LocalEvidenceStore(context: Context, email: String) : ComplaintEvidenceStore {
+internal class LocalEvidenceStore private constructor(context: Context, private val directory: File) : ComplaintEvidenceStore {
+    constructor(context: Context, email: String) : this(context,
+        File(context.applicationContext.filesDir, "complaint-evidence/" + complaintAccountKey(email)))
+    companion object {
+        fun forAccountKey(context: Context, key: String): LocalEvidenceStore {
+            require(key.matches(Regex("[a-f0-9]{64}")))
+            return LocalEvidenceStore(context, File(context.applicationContext.filesDir, "complaint-evidence/$key"))
+        }
+    }
     private val resolver = context.applicationContext.contentResolver
-    private val directory = File(context.applicationContext.filesDir, "complaint-evidence/" + complaintAccountKey(email))
     private val validId = Regex("[a-f0-9-]{36}")
 
     override suspend fun import(sourceUri: String): EvidenceImportResult {

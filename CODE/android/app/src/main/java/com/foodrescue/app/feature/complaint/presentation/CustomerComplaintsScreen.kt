@@ -28,7 +28,8 @@ internal fun CustomerComplaintsScreen(state: ComplaintUiState, onBack: () -> Uni
         }
         state.visibleCases.forEach { item ->
             FoodRescueCard {
-                Text(item.status.label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(if (item.refundRequest != null) "Chờ hoàn tiền" else item.status.label,
+                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Text(item.order.store, style = MaterialTheme.typography.titleMedium)
                 Text(item.reason.label, style = MaterialTheme.typography.bodyMedium)
                 Text("Đơn ${item.order.reference}", style = MaterialTheme.typography.bodySmall)

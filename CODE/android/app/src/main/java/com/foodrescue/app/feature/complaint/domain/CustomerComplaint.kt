@@ -36,6 +36,11 @@ internal data class CustomerComplaint(
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val response: String? = null,
+    val revision: Long = 0,
+    val history: List<ComplaintReviewEvent> = emptyList(),
+    val refundRequest: ComplaintRefundRequest? = null,
+    // Read projection from the order ledger; never written into the complaint record.
+    val refundTransaction: com.foodrescue.app.feature.refund.domain.ManagedRefund? = null,
 ) {
     init {
         require(id.isNotBlank() && order.id.isNotBlank())
@@ -43,6 +48,8 @@ internal data class CustomerComplaint(
         require(evidence.size <= MAX_COMPLAINT_IMAGES && evidence.distinctBy { it.id }.size == evidence.size)
         require(updatedAtMillis >= createdAtMillis)
         require(status.isOpen || !response.isNullOrBlank())
+        require(revision >= 0)
+        require(refundRequest == null || status == ComplaintStatus.RESOLVED)
     }
 }
 

@@ -8,6 +8,8 @@ import com.foodrescue.app.core.designsystem.component.*
 import com.foodrescue.app.core.util.money
 import com.foodrescue.app.feature.complaint.domain.*
 import com.foodrescue.app.feature.complaint.presentation.component.ComplaintEvidenceCard
+import com.foodrescue.app.feature.complaint.presentation.component.ComplaintReviewTimeline
+import com.foodrescue.app.feature.complaint.presentation.component.ComplaintRefundSummary
 
 @Composable
 internal fun ComplaintDetailScreen(complaint: CustomerComplaint?, onBack: () -> Unit,
@@ -44,7 +46,8 @@ internal fun ComplaintDetailScreen(complaint: CustomerComplaint?, onBack: () -> 
                 Text("Ảnh bằng chứng (${complaint.evidence.size})", style = MaterialTheme.typography.titleMedium)
                 complaint.evidence.forEach { ComplaintEvidenceCard(it) }
             }
-            FoodRescueCard {
+            if (complaint.history.isNotEmpty()) FoodRescueCard { ComplaintReviewTimeline(complaint) }
+            else FoodRescueCard {
                 Text("Tiến trình xử lý", style = MaterialTheme.typography.titleMedium)
                 Text("Đã gửi khiếu nại", style = MaterialTheme.typography.labelLarge)
                 Text(complaintTimestamp(complaint.createdAtMillis), style = MaterialTheme.typography.bodySmall)
@@ -58,6 +61,7 @@ internal fun ComplaintDetailScreen(complaint: CustomerComplaint?, onBack: () -> 
                 Text(complaint.response, style = MaterialTheme.typography.bodyMedium)
                 Text(complaintTimestamp(complaint.updatedAtMillis), style = MaterialTheme.typography.bodySmall)
             }
+            complaint.refundRequest?.let { ComplaintRefundSummary(it, transaction = complaint.refundTransaction) }
         }
     }
 }
