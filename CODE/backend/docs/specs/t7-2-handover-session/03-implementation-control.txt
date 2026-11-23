@@ -1,0 +1,76 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T7.2: PHIÊN BÀN GIAO VÀ SỰ CỐ
+Ngày: 2026-11-23 | Trạng thái: DONE — ĐÃ TRIỂN KHAI VÀ KIỂM CHỨNG
+Gate B: người dùng yêu cầu thực hiện 02-plan.md trong phiên này.
+
+1. KẾT QUẢ
+- 4 endpoint: danh sách đơn, mở phiên, hoàn tất, ghi sự cố; quyền PICKUP_HANDLE tại service.
+- Danh sách read-only lọc khung giờ giao với ngày theo timezone cửa hàng, trả tiền/hộp/phiên.
+- Khóa CustomerOrder trước chuyển trạng thái; khóa hộp theo UUID. Complete refresh session sau khi chờ khóa.
+- Kiểm tra đủ tiền, [start,end), đủ allocation CONFIRMED và hộp ALLOCATED; không giao một phần.
+- Hoàn tất đơn/phiên/allocation/hộp + financial_event ORDER_COMPLETED + audit trong một transaction.
+- Sự cố hủy phiên, chỉ chặn hộp thuộc đúng đơn, giữ lý do/thời điểm, chặn mở lại chờ xử lý.
+- Không thêm migration. Start và complete dùng cùng Idempotency-Key (1–255 ký tự).
+
+2. KIỂM CHỨNG
+- compileKotlin và compileTestKotlin thành công.
+- Lượt test đầu: 18 test không khởi tạo được do Docker chưa chạy; đã khởi động Docker để chạy lại.
+- Kiểm thử chọn lọc: BUILD SUCCESSFUL, 18/18 PASS (PickupHandoverTests 13, ApiContractTests 4, ProductionApiContractTests 1).
+- Đã thêm ca kiểm tra hộp BLOCKED/thiếu allocation trước khi chạy full build.
+- OpenAPI JSON parse thành công, không có $ref nội bộ bị thiếu; git diff --check sạch.
+- Full build lần đầu: 239 test, 236 PASS, 2 FAIL, 1 SKIP; PickupHandoverTests 14/14 PASS.
+  Hai lỗi SwaggerUiTests/SwaggerUiDevTests do tổng đường dẫn hard-code 88, thực tế thêm 4 thành 92.
+  Đã cập nhật đúng kỳ vọng số path.
+- FULL BUILD CUỐI: BUILD SUCCESSFUL trong 8m39s, exit code 0.
+  239 tests: 238 PASS, 0 FAIL, 0 ERROR, 1 SKIPPED có sẵn (browser sandbox opt-in).
+  PickupHandoverTests 14/14 PASS; SwaggerUiTests 2/2, SwaggerUiDevTests 2/2,
+  ApiContractTests 4/4, ProductionApiContractTests 1/1 PASS.
+  Đã đọc build/reports/tests/test/index.html và XML từng suite; không tắt/xóa/skip test.
+  Lệnh: .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain.
+
+3. FILE ↔ AC/TEST
+NEW | pickup/dto/PickupOrderSummaryView.kt | AC-01 | list is read only
+NEW | pickup/dto/PickupSessionView.kt | AC-03,08,09,10 | start complete and replay
+NEW | pickup/dto/PickupIncidentCreateRequest.kt, PickupIncidentView.kt | AC-11,12 | incident tests
+NEW | pickup/service/PickupOrderService.kt | AC-01,02 | list, access
+NEW | pickup/service/PickupSessionService.kt | AC-03..10,13 | window/payment/state/concurrency/replay/rollback
+NEW | pickup/service/PickupIncidentService.kt | AC-11,12 | incidents/ownership/body validation
+NEW | pickup/controller/StorePickupOrderController.kt | AC-01,02 | list, access
+NEW | pickup/controller/StorePickupSessionController.kt | AC-02..10,13 | session HTTP tests
+NEW | pickup/controller/StorePickupIncidentController.kt | AC-02,11,12 | incident HTTP tests
+MODIFIED | pickup/repository/PickupSessionRepository.kt | AC-07,08,10 | concurrent/replay
+MODIFIED | order/repository/CustomerOrderRepository.kt | AC-01 | date/status filtering
+MODIFIED | src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | AC-14 | tổng 92 API paths
+MODIFIED | docs/api/openapi.yaml | AC-14 | docs expose operations; ApiContractTests
+NEW | src/test/kotlin/com/foodrescue/backend/PickupHandoverTests.kt | AC-01..14
+MODIFIED | .gitignore | whitelist đúng tên t7-2-handover-session
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, profile dev)
+1) Đăng nhập owner hoặc staff ACTIVE có PICKUP_HANDLE, Authorize bearer token.
+2) Chuẩn bị đơn CONFIRMED đã xác minh đủ tiền bằng quy trình thử của môi trường dev,
+   đủ hộp ALLOCATED, đang trong pickupStartsAt <= now < pickupEndsAt.
+3) GET /api/v1/stores/{storeId}/pickup-orders, nhập ngày theo timezone cửa hàng;
+   thử status CONFIRMED/HANDOVER_IN_PROGRESS; kiểm tra money và boxes.
+4) POST .../orders/{orderId}/pickup-sessions/start, Idempotency-Key=pickup-demo-001.
+   Kỳ vọng 201 OPEN, đơn HANDOVER_IN_PROGRESS. Gửi lại key cũ trả cùng id; key khác 409.
+5) POST .../pickup-sessions/{sessionId}/complete với cùng pickup-demo-001.
+   Kỳ vọng 200 COMPLETED, completedAt có giá trị. Gửi lại thành công, chỉ một event.
+6) Trên đơn khác đang OPEN, POST .../orders/{orderId}/pickup-incidents:
+   {"reason":"Hộp hỏng","customerArrived":true,"affectedBoxIds":["UUID hộp thuộc đơn"]}.
+   Kỳ vọng 201, phiên CANCELLED, hộp BLOCKED, complete bị 409. Đơn không COMPLETED.
+7) Thử sự cố trên đơn COMPLETED: 409 ORDER_ALREADY_COMPLETED; hộp thuộc đơn khác: 409.
+8) Thử token customer/nhân viên thiếu quyền: 403; thiếu token: 401.
+9) Thử mở trước giờ/đúng giờ kết thúc: 409 OUTSIDE_PICKUP_WINDOW; chưa đủ tiền: PAYMENT_INCOMPLETE.
+
+5. GIỚI HẠN
+- T7.3 hủy đơn đã trả tiền và T7.4 job no-show chưa thuộc phiên này. AC-13 chỉ kiểm tra
+  trạng thái nguyên tử và endpoint hủy chưa trả tiền hiện hữu từ chối HANDOVER_IN_PROGRESS.
+- Incident không nhận Idempotency-Key theo API contract đã duyệt ở 02-plan.md; mỗi POST hợp lệ tạo một bản ghi.
+- resolution lưu thông tin xử lý/bằng chứng dạng string theo schema hiện có.
+- T7.3 cần phân biệt phiên đang OPEN/RECONCILING với phiên đã CANCELLED vì sự cố khi
+  xử lý đơn còn HANDOVER_IN_PROGRESS; trạng thái đang giữ để chờ xem xét theo plan.
+- Chưa thực hiện thao tác thủ công trên Swagger; kịch bản trên dành cho người dùng.
+- Không thực hiện git commit/push theo .agents/CLAUDE.md §3.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- 01-business-definition.md ghi yêu cầu key cho incident nhưng quyết định Q1 và API contract
+  02-plan.md không có header đó; triển khai theo plan người dùng chỉ định.

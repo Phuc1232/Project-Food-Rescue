@@ -8037,6 +8037,308 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/pickup-orders": {
+      "get": {
+        "operationId": "listPickupOrders",
+        "tags": [
+          "Pickup"
+        ],
+        "summary": "listPickupOrders",
+        "description": "Read-only pickup queue. Owner or active staff with PICKUP_HANDLE. Date defaults to today in store timezone; pickup windows overlap the selected day.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "example": "2026-11-23"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CONFIRMED",
+                "HANDOVER_IN_PROGRESS"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PickupOrderSummaryView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/orders/{orderId}/pickup-sessions/start": {
+      "post": {
+        "operationId": "startPickupSession",
+        "tags": [
+          "Pickup"
+        ],
+        "summary": "startPickupSession",
+        "description": "Start a fully paid CONFIRMED order inside [pickupStartsAt,pickupEndsAt). All boxes must be ready. Same key replays the active session. Conflicts: SESSION_ALREADY_OPEN, INVALID_ORDER_STATUS, PAYMENT_INCOMPLETE, OUTSIDE_PICKUP_WINDOW, BOXES_NOT_READY, PICKUP_INCIDENT_PENDING, IDEMPOTENCY_KEY_CONFLICT.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Session key shared by start and complete",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "example": "pickup-20261123-001"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupSessionView"
+                },
+                "example": {
+                  "id": "10000000-0000-0000-0000-000000000001",
+                  "orderId": "20000000-0000-0000-0000-000000000001",
+                  "orderCode": "FR-261123-ABC234",
+                  "actorId": "30000000-0000-0000-0000-000000000001",
+                  "status": "OPEN",
+                  "startedAt": "2026-11-23T03:00:00Z",
+                  "completedAt": null,
+                  "idempotencyKey": "pickup-20261123-001"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/pickup-sessions/{sessionId}/complete": {
+      "post": {
+        "operationId": "completePickupSession",
+        "tags": [
+          "Pickup"
+        ],
+        "summary": "completePickupSession",
+        "description": "Complete all boxes atomically and append one ORDER_COMPLETED financial event. Use the same Idempotency-Key as start. A completed session replays with that key. Conflicts: SESSION_ALREADY_COMPLETED, IDEMPOTENCY_KEY_CONFLICT, INVALID_ORDER_STATUS, BOXES_NOT_READY.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Session key shared by start and complete",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "example": "pickup-20261123-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupSessionView"
+                },
+                "example": {
+                  "id": "10000000-0000-0000-0000-000000000001",
+                  "orderId": "20000000-0000-0000-0000-000000000001",
+                  "orderCode": "FR-261123-ABC234",
+                  "actorId": "30000000-0000-0000-0000-000000000001",
+                  "status": "COMPLETED",
+                  "startedAt": "2026-11-23T03:00:00Z",
+                  "completedAt": "2026-11-23T03:05:00Z",
+                  "idempotencyKey": "pickup-20261123-001"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/orders/{orderId}/pickup-incidents": {
+      "post": {
+        "operationId": "recordPickupIncident",
+        "tags": [
+          "Pickup"
+        ],
+        "summary": "recordPickupIncident",
+        "description": "Record failed handover, cancel active session, block affected allocated boxes, and hold for review. resolution may contain evidence references; defaults to PENDING_REVIEW. No automatic refund or customer fault attribution. Conflicts: ORDER_ALREADY_COMPLETED, INVALID_ORDER_STATUS, INVALID_AFFECTED_BOX.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupIncidentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupIncidentCreateRequest"
+              },
+              "example": {
+                "reason": "Food safety concern",
+                "customerArrived": true,
+                "affectedBoxIds": [],
+                "resolution": "PENDING_ADMIN_REVIEW"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12891,6 +13193,207 @@
             "type": "string",
             "maxLength": 128,
             "description": "16 Base32 characters, case insensitive; grouping spaces/hyphens accepted. Internal box and order codes are not pickup credentials."
+          }
+        }
+      },
+      "PickupSessionView": {
+        "type": "object",
+        "required": [
+          "id",
+          "orderId",
+          "orderCode",
+          "actorId",
+          "status",
+          "startedAt",
+          "completedAt",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RECONCILING",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          }
+        }
+      },
+      "PickupOrderSummaryView": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "orderCode",
+          "status",
+          "customerName",
+          "quantity",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "pickupAddress",
+          "boxes",
+          "money",
+          "activeSessionId",
+          "currentSessionStatus"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "boxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocatedBoxView"
+            }
+          },
+          "money": {
+            "$ref": "#/components/schemas/OrderMoneyView"
+          },
+          "activeSessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "currentSessionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PickupIncidentCreateRequest": {
+        "type": "object",
+        "required": [
+          "reason",
+          "customerArrived"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "customerArrived": {
+            "type": "boolean"
+          },
+          "affectedBoxIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "resolution": {
+            "type": "string"
+          }
+        }
+      },
+      "PickupIncidentView": {
+        "type": "object",
+        "required": [
+          "id",
+          "orderId",
+          "sessionId",
+          "actorId",
+          "reason",
+          "customerArrived",
+          "occurredAt",
+          "resolution"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "customerArrived": {
+            "type": "boolean"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       }

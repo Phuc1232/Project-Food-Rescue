@@ -15,11 +15,9 @@ local.properties
 .kotlin/
 # Keep API build inputs and implementation control documents in version control.
 !docs/
-docs/*
 !docs/api/
 !docs/auth-setup.md
 !docs/specs/
-docs/specs/*
 !docs/specs/api-foundation-and-auth/
 !index.html
 !docs/specs/swagger-ui/
@@ -47,3 +45,5 @@ docs/specs/*
 !docs/specs/t6-5-manual-refund/
 !docs/specs/t7-1-pickup-code/
 !docs/specs/t7-2-pickup-session/
+
+!docs/specs/t7-2-handover-session/
