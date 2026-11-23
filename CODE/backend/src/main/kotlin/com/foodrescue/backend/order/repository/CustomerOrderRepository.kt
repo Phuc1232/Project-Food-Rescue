@@ -16,6 +16,10 @@ interface CustomerOrderRepository : JpaRepository<CustomerOrder, UUID> {
     fun findForUpdate(@Param("id") id: UUID): CustomerOrder?
 
     fun findByCustomerIdAndIdempotencyKey(customerId: UUID, key: String): CustomerOrder?
+    @Query("select o from CustomerOrder o where o.store.id = :storeId and o.status in :statuses and o.pickupStartsAt < :endsAt and o.pickupEndsAt > :startsAt order by o.pickupStartsAt, o.id")
+    fun findPickupOrders(storeId: UUID, statuses: Collection<com.foodrescue.backend.order.OrderStatus>,
+                         startsAt: java.time.Instant, endsAt: java.time.Instant): List<CustomerOrder>
+
     fun existsByOrderCode(code: String): Boolean
     fun findByStoreIdAndPickupCodeHash(storeId: UUID, pickupCodeHash: String): CustomerOrder?
 }
