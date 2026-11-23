@@ -17,4 +17,5 @@ interface CustomerOrderRepository : JpaRepository<CustomerOrder, UUID> {
 
     fun findByCustomerIdAndIdempotencyKey(customerId: UUID, key: String): CustomerOrder?
     fun existsByOrderCode(code: String): Boolean
+    fun findByStoreIdAndPickupCodeHash(storeId: UUID, pickupCodeHash: String): CustomerOrder?
 }

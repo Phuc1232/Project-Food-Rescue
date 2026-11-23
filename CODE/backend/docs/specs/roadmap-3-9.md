@@ -42,7 +42,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
-| 7. Bàn giao, hủy, no-show | [ ] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
+| 7. Bàn giao, hủy, no-show | [x] T7.1 · [ ] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
@@ -273,7 +273,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 
 **Điều kiện hoàn thành giai đoạn:** bàn giao/hủy/no-show không tạo kết quả mâu thuẫn; phát sinh nghĩa vụ hoàn đúng.
 
-### [ ] T7.1 — Mã nhận hàng
+### [x] T7.1 — Mã nhận hàng
 - **Phụ thuộc:** T6.3. **Tài liệu:** UC-21, UC-29, BR-35, NFR-14.
 - **Phạm vi:** sinh mã khi đơn CONFIRMED (liên kết các hộp của đơn); khách xem mã + địa điểm + khung giờ (cách lưu để
   hiển thị lại: chốt ở Gate A); đơn hủy/hoàn tất/no-show → mã không còn hiệu lực; nhân viên quét/nhập mã → trả đơn,

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
 import java.time.Clock
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /** UC-84..87. Versions are insert-only; a new version never changes orders created under an older one (BR-33). */
@@ -45,8 +46,9 @@ class FinancialPolicyService(
         val latest = policies.findFirstByOrderByPolicyVersionDesc()
         if (r.basedOnVersion != (latest?.policyVersion ?: 0))
             throw ApiException(409, "CONFLICT", "A newer policy version exists; reload and review it first")
-        val now = clock.instant()
-        val effectiveFrom = r.effectiveFrom ?: now
+        // T7.1 plan §8 (approved T4.5 fix): compare and persist at PostgreSQL timestamp precision.
+        val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
+        val effectiveFrom = (r.effectiveFrom ?: now).truncatedTo(ChronoUnit.MICROS)
         if (effectiveFrom.isBefore(now)) throw ApiException(409, "CONFLICT", "effectiveFrom must not be in the past")
         val lastStart = policies.findFirstByOrderByEffectiveFromDesc()?.effectiveFrom
         if (lastStart != null && !effectiveFrom.isAfter(lastStart))

@@ -76,6 +76,11 @@ auth:
 # T6.1: payment provider. fake = in-memory (local/tests); payos needs the three keys from .env (never committed).
 payment:
   gateway: ${PAYMENT_GATEWAY:fake}
+pickup:
+  code:
+    active-key-id: ${PICKUP_CODE_ACTIVE_KEY_ID:}
+    keys: ${PICKUP_CODE_KEYS:}
+    backfill-enabled: false
 payos:
   client-id: ${PAYOS_CLIENT_ID:}
   api-key: ${PAYOS_API_KEY:}

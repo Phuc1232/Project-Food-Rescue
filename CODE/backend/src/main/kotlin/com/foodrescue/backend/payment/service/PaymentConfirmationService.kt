@@ -20,6 +20,9 @@ import com.foodrescue.backend.payment.entity.Payment
 import com.foodrescue.backend.payment.gateway.WebhookPayment
 import com.foodrescue.backend.payment.repository.PaymentRepository
 import com.foodrescue.backend.payment.repository.PaymentRequestRepository
+import com.foodrescue.backend.pickup.service.PickupCodeIssuer
+import com.foodrescue.backend.common.exception.ApiException
+import org.springframework.dao.DataIntegrityViolationException
 import com.foodrescue.backend.store.service.StoreHistoryRecorder
 import com.foodrescue.backend.surprisebox.BoxStatus
 import com.foodrescue.backend.surprisebox.repository.PhysicalBoxRepository
@@ -48,6 +51,7 @@ class PaymentConfirmationService(
     private val releaser: OrderReleaser,
     private val obligations: RefundObligationService,
     private val history: StoreHistoryRecorder,
+    private val pickupCodes: PickupCodeIssuer,
     private val clock: Clock
 ) {
     private val log = LoggerFactory.getLogger(PaymentConfirmationService::class.java)
@@ -89,7 +93,12 @@ class PaymentConfirmationService(
         }
         allocations.saveAll(held)
         order.status = OrderStatus.CONFIRMED; order.statusReason = "PAYMENT_VERIFIED"; order.statusChangedAt = now
-        orders.saveAndFlush(order)
+        pickupCodes.issue(order) // T7.1: confirmation and credential issuance succeed or roll back together.
+        try { orders.saveAndFlush(order) }
+        catch (_: DataIntegrityViolationException) {
+            // A credential write failure is retryable, not a duplicate provider transaction.
+            throw ApiException(503, "SERVICE_UNAVAILABLE", "Pickup code could not be issued")
+        }
         val event = events.saveAndFlush(FinancialEvent(order, FinancialEventType.PAYMENT_RECEIVED, payment = payment, occurredAt = now,
             businessKey = "PAYMENT_RECEIVED:${payment.id}"))
         ledger.save(LedgerEntry(event, order.store, LedgerEntryType.PAYMENT_RECEIPT, payment.receivedAmount, payment.currency, occurredAt = now))

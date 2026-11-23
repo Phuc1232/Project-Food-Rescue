@@ -17,7 +17,7 @@ task trong [docs/specs/roadmap-3-9.md](docs/specs/roadmap-3-9.md). Đọc file �
 
 ## 1. Phạm vi
 
-- **Mỗi phiên chỉ làm đúng một task** do người dùng chỉ định (ví dụ "làm T6.2"). Không làm trước task sau,
+- **Mỗi phiên chỉ làm đúng task** do người dùng chỉ định (ví dụ "làm T6.2"). Không làm trước task sau,
   không "tiện tay" sửa phần ngoài task.
 - Chỉ bắt đầu khi mọi task trong mục "Phụ thuộc" của card đã đánh dấu `[x]`. Nếu chưa, báo người dùng và dừng.
 - Không sửa code đã hoàn thành của task khác (đặc biệt `auth`, `common/security`, `middleware`) trừ khi
@@ -48,7 +48,7 @@ task trong [docs/specs/roadmap-3-9.md](docs/specs/roadmap-3-9.md). Đọc file �
 Tên slug thư mục spec: `t6-2-payment-request` (chữ thường, gạch ngang).
 
 ## 3. Git
-
+`Tạm thời ngưng phần này, không thực hện git, người dùng tự làm phần git`
 - Mỗi task một nhánh `feature/<task-id>-<slug>` tách từ `master` mới nhất (ví dụ `feature/t6-2-payment-request`).
 - Commit theo Conventional Commits, có task id: `feat(payment): T6.2 create payment request API`.
   Tài liệu Gate A/B có thể commit riêng: `docs(spec): T6.2 business definition`.
@@ -98,7 +98,7 @@ Tên slug thư mục spec: `t6-2-payment-request` (chữ thường, gạch ngang
 
 ## 7. Database
 
-- Chỉ thêm migration mới `V<n>__<mo_ta>.sql`; **không sửa V1–V4** hay migration đã commit.
+- Chỉ thêm migration mới `V<n>__<mo_ta>.sql`(nếu cần thiết); **không sửa V1–V4** hay migration đã commit.
   `n` = số lớn nhất hiện có trên `master` + 1.
 - Hibernate `ddl-auto: validate`: entity và migration phải khớp.
 - Dữ liệu tham chiếu (permission code, food category, financial policy mặc định) seed bằng migration,

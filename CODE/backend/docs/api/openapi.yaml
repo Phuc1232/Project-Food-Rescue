@@ -7822,6 +7822,221 @@
           }
         }
       }
+    },
+    "/api/v1/orders/{orderId}/pickup-code": {
+      "get": {
+        "operationId": "get_order_pickup_code",
+        "tags": [
+          "Pickup"
+        ],
+        "summary": "View my pickup code",
+        "description": "Own orders only (UC-21). Reads never issue a code. CONFIRMED orders before pickupEndsAt show the same code on repeated reads; other states return null/usable=false. Pickup location and times are order snapshots. Missing/corrupt stored credentials return SERVICE_UNAVAILABLE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupCodeView"
+                },
+                "examples": {
+                  "confirmed": {
+                    "value": {
+                      "orderId": "11111111-1111-4111-8111-111111111111",
+                      "orderCode": "FR-EXAMPLE",
+                      "orderStatus": "CONFIRMED",
+                      "code": "0123456789ABCDEF",
+                      "usable": true,
+                      "pickupAddress": "12 Le Loi, TP.HCM",
+                      "pickupStartsAt": "2026-12-01T03:00:00Z",
+                      "pickupEndsAt": "2026-12-01T05:00:00Z",
+                      "money": {
+                        "orderId": "11111111-1111-4111-8111-111111111111",
+                        "totalAmount": 30000,
+                        "verifiedPaid": 30000,
+                        "remainingToPay": 0,
+                        "refunded": 0,
+                        "refundInProgress": 0,
+                        "noShowRetentionIfApplied": 15000,
+                        "currency": "VND"
+                      }
+                    }
+                  },
+                  "inactive": {
+                    "value": {
+                      "orderId": "11111111-1111-4111-8111-111111111111",
+                      "orderCode": "FR-EXAMPLE",
+                      "orderStatus": "COMPLETED",
+                      "code": null,
+                      "usable": false,
+                      "pickupAddress": "12 Le Loi, TP.HCM",
+                      "pickupStartsAt": "2026-12-01T03:00:00Z",
+                      "pickupEndsAt": "2026-12-01T05:00:00Z",
+                      "money": {
+                        "orderId": "11111111-1111-4111-8111-111111111111",
+                        "totalAmount": 30000,
+                        "verifiedPaid": 30000,
+                        "remainingToPay": 0,
+                        "refunded": 0,
+                        "refundInProgress": 0,
+                        "noShowRetentionIfApplied": 15000,
+                        "currency": "VND"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/pickup-codes/verify": {
+      "post": {
+        "operationId": "verify_store_pickup_code",
+        "tags": [
+          "Pickup"
+        ],
+        "summary": "Verify a pickup credential",
+        "description": "Owner or ACTIVE staff with PICKUP_HANDLE (UC-29). Returns order/allocation/verified money without recording handover. Only CONFIRMED orders before pickupEndsAt; verification before pickupStartsAt does not authorize early handover. Wrong-store, absent or inactive codes return NOT_FOUND. Limits: 60 attempts/account and 300/store per fixed 15-minute DB window, including malformed code strings. 400 VALIDATION_FAILED; 403 ACCESS_DENIED; 429 RATE_LIMITED with Retry-After.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupCodeVerifyRequest"
+              },
+              "examples": {
+                "scan": {
+                  "value": {
+                    "code": "0123456789ABCDEF"
+                  }
+                },
+                "manual": {
+                  "value": {
+                    "code": "0123-4567-89ab-cdef"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupVerificationView"
+                },
+                "examples": {
+                  "verified": {
+                    "value": {
+                      "orderId": "11111111-1111-4111-8111-111111111111",
+                      "orderCode": "FR-EXAMPLE",
+                      "orderStatus": "CONFIRMED",
+                      "pickupAddress": "12 Le Loi, TP.HCM",
+                      "pickupStartsAt": "2026-12-01T03:00:00Z",
+                      "pickupEndsAt": "2026-12-01T05:00:00Z",
+                      "money": {
+                        "orderId": "11111111-1111-4111-8111-111111111111",
+                        "totalAmount": 30000,
+                        "verifiedPaid": 30000,
+                        "remainingToPay": 0,
+                        "refunded": 0,
+                        "refundInProgress": 0,
+                        "noShowRetentionIfApplied": 15000,
+                        "currency": "VND"
+                      },
+                      "storeId": "22222222-2222-4222-8222-222222222222",
+                      "quantity": 1,
+                      "boxes": [
+                        {
+                          "boxId": "33333333-3333-4333-8333-333333333333",
+                          "boxCode": "BX-INTERNAL",
+                          "totalListedValue": 60000,
+                          "boxStatus": "ALLOCATED",
+                          "allocationStatus": "CONFIRMED",
+                          "reservedAt": "2026-11-30T03:00:00Z",
+                          "releasedAt": null,
+                          "releaseReason": null
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10991,7 +11206,7 @@
           "effectiveFrom": {
             "type": "string",
             "format": "date-time",
-            "description": "Defaults to now; must be after the start of the latest version"
+            "description": "Defaults to now; must be after the start of the latest version UTC timestamp; normalized to microsecond precision before validation and persistence. A start equal to the latest saved start is rejected."
           },
           "reason": {
             "type": "string",
@@ -12558,6 +12773,126 @@
             "maxLength": 1000
           }
         }
+      },
+      "PickupCodeView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "orderCode",
+          "orderStatus",
+          "code",
+          "usable",
+          "pickupAddress",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "money"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "orderStatus": {
+            "type": "string"
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only present while CONFIRMED and before pickupEndsAt."
+          },
+          "usable": {
+            "type": "boolean"
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "money": {
+            "$ref": "#/components/schemas/OrderMoneyView"
+          }
+        }
+      },
+      "PickupVerificationView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "orderCode",
+          "orderStatus",
+          "pickupAddress",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "money",
+          "storeId",
+          "quantity",
+          "boxes"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "orderStatus": {
+            "type": "string"
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "money": {
+            "$ref": "#/components/schemas/OrderMoneyView"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "boxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocatedBoxView"
+            }
+          }
+        }
+      },
+      "PickupCodeVerifyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "16 Base32 characters, case insensitive; grouping spaces/hyphens accepted. Internal box and order codes are not pickup credentials."
+          }
+        }
       }
     },
     "responses": {
@@ -12814,6 +13149,10 @@
     },
     {
       "name": "Health"
+    },
+    {
+      "name": "Pickup",
+      "description": "Pickup credentials and handover verification"
     }
   ]
 }

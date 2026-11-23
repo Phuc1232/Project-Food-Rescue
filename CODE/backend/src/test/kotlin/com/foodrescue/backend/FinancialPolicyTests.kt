@@ -73,6 +73,17 @@ class FinancialPolicyTests : StoreTestFixtures() {
         assertEquals(3, count("select count(*) from financial_policy"))
     }
 
+    @Test fun `AC-05 identical nanosecond timestamp cannot create another policy after database round trip`() {
+        val a = makeAdmin("admin@example.test")
+        val future = Instant.now().plusSeconds(7200).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusNanos(123456100)
+        assertEquals(201, create(a, body(extra = mapOf("effectiveFrom" to future.toString()))).statusCode())
+        assertEquals(future.truncatedTo(java.time.temporal.ChronoUnit.MICROS),
+            jdbc.queryForObject("select effective_from from financial_policy where policy_version=2", java.sql.Timestamp::class.java)!!.toInstant())
+        val r = create(a, body(based = 2, extra = mapOf("effectiveFrom" to future.toString())))
+        assertEquals(409, r.statusCode(), r.body())
+        assertEquals(2, count("select count(*) from financial_policy"))
+    }
+
     @Test fun `AC-06 only admins, history is immutable`() {
         val owner = user("owner@example.test")
         assertEquals(403, create(owner).statusCode()); assertEquals(403, call(admin, token = owner).statusCode())

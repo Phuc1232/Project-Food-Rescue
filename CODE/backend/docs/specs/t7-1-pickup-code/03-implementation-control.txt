@@ -1,0 +1,162 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T7.1: MÃ NHẬN HÀNG
+Ngày: 2026-11-23 | Trạng thái: DONE — ĐÃ TRIỂN KHAI VÀ KIỂM CHỨNG
+Gate A: người dùng duyệt Q1–Q4. Gate B: người dùng duyệt triển khai với điều chỉnh lưu trên customer_order.
+
+1. KẾT QUẢ
+- V18 thêm customer_order.pickup_code_encrypted và pickup_code_key_id; giữ pickup_code_hash unique.
+  CHECK bộ dữ liệu lưu mã, cập nhật hàm protect_order_terms ngay trong V18; không sửa V1–V17.
+  Không tạo bảng/entity/repository pickup_code; tổng entity vẫn 42.
+- Cấp mã 16 ký tự Base32 ngẫu nhiên (80 bit) khi xác nhận đơn, cùng transaction với tiền/hộp/event/ledger.
+  SHA-256 để tra cứu, AES-256-GCM + UUID đơn làm AAD để hiển thị lại. Không lưu mã thô.
+- GET /api/v1/orders/{orderId}/pickup-code: chỉ khách sở hữu, no-store; snapshot địa điểm/khung và tiền.
+  CONFIRMED trước pickupEndsAt mới trả mã; trạng thái khác/hết giờ trả code=null, usable=false.
+- POST /api/v1/stores/{storeId}/pickup-codes/verify: owner/staff ACTIVE có PICKUP_HANDLE;
+  mã trong body; trả đơn, hộp phân bổ và tiền, không mở phiên hoặc đánh dấu giao.
+- Quota DB: 60 lượt/account, 300/store mỗi cửa sổ 15 phút; đếm cả mã sai định dạng, 429 + Retry-After.
+  Kiểm quyền trước quota; quota commit trước transaction đọc để tránh giữ connection khi counter REQUIRES_NEW.
+- Backfill opt-in: từng đơn khóa dòng, batch 100, không đổi mã cũ, không cấp cho đơn kết thúc/hết giờ;
+  dữ liệu có hash nhưng thiếu bản mã hóa phải xử lý vận hành, không tự đổi mã.
+
+2. KIỂM CHỨNG
+KẾT QUẢ CUỐI: .\gradlew.bat build --console=plain — BUILD SUCCESSFUL trong 7m9s.
+225 tests: 224 PASS, 0 FAIL, 0 ERROR, 1 SKIPPED (ca giữ browser sandbox opt-in có sẵn).
+Đã đọc build/reports/tests/test/index.html và XML từng suite; không tắt/xóa/skip test mới.
+
+Lịch sử kiểm chứng và xử lý lỗi:
+- Baseline đã chạy lại: BUILD SUCCESSFUL trong 6m48s, 214 tests: 213 PASS, 0 FAIL, 1 SKIPPED.
+  FinancialPolicyTests 6 PASS; không sửa code/test T4.5.
+- Test viết trước code: compileTestKotlin đỏ do thiếu các thành phần T7.1, sau đó mới triển khai.
+- Lần chạy test mục tiêu ban đầu phát hiện assertion rollback chưa khớp webhook cũ (HTTP 200 DUPLICATE).
+  Đã bổ sung chuyển lỗi integrity ở bước lưu mã thành ApiException 503, giữ rollback để retry.
+- Test mục tiêu sau xử lý rollback: 10/10 PASS (PickupCodeCodecTests 2, PickupCodeTests 8), BUILD SUCCESSFUL 1m24s.
+- Full build đầu phát hiện AdminBootstrapTests tạo context riêng chưa truyền khóa test mới; đã bổ sung đúng hai property
+  từ fixture test vào context đó, không thay logic bootstrap hoặc bỏ test.
+- Lượt full đầu: 224 tests, 221 PASS, 2 FAIL, 1 SKIPPED; lỗi thứ hai là context Swagger sau cùng
+  hết connection PostgreSQL test vì context Clock riêng T7.1 còn cache pool. Đã thêm AFTER_CLASS DirtiesContext
+  cho đúng context T7.1 mới để đóng pool sau suite, không đổi DB/production/pool các suite cũ. Đang chạy full build lại.
+- Full build lần hai: 224 tests, 222 PASS, 1 FAIL, 1 SKIPPED; bootstrap và các context Swagger đã đạt.
+  Lỗi duy nhất là FinancialPolicyTests:68 cũ. Người dùng đã duyệt sửa T4.5 theo §8 của 02-plan.md.
+- Regression T4.5 chạy riêng trước sửa: 1 FAIL (201 thay vì 409). Sau sửa chạy toàn FinancialPolicyTests:
+  BUILD SUCCESSFUL 1m2s, 7/7 PASS, giữ toàn bộ test cũ. Đang chạy full build cuối trên mã nguồn ổn định.
+- Đã đánh dấu T7.1 hoàn thành ở bảng tiến độ và card; chưa đánh dấu T7.2.
+
+3. FILE ↔ AC/TEST
+NEW:
+- V18__pickup_code_storage.sql: AC-01,02,12,14; AuthMigrationTests/PickupCodeTests.
+- pickup/PickupCodeProperties.kt, service/PickupCodeCodec.kt: AC-01,07,12,13; PickupCodeCodecTests.
+- pickup/service/PickupCodeIssuer.kt: AC-01,02; PickupCodeTests (webhook đồng thời, rollback).
+- pickup/service/PickupCodeService.kt: AC-03..10,12; PickupCodeTests (HTTP, quyền, quota, Clock).
+- pickup/service/PickupCodeBackfillService.kt, bootstrap/PickupCodeBackfillCommand.kt: AC-02,14;
+  PickupCodeTests (đơn cũ, hai tiến trình cấp cùng đơn, thiếu dữ liệu, snapshot bất biến).
+- pickup/dto/{PickupCodeView,PickupVerificationView,PickupCodeVerifyRequest}.kt và
+  pickup/controller/{OrderPickupCodeController,StorePickupCodeController}.kt: AC-03..10,12,14; HTTP tests.
+- PickupCodeCodecTests.kt (2 test), PickupCodeTests.kt (8 test): AC-01..14.
+MODIFIED:
+- order/entity/CustomerOrder.kt, order/repository/CustomerOrderRepository.kt: AC-01..07,14.
+- payment/service/PaymentConfirmationService.kt: AC-01,02,11; mã cùng transaction, rollback/retry.
+- middleware/ratelimit/RateLimitPolicy.kt: AC-08; chỉ hai policy mới, không đổi auth filter.
+- application.yml, .env.example, support/AuthTestFixtures.kt, AdminBootstrapTests.kt: AC-13; khóa môi trường/khóa test giả,
+  truyền cả khóa test cho context bootstrap độc lập.
+- AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt: AC-14; migration 18,
+  số entity giữ 42; OpenAPI 88 paths, 24 tags.
+- docs/api/openapi.yaml: AC-14; hai endpoint, DTO, ví dụ và các lỗi; mô tả precision effectiveFrom của T4.5.
+- finance/service/FinancialPolicyService.kt, FinancialPolicyTests.kt: sửa T4.5 ngoài phạm vi gốc đã được duyệt §8;
+  giữ nguyên test cũ, bổ sung regression timestamp cố định.
+- 01-business-definition.md, 02-plan.md: cập nhật thiết kế lưu trực tiếp trên đơn theo yêu cầu.
+- .gitignore: whitelist spec T7.1 đã bổ sung trong lượt khảo sát trước.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+1. Cấu hình khóa theo mục 5, PAYMENT_GATEWAY=fake cho dev; chạy app profile dev, mở /docs.
+2. Dùng các API sẵn có tạo cửa hàng ACTIVE, hộp đạt, đợt OPEN và đơn PENDING_PAYMENT.
+   Token khách: GET /api/v1/orders/{orderId}/pickup-code → code=null, usable=false.
+3. Xác nhận thanh toán bằng webhook fake có chữ ký hợp lệ trong môi trường thử (test fixture đã kiểm HTTP);
+   không tự gửi payload bịa chữ ký hoặc gọi payOS thật. Nếu thử tiền thật, người dùng tự thao tác theo hướng dẫn thanh toán.
+4. Token khách sở hữu: GET mã → chuỗi 16 ký tự, địa điểm/khung snapshot và verifiedPaid; GET lại giữ nguyên mã.
+5. Token owner/staff PICKUP_HANDLE: POST /api/v1/stores/{storeId}/pickup-codes/verify,
+   body {"code":"<mã vừa nhận>"} → đúng đơn/hộp/tiền; thử chuỗi chữ thường chia nhóm bằng gạch ngang cũng hợp lệ.
+6. Đổi token khách khác xem mã → 404; không token → 401; staff chỉ ORDER_VIEW hoặc quyền đã thu hồi → 403.
+   Mã từ cửa hàng khác → 404, mã hộp/mã đơn nội bộ không dùng nhận hàng.
+7. Nhập mã sai liên tiếp đủ quota → 429 có Retry-After; không có pickup_session hoặc event bàn giao được tạo.
+8. Các biên hết giờ/trạng thái kết thúc, rollback, cạnh tranh webhook và backfill được kiểm bằng Clock/DB Testcontainers,
+   không sửa snapshot hoặc thời gian đơn thật để bấm thử.
+
+5. CẤU HÌNH VÀ ROLLOUT
+- Bắt buộc đặt PICKUP_CODE_ACTIVE_KEY_ID (ví dụ v1) và PICKUP_CODE_KEYS (v1:<Base64 của 32 byte ngẫu nhiên>).
+  Có thể tự tạo khóa bằng PowerShell: [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).
+  Lưu khóa trong môi trường/.env bị ignore, không commit hoặc gửi khóa vào chat/log.
+- Khi xoay khóa: thêm v2 vào key ring, chuyển active id sang v2, giữ v1 để giải mã các mã cũ.
+- Migration V18 tự chạy theo Flyway. Rollout chặn ingress và dừng app cũ trước backfill.
+- Người vận hành chủ động chạy phiên bản mới với --pickup.code.backfill-enabled=true (cùng cấu hình app bình thường),
+  chờ log hoàn tất. Kiểm số đơn CONFIRMED còn hạn mà thiếu hash/ciphertext/keyId bằng 0 trước mở ingress.
+  Khởi động bình thường bỏ cờ backfill; mặc định false. Agent không tự chạy backfill trên DB của người dùng.
+- Rollback giữ các cột V18 và khóa; không down migration. App cũ không cấp mã cho đơn mới, nên cần backfill
+  các đơn phát sinh trong khoảng rollback trước khi bật lại API mã nhận của app mới.
+
+6. GIỚI HẠN
+- Chưa triển khai phiên bàn giao T7.2 hoặc hủy/no-show T7.3/T7.4; tra mã không đảm bảo quyền giao ở request sau.
+  T7.2 phải kiểm tra lại giờ/tiền/hộp/trạng thái dưới khóa trước khi mở phiên.
+- QR ảnh do client render từ chuỗi; không thêm thư viện ảnh backend. Mất khóa không thể khôi phục mã từ hash.
+- Quota dùng cửa sổ cố định của DB; cần cân chỉnh theo lưu lượng thực tế nếu mở rộng.
+- Không thao tác git, không gọi payOS thật, không tự cấu hình secret thật hoặc sửa DB Compose.
+
+7. PHÁT HIỆN NGOÀI PHẠM VI
+- FinancialPolicyTests:68 lỗi độ chính xác timestamp: Instant nano so sánh với timestamp DB micro.
+  Người dùng đã duyệt §8 để xử lý ngoài T7.1; regression timestamp 123456100 chạy riêng trước sửa tái hiện
+  chắc chắn (201 thay vì 409). Đã chuẩn hóa thời gian về microsecond trước so sánh/lưu, giữ test cũ và thêm regression.
+  Nguồn độ chính xác DB: https://www.postgresql.org/docs/16/datatype-datetime.html.
+- PaymentWebhookController hiện bắt tổng quát DataIntegrityViolationException thành DUPLICATE cho toàn bộ record().
+  T7.1 đã ngăn lỗi integrity tại bước ghi mã bị hiểu nhầm bằng chuyển thành 503 trong PaymentConfirmationService.
+  Các lỗi integrity khác của luồng thanh toán cũ vẫn giữ hành vi cũ; không tự mở rộng sửa controller ngoài plan.
+
+8. KẾT QUẢ THEO SUITE (BUILD CUỐI)
+AdminAccountTests: PASS=6, FAIL/ERROR=0, SKIP=0
+AdminBootstrapTests: PASS=2, FAIL/ERROR=0, SKIP=0
+ApiContractTests: PASS=4, FAIL/ERROR=0, SKIP=0
+AuthFlowTests: PASS=7, FAIL/ERROR=0, SKIP=0
+AuthMigrationTests: PASS=1, FAIL/ERROR=0, SKIP=0
+BoxPackingTests: PASS=9, FAIL/ERROR=0, SKIP=0
+BoxTemplateTests: PASS=5, FAIL/ERROR=0, SKIP=0
+FakePaymentGatewayTests: PASS=1, FAIL/ERROR=0, SKIP=0
+FileStorageFailureTests: PASS=1, FAIL/ERROR=0, SKIP=0
+FileTypeDetectorTests: PASS=3, FAIL/ERROR=0, SKIP=0
+FileUploadTests: PASS=8, FAIL/ERROR=0, SKIP=0
+FinancialPolicyTests: PASS=7, FAIL/ERROR=0, SKIP=0
+FoodRescueApplicationTests: PASS=9, FAIL/ERROR=0, SKIP=0
+JwtSecurityTests: PASS=1, FAIL/ERROR=0, SKIP=0
+LocalDiskFileStorageTests: PASS=5, FAIL/ERROR=0, SKIP=0
+ManualRefundTests: PASS=6, FAIL/ERROR=0, SKIP=0
+MenuTests: PASS=8, FAIL/ERROR=0, SKIP=0
+NoShowAmountsTests: PASS=2, FAIL/ERROR=0, SKIP=0
+OpeningHoursValidatorTests: PASS=3, FAIL/ERROR=0, SKIP=0
+OrderLifecycleTests: PASS=6, FAIL/ERROR=0, SKIP=0
+OrderPlacementTests: PASS=8, FAIL/ERROR=0, SKIP=0
+PartnerApplicationTests: PASS=11, FAIL/ERROR=0, SKIP=0
+PasswordRecoveryTests: PASS=4, FAIL/ERROR=0, SKIP=0
+PaymentReconciliationTests: PASS=4, FAIL/ERROR=0, SKIP=0
+PaymentRequestTests: PASS=6, FAIL/ERROR=0, SKIP=0
+PaymentWebhookTests: PASS=6, FAIL/ERROR=0, SKIP=0
+PayOsPaymentGatewayTests: PASS=3, FAIL/ERROR=0, SKIP=0
+PayOsSignatureTests: PASS=4, FAIL/ERROR=0, SKIP=0
+PickupCodeCodecTests: PASS=2, FAIL/ERROR=0, SKIP=0
+PickupCodeTests: PASS=8, FAIL/ERROR=0, SKIP=0
+ProductionApiContractTests: PASS=1, FAIL/ERROR=0, SKIP=0
+ProfileUpdateCorsTests: PASS=1, FAIL/ERROR=0, SKIP=0
+ProfileUpdateRequestParserTests: PASS=6, FAIL/ERROR=0, SKIP=0
+ProfileUpdateTests: PASS=9, FAIL/ERROR=0, SKIP=0
+RateLimitTests: PASS=3, FAIL/ERROR=0, SKIP=0
+RefreshTokenConcurrencyTests: PASS=3, FAIL/ERROR=0, SKIP=0
+SaleBatchTests: PASS=8, FAIL/ERROR=0, SKIP=0
+SearchTests: PASS=6, FAIL/ERROR=0, SKIP=0
+StaffManagementTests: PASS=9, FAIL/ERROR=0, SKIP=0
+StoreAuthorizationTests: PASS=2, FAIL/ERROR=0, SKIP=0
+StoreChangeRequestTests: PASS=3, FAIL/ERROR=0, SKIP=0
+StoreProfileTests: PASS=6, FAIL/ERROR=0, SKIP=0
+StoreSalesPolicyTests: PASS=1, FAIL/ERROR=0, SKIP=0
+StoreStatusTests: PASS=6, FAIL/ERROR=0, SKIP=0
+SwaggerUiContextPathTests: PASS=2, FAIL/ERROR=0, SKIP=1
+SwaggerUiDefaultProfileTests: PASS=1, FAIL/ERROR=0, SKIP=0
+SwaggerUiDevTests: PASS=2, FAIL/ERROR=0, SKIP=0
+SwaggerUiMixedDevProfileTests: PASS=1, FAIL/ERROR=0, SKIP=0
+SwaggerUiMixedTestProfileTests: PASS=1, FAIL/ERROR=0, SKIP=0
+SwaggerUiProductionTests: PASS=1, FAIL/ERROR=0, SKIP=0
+SwaggerUiTests: PASS=2, FAIL/ERROR=0, SKIP=0

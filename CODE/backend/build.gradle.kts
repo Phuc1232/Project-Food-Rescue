@@ -47,7 +47,16 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.withType<Test> { useJUnitPlatform() }
+tasks.withType<Test> {
+    useJUnitPlatform()
+    maxParallelForks = 1
+    testLogging {
+        events("failed")
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
 tasks.bootJar { archiveFileName.set("foodrescue-backend.jar") }
 
 // Package the single reviewed API contract for dev/test documentation.

@@ -87,6 +87,13 @@ class CustomerOrder(
     @field:Column(name = "pickup_code_hash", nullable = true, length = 255)
     var pickupCodeHash: String? = null,
 
+    // AC-01,03,12 (T7.1): encrypted credential for repeat customer display; never serialized as an entity.
+    @field:Column(name = "pickup_code_encrypted", nullable = true, columnDefinition = "text")
+    var pickupCodeEncrypted: String? = null,
+
+    @field:Column(name = "pickup_code_key_id", nullable = true, length = 64)
+    var pickupCodeKeyId: String? = null,
+
     @field:Column(name = "completed_at", nullable = true)
     var completedAt: Instant? = null,
 

@@ -34,7 +34,8 @@ class AdminBootstrapTests: AuthTestFixtures() {
     @Test fun `explicit bootstrap starts successfully without web server`() {
         register()
         val keys=listOf("spring.datasource.url","spring.datasource.username","spring.datasource.password",
-            "auth.jwt.private-key-location","auth.jwt.public-key-location","auth.jwt.key-id","auth.rate-limit-key-secret")
+            "auth.jwt.private-key-location","auth.jwt.public-key-location","auth.jwt.key-id","auth.rate-limit-key-secret",
+            "pickup.code.active-key-id","pickup.code.keys")
         val args=keys.map { "--"+it+"="+context.environment.getRequiredProperty(it) } + listOf("--auth.bootstrap-admin=true","--admin-email=user@example.test")
         org.springframework.boot.builder.SpringApplicationBuilder(com.foodrescue.backend.FoodRescueApplication::class.java)
             .web(org.springframework.boot.WebApplicationType.NONE).run(*args.toTypedArray()).use { app ->
