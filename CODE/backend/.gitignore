@@ -8,7 +8,7 @@ build/
 # Local tooling and generated scratch files
 tmp/
 !.env.example
-.agents/
+!.agents/
 local.properties
 *.pem
 

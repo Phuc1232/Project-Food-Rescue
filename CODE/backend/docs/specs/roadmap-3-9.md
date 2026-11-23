@@ -12,18 +12,11 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 
 Đường dẫn tương đối từ `CODE/backend/`:
 
-| Tài liệu | Đường dẫn |
-|---|---|
-| Nghiệp vụ (vision, FR, NFR, BR-01..56, UC-01..87) | `../../../Nghiệp Vụ FOOD&RECSUE_Finalpdf.pdf` (bản gốc `.docx` cùng thư mục) |
-| Class diagram | `../../../class.png` |
-| Sequence SD-01,02,03,06,08,10 | `../../../sequence.zip` |
-| Activity 01,02,03,06,08,10 | `../../../sodohoatdong.zip` |
-| ERD | `../../../ERD_FOODRESUE.drawio.png` |
+| Tài liệu        | Đường dẫn |
+|-----------------|---|
+| Tài liệu đầy đủ | `../../DOCX/BaoCaoFoodRescue.pdf` |
+| ERD             | `../../DOCX/FoodRescue_ERD.png` |
 
-Schema thực tế trong `src/main/resources/db/migration` là chuẩn khi tên/field khác class diagram
-(class diagram dùng tên tiếng Việt: DonHang = `customer_order`, HopThucTe = `physical_box`, PhanBoHop = `box_allocation`...).
-Tài liệu nhắc tới các quyết định D01, D02, D04, D05, D06, D10 nhưng chưa có văn bản; task nào chạm tới phải nêu
-lựa chọn đề xuất trong Gate A.
 
 ## Quyết định chung đã chốt
 
