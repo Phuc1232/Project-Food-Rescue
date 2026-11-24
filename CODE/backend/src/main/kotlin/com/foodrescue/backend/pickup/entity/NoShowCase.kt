@@ -41,5 +41,8 @@ class NoShowCase(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "compensation_status", nullable = false, length = 50)
-    var compensationStatus: CompensationStatus
+    var compensationStatus: CompensationStatus,
+    @field:Column(name = "idempotency_key", length = 255) var idempotencyKey: String? = null,
+    @field:Column(name = "request_fingerprint", columnDefinition = "text") var requestFingerprint: String? = null,
+    @field:Column(name = "refund_amount", nullable = false, precision = 19, scale = 2) var refundAmount: BigDecimal = BigDecimal.ZERO
 ) : MutableEntity()

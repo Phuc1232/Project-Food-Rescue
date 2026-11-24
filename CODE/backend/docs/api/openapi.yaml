@@ -8917,6 +8917,347 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/no-shows/overdue": {
+      "get": {
+        "operationId": "listOverdueOrders",
+        "tags": [
+          "No-show"
+        ],
+        "description": "Read-only overdue orders with pickupEndsAt <= now. Optional date filters pickupEndsAt by the store timezone. Permission NO_SHOW_CONFIRM. Includes money, projected retention/refund, allocations, active session and customer-arrived incidents.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "example": "2026-11-24"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CONFIRMED",
+                "HANDOVER_IN_PROGRESS",
+                "PENDING_NO_SHOW",
+                "NO_SHOW"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OverdueOrderView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/no-shows/{caseId}": {
+      "get": {
+        "operationId": "getNoShowCase",
+        "tags": [
+          "No-show"
+        ],
+        "description": "No-show details including stored amounts, notification receipt, dispute deadline, evidence, refund progress and box history. Permission NO_SHOW_CONFIRM.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "caseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoShowCaseDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/orders/{orderId}/no-show": {
+      "post": {
+        "operationId": "confirmNoShow",
+        "tags": [
+          "No-show"
+        ],
+        "description": "Permission NO_SHOW_CONFIRM. Requires pickup window ended, store opened on time and compliant boxes ready. Conflicts PICKUP_WINDOW_NOT_ENDED, HANDOVER_IN_PROGRESS, CUSTOMER_ARRIVED_INCIDENT, NO_SHOW_PRECONDITION_FAILED, ORDER_ALREADY_COMPLETED, INVALID_ORDER_STATUS. Atomic NO_SHOW, allocation release, AWAITING_INSPECTION boxes, pending notification, held compensation, pending refund obligation and financial event. Idempotency-Key replay returns 200, changed payload IDEMPOTENCY_KEY_REUSED, other repeat NO_SHOW_ALREADY_CONFIRMED. Refund conflicts REFUND_AMOUNT_CONFLICT, REFUND_ALREADY_REQUESTED. Receipt time stays null until T8.2 acknowledges delivery.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "example": "no-show-001"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoShowCaseDetailView"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent replay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoShowCaseDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoShowConfirmRequest"
+              },
+              "example": {
+                "storeOpenedOnTime": true,
+                "boxesReadyAndCompliant": true,
+                "evidence": "Store was open, prepared boxes and customer did not arrive",
+                "attachmentIds": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/boxes/awaiting-inspection": {
+      "get": {
+        "operationId": "listAwaitingInspection",
+        "tags": [
+          "Boxes"
+        ],
+        "description": "Permission BOX_MANAGE. No-show boxes awaiting reinspection, latest inspection and source order/case.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AwaitingInspectionBoxView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/boxes/{boxId}/recheck": {
+      "post": {
+        "operationId": "recheckNoShowBox",
+        "tags": [
+          "Boxes"
+        ],
+        "description": "Permission BOX_MANAGE. FAILED requires notes and blocks box. PASSED requires safeUntil after now and packing time. With no targetBatchId the box remains AWAITING_INSPECTION. Target must belong to store, be DRAFT/OPEN/PAUSED, end after now, meet value and safety constraints. Conflicts BOX_NOT_AWAITING_INSPECTION, BOX_ALLOCATED, BOX_NOT_FROM_NO_SHOW, TARGET_BATCH_INELIGIBLE. Immutable inspection history is appended.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "boxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxRecheckRequest"
+              },
+              "example": {
+                "result": "PASSED",
+                "safeUntil": "2026-11-26T12:00:00Z",
+                "notes": "Rechecked temperature and packaging"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14350,6 +14691,393 @@
             "type": "integer"
           }
         }
+      },
+      "NoShowConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "storeOpenedOnTime": {
+            "type": "boolean"
+          },
+          "boxesReadyAndCompliant": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "attachmentIds": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "storeOpenedOnTime",
+          "boxesReadyAndCompliant",
+          "evidence"
+        ]
+      },
+      "NoShowAmountsView": {
+        "type": "object",
+        "properties": {
+          "retainedAmount": {
+            "type": "number",
+            "minimum": 0,
+            "multipleOf": 1
+          },
+          "refundAmount": {
+            "type": "number",
+            "minimum": 0,
+            "multipleOf": 1
+          },
+          "storeCompensationAmount": {
+            "type": "number",
+            "minimum": 0,
+            "multipleOf": 1
+          },
+          "commissionAmount": {
+            "type": "number",
+            "minimum": 0,
+            "multipleOf": 1
+          }
+        },
+        "required": [
+          "retainedAmount",
+          "refundAmount",
+          "storeCompensationAmount",
+          "commissionAmount"
+        ]
+      },
+      "NoShowCaseSummaryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verifiedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "compensationStatus": {
+            "type": "string",
+            "enum": [
+              "HELD",
+              "DISPUTED",
+              "ELIGIBLE",
+              "FORFEITED",
+              "SETTLED"
+            ]
+          },
+          "notificationReceivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "disputeDeadline": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "verifiedById",
+          "verifiedAt",
+          "evidence",
+          "compensationStatus",
+          "notificationReceivedAt",
+          "disputeDeadline"
+        ]
+      },
+      "NoShowCaseDetailView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verifiedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "compensationStatus": {
+            "type": "string",
+            "enum": [
+              "HELD",
+              "DISPUTED",
+              "ELIGIBLE",
+              "FORFEITED",
+              "SETTLED"
+            ]
+          },
+          "notificationReceivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "disputeDeadline": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "amounts": {
+            "$ref": "#/components/schemas/NoShowAmountsView"
+          },
+          "notificationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notificationStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attachmentFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "refundRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundRequestView"
+            }
+          },
+          "boxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocatedBoxView"
+            }
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickupIncidentView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "verifiedById",
+          "verifiedAt",
+          "evidence",
+          "compensationStatus",
+          "notificationReceivedAt",
+          "disputeDeadline",
+          "orderCode",
+          "amounts",
+          "notificationId",
+          "notificationStatus",
+          "attachmentFileIds",
+          "refundRequests",
+          "boxes",
+          "incidents"
+        ]
+      },
+      "OverdueOrderView": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "customerDisplayName": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "pickupStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pickupEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "boxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocatedBoxView"
+            }
+          },
+          "money": {
+            "$ref": "#/components/schemas/OrderMoneyView"
+          },
+          "projectedAmounts": {
+            "$ref": "#/components/schemas/NoShowAmountsView"
+          },
+          "activeSessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "activeSessionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickupIncidentView"
+            }
+          },
+          "customerArrivedIncident": {
+            "type": "boolean"
+          },
+          "noShowCase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoShowCaseSummaryView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "orderId",
+          "orderCode",
+          "status",
+          "customerDisplayName",
+          "quantity",
+          "pickupStartsAt",
+          "pickupEndsAt",
+          "boxes",
+          "money",
+          "projectedAmounts",
+          "activeSessionId",
+          "activeSessionStatus",
+          "incidents",
+          "customerArrivedIncident",
+          "noShowCase"
+        ]
+      },
+      "BoxRecheckRequest": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "PASSED",
+              "FAILED"
+            ]
+          },
+          "safeUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "targetBatchId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "result",
+          "safeUntil"
+        ]
+      },
+      "AwaitingInspectionBoxView": {
+        "type": "object",
+        "properties": {
+          "box": {
+            "$ref": "#/components/schemas/BoxView"
+          },
+          "latestInspection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoxInspectionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceOrderCode": {
+            "type": "string"
+          },
+          "noShowCaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "noShowVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "box",
+          "latestInspection",
+          "sourceOrderId",
+          "sourceOrderCode",
+          "noShowCaseId",
+          "noShowVerifiedAt"
+        ]
       }
     },
     "responses": {
@@ -14614,6 +15342,10 @@
     {
       "name": "Admin cancellations",
       "description": "UC-71 review of cancellation requests, evidence and refund obligations"
+    },
+    {
+      "name": "No-show",
+      "description": "Overdue pickup, no-show confirmation and held compensation"
     }
   ]
 }

@@ -33,7 +33,7 @@ class PickupIncidentService(private val orders: CustomerOrderRepository, private
         val order = orders.findForUpdate(orderId)?.takeIf { it.store.id == storeId }
             ?: throw ApiException(404, "NOT_FOUND", "Order not found")
         if (order.status == OrderStatus.COMPLETED) throw ApiException(409, "ORDER_ALREADY_COMPLETED", "Use the post-delivery complaint process")
-        if (order.status !in listOf(OrderStatus.CONFIRMED, OrderStatus.HANDOVER_IN_PROGRESS))
+        if (order.status !in listOf(OrderStatus.CONFIRMED, OrderStatus.HANDOVER_IN_PROGRESS, OrderStatus.PENDING_NO_SHOW))
             throw ApiException(409, "INVALID_ORDER_STATUS", "Order cannot have a pickup incident")
         val affected = request.affectedBoxIds.orEmpty().distinct().sorted()
         val allocated = allocations.findAllByOrderIdAndStatus(orderId, AllocationStatus.CONFIRMED).map { it.box.id }.toSet()
@@ -45,6 +45,7 @@ class PickupIncidentService(private val orders: CustomerOrderRepository, private
         val session = sessions.findByOrderIdAndStatusIn(orderId, listOf(PickupStatus.OPEN, PickupStatus.RECONCILING))
         session?.status = PickupStatus.CANCELLED
         // Keep HANDOVER_IN_PROGRESS while review is pending to prevent another handover or no-show.
+        if (order.status == OrderStatus.PENDING_NO_SHOW) order.status = OrderStatus.HANDOVER_IN_PROGRESS
         order.statusReason = "HANDOVER_INCIDENT: ${request.reason}"
         order.statusChangedAt = clock.instant()
         val actor = accounts.getReferenceById(actorId)

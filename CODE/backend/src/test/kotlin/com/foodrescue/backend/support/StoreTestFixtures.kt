@@ -62,7 +62,11 @@ abstract class StoreTestFixtures : AuthTestFixtures() {
     fun setStatus(storeId: String, token: String, action: String, reason: String? = "Vi phạm ATTP") =
         call("/api/v1/admin/stores/$storeId/status", "POST", mapOf("action" to action, "reason" to reason), token)
 
-    fun count(sql: String, vararg args: Any): Int = jdbc.queryForObject(sql, Int::class.java, *args)!!
+    fun count(sql: String, vararg args: Any): Int {
+        val res = jdbc.queryForObject(sql, Int::class.java, *args)!!
+        TestEvidenceCollector.recordDb(sql, res)
+        return res
+    }
     fun fields(r: HttpResponse<String>): List<String> {
         assertEquals(400, r.statusCode(), r.body()); assertEquals("VALIDATION_FAILED", json(r)["code"].asString())
         val n = json(r)["fieldErrors"]; return (0 until n.size()).map { n[it]["field"].asString() }
@@ -155,10 +159,19 @@ abstract class StoreTestFixtures : AuthTestFixtures() {
     fun callWithHeader(path: String, method: String, body: Any?, token: String?, header: String, value: String): HttpResponse<String> {
         val b = java.net.http.HttpRequest.newBuilder(java.net.URI("http://localhost:$port$contextPath$path")).header("Content-Type", "application/json").header(header, value)
         token?.takeIf { it.isNotEmpty() }?.let { b.header("Authorization", "Bearer $it") }
-        b.method(method, if (body == null) java.net.http.HttpRequest.BodyPublishers.noBody() else java.net.http.HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
-        return java.net.http.HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.ofString())
+        val reqPayload = if (body == null) null else mapper.writeValueAsString(body)
+        b.method(method, if (reqPayload == null) java.net.http.HttpRequest.BodyPublishers.noBody() else java.net.http.HttpRequest.BodyPublishers.ofString(reqPayload))
+        val t0 = System.nanoTime()
+        val resp = java.net.http.HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.ofString())
+        val elapsed = (System.nanoTime() - t0) / 1_000_000L
+        TestEvidenceCollector.recordHttp(method, path, !token.isNullOrEmpty(), reqPayload, resp.statusCode(), resp.body(), elapsed, resp.headers().firstValue("Content-Type").orElse(null))
+        return resp
     }
 
-    fun batchStatus(id: UUID): String =jdbc.queryForObject("select status from sale_batch where id=?", String::class.java, id)!!
+    fun batchStatus(id: UUID): String {
+        val st = jdbc.queryForObject("select status from sale_batch where id=?", String::class.java, id)!!
+        TestEvidenceCollector.recordDb("select status from sale_batch where id=$id", st)
+        return st
+    }
     fun assertField(r: HttpResponse<String>, field: String) = assertTrue(field in fields(r), "$field in ${r.body()}")
 }

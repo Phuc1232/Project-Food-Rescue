@@ -37,6 +37,7 @@ object TestAuthKeys {
         r.add("pickup.code.active-key-id") { "test-v1" }
         r.add("pickup.code.keys") { "test-v1:" + Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
         // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.
+        r.add("orders.no-show-job-enabled") { "false" }; r.add("orders.no-show-compensation-job-enabled") { "false" }
         r.add("orders.expiry-job-enabled") { "false" }; r.add("payments.reconcile-job-enabled") { "false" }
         // T6.1: prod-profile tests build the payOS adapter; dummy credentials and an unreachable URL, never the real provider.
         r.add("payos.client-id") { "test-client" }; r.add("payos.api-key") { "test-api-key" }; r.add("payos.checksum-key") { "test-checksum-key" }
@@ -79,8 +80,13 @@ abstract class AuthTestFixtures {
     fun call(path: String,method: String="GET",body: Any?=null,token: String?=null): HttpResponse<String> {
         val b=HttpRequest.newBuilder(URI("http://localhost:"+port+contextPath+path)).header("Content-Type","application/json")
         token?.let { b.header("Authorization","Bearer "+it) }
-        b.method(method,if(body==null) HttpRequest.BodyPublishers.noBody() else HttpRequest.BodyPublishers.ofString(if(body is String) body else mapper.writeValueAsString(body)))
-        return client.send(b.build(),HttpResponse.BodyHandlers.ofString())
+        val reqPayload=if(body==null) null else if(body is String) body else mapper.writeValueAsString(body)
+        b.method(method,if(reqPayload==null) HttpRequest.BodyPublishers.noBody() else HttpRequest.BodyPublishers.ofString(reqPayload))
+        val t0=System.nanoTime()
+        val resp=client.send(b.build(),HttpResponse.BodyHandlers.ofString())
+        val elapsed=(System.nanoTime()-t0)/1_000_000L
+        TestEvidenceCollector.recordHttp(method,path,!token.isNullOrBlank(),reqPayload,resp.statusCode(),resp.body(),elapsed,resp.headers().firstValue("Content-Type").orElse(null))
+        return resp
     }
     fun json(response: HttpResponse<String>): JsonNode = mapper.readTree(response.body())
     /** T3.1: multipart/form-data with one part; partName=null sends a multipart body without that part. */
@@ -93,11 +99,19 @@ abstract class AuthTestFixtures {
         body.write("--$boundary--\r\n".toByteArray())
         val b=HttpRequest.newBuilder(URI("http://localhost:"+port+contextPath+"/api/v1/files")).header("Content-Type","multipart/form-data; boundary=$boundary")
         token?.let { b.header("Authorization","Bearer "+it) }
-        return client.send(b.POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build(),HttpResponse.BodyHandlers.ofString())
+        val t0=System.nanoTime()
+        val resp=client.send(b.POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build(),HttpResponse.BodyHandlers.ofString())
+        val elapsed=(System.nanoTime()-t0)/1_000_000L
+        TestEvidenceCollector.recordHttp("POST","/api/v1/files",!token.isNullOrBlank(),"multipart/form-data (part=$partName, filename=$filename, type=$declaredType, bytes=${content.size})",resp.statusCode(),resp.body(),elapsed,resp.headers().firstValue("Content-Type").orElse(null))
+        return resp
     }
     fun download(path: String,token: String?): HttpResponse<ByteArray> {
         val b=HttpRequest.newBuilder(URI("http://localhost:"+port+contextPath+path)); token?.let { b.header("Authorization","Bearer "+it) }
-        return client.send(b.GET().build(),HttpResponse.BodyHandlers.ofByteArray())
+        val t0=System.nanoTime()
+        val resp=client.send(b.GET().build(),HttpResponse.BodyHandlers.ofByteArray())
+        val elapsed=(System.nanoTime()-t0)/1_000_000L
+        TestEvidenceCollector.recordBinaryHttp("GET",path,!token.isNullOrBlank(),null,resp.statusCode(),resp.body().size,resp.headers().firstValue("Content-Type").orElse(null),elapsed)
+        return resp
     }
     fun storedFileCount(): Long = Files.walk(TestAuthKeys.fileRoot).use { s -> s.filter { Files.isRegularFile(it) }.count() }
     fun register(email: String="user@example.test",verify: Boolean=true) {

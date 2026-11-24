@@ -13,6 +13,7 @@ class RecordingAuthMailSender: AuthMailSender {
     override fun send(email: String,purpose: TokenPurpose,token: String) {
         if(fail) throw IllegalStateException("Simulated transport failure")
         messages.add(Mail(email,purpose,token))
+        TestEvidenceCollector.recordMail(email,purpose.name)
     }
     fun token(email: String,purpose: TokenPurpose)=messages.last { it.email==email && it.purpose==purpose }.token
 }

@@ -42,7 +42,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
-| 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [ ] T7.4 · [ ] T7.5 |
+| 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
@@ -302,7 +302,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** đơn đã hoàn tất/đang bàn giao → không hủy, hướng dẫn khiếu nại; hủy và bàn giao đồng thời → một kết
   quả; gửi lại → không tạo yêu cầu/hoàn trùng.
 
-### [ ] T7.4 — No-show và kiểm tra lại hộp
+### [x] T7.4 — No-show và kiểm tra lại hộp
 - **Phụ thuộc:** T7.3. **Tài liệu:** UC-35..37, BR-40..44, BR-51.
 - **Phạm vi:** job sau `pickup_ends_at` chuyển đơn CONFIRMED chưa giao → `PENDING_NO_SHOW`; staff (`NO_SHOW_CONFIRM`)/owner
   xác nhận khách không đến kèm căn cứ (cửa hàng mở đúng giờ, có đủ hộp đạt) → `no_show_case`, đơn `NO_SHOW`, vô hiệu mã

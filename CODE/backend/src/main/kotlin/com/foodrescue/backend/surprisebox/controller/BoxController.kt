@@ -14,7 +14,14 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/stores/{storeId}")
-class BoxController(private val packing: BoxPackingService, private val queries: BoxQueryService, private val current: CurrentAccount) {
+class BoxController(private val packing: BoxPackingService, private val queries: BoxQueryService, private val current: CurrentAccount, private val recheck: com.foodrescue.backend.surprisebox.service.BoxRecheckService) {
+    @GetMapping("/boxes/awaiting-inspection")
+    fun awaiting(@PathVariable storeId: UUID) = recheck.listAwaitingInspection(current.get().accountId, storeId)
+
+    @PostMapping("/boxes/{boxId}/recheck")
+    fun recheck(@PathVariable storeId: UUID, @PathVariable boxId: UUID, @Valid @RequestBody r: BoxRecheckRequest) =
+        recheck.recheck(current.get().accountId, storeId, boxId, r)
+
     /** 201 for a new box; 200 when the requestKey was already used (same box returned). */
     @PostMapping("/sale-batches/{batchId}/boxes")
     fun pack(@PathVariable storeId: UUID, @PathVariable batchId: UUID, @Valid @RequestBody r: BoxPackRequest): ResponseEntity<BoxDetail> {

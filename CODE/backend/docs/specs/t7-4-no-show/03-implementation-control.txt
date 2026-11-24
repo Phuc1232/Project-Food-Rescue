@@ -1,0 +1,107 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T7.4: NO-SHOW VÀ KIỂM TRA LẠI HỘP
+Ngày: 2026-11-24 | Trạng thái: DONE — ĐÃ TRIỂN KHAI VÀ KIỂM CHỨNG
+Gate A: Q1–Q5 theo plan. Gate B: người dùng yêu cầu triển khai 02-plan.md.
+
+1. KẾT QUẢ
+- 5 endpoint theo Q1, quyền NO_SHOW_CONFIRM hoặc BOX_MANAGE kiểm tra tại service.
+- Job chuyển CONFIRMED quá pickupEndsAt sang PENDING_NO_SHOW, khóa FOR UPDATE SKIP LOCKED.
+- Danh sách quá hạn read-only gồm money, dự tính giữ/hoàn, allocation, phiên đang mở và sự cố khách đã đến.
+  date lọc ngày pickupEndsAt theo timezone cửa hàng.
+- Xác nhận No-show khóa order, kiểm tra trạng thái/khung giờ/phiên mở/sự cố khách đến và điều kiện cửa hàng.
+- Một transaction ghi NO_SHOW, vô hiệu mã nhận, allocation RELEASED, hộp AWAITING_INSPECTION (giữ BLOCKED),
+  NoShowCase HELD, notification PENDING, RefundRequest PENDING, FinancialEvent NO_SHOW_CONFIRMED và audit.
+- NoShowAmounts tính tiền theo policy snapshot và VERIFIED, commission=0, giữ + hoàn = VERIFIED.
+  Không tạo RefundRequest 0đ; kiểm soát tiền đã hoàn/đang hoàn và unique payment obligation của T6.5.
+- Cùng Idempotency-Key/payload trả 200; payload khác 409; xác nhận lần hai key khác/không key 409.
+- Notification receipt mặc định null. recordNotificationReceived dành cho tích hợp T8.2 ghi lần nhận đầu,
+  deadline theo disputeWindowHours snapshot (mặc định 48h). Job chỉ HELD -> ELIGIBLE khi đủ hạn và không có complaint mở.
+- Recheck FAILED bắt buộc notes, hộp BLOCKED. PASSED không có target vẫn AWAITING_INSPECTION.
+  Target hợp lệ DRAFT/OPEN/PAUSED, cùng store, còn giờ nhận, đủ giá trị và safeUntil thì mới AVAILABLE.
+  Inspection và allocation/case lịch sử được giữ đầy đủ.
+- PickupIncidentService hỗ trợ PENDING_NO_SHOW -> HANDOVER_IN_PROGRESS, nối tiếp hủy T7.3 và chặn quy lỗi No-show khi khách đã đến.
+- V20 thêm idempotency_key, request_fingerprint, refund_amount, partial unique. Entity vẫn 43, migration 20.
+- OpenAPI 106 paths, 26 tags. Job properties đồng bộ kiểu @Scheduled/ConditionalOnProperty của OrderExpiryJob.
+
+2. KIỂM CHỨNG
+- Baseline BUILD SUCCESSFUL (up-to-date).
+- TDD test endpoint trước code đỏ đúng 404 thay vì 403. compileKotlin sau triển khai PASS.
+- Targeted đầu 15 tests: 13 PASS, 2 FAIL.
+  Test trước pickupEndsAt 1ns phát hiện PostgreSQL làm tròn timestamp đến micro giây. Đã truncate thời điểm
+  quét xuống micro giây và kiểm tra lại trạng thái/khung giờ/phiên dưới khóa trước khi chuyển trạng thái.
+  Test rollback event nhận 500 do EntityManager.flush không dịch lỗi qua Spring repository. Đã dùng cases.flush
+  để giữ ánh xạ 409 và kiểm chứng rollback toàn bộ transaction.
+- Thêm 3 test cho allocation đang active/không từ No-show, hộp BLOCKED sẵn, file người khác và nghĩa vụ hoàn sẵn.
+- Targeted mở rộng BUILD SUCCESSFUL trong 2m53s; 37/37 tests PASS, NoShowTests 18/18 PASS.
+- FULL BUILD CUỐI: BUILD SUCCESSFUL trong 9m56s, exit code 0.
+  277 tests: 276 PASS, 0 FAIL, 0 ERROR, 1 SKIPPED có sẵn (browser sandbox opt-in).
+  NoShowTests 18/18 PASS; AuthMigrationTests 1/1, FoodRescueApplicationTests 9/9,
+  ApiContractTests 4/4, ProductionApiContractTests 1/1, SwaggerUiTests 2/2 và SwaggerUiDevTests 2/2 PASS.
+  Đã đọc build/reports/tests/test/index.html và XML từng suite.
+  Lệnh .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain.
+  OpenAPI 106 paths/26 tags, không thiếu tham chiếu schema. Đã đóng checklist và T7.4 trong roadmap.
+
+3. FILE ↔ AC/TEST
+NEW | V20__no_show_idempotency.sql | AC-04..08,14 | migration, idempotency và snapshot hoàn
+MODIFIED | pickup/entity/NoShowCase.kt | AC-04..08,14 | map ba cột mới
+MODIFIED | pickup/repository/NoShowCaseRepository.kt | AC-04..08 | lock/scalar notification lookup
+MODIFIED | order/repository/BoxAllocationRepository.kt | AC-09..12 | active allocation, nguồn No-show
+MODIFIED | surprisebox/repository/PhysicalBoxRepository.kt | AC-09..12 | queue kiểm tra hộp
+NEW | pickup/dto/NoShowConfirmRequest.kt | AC-04,06 | validation
+NEW | pickup/dto/OverdueOrderView.kt | AC-03 | overdue DTO
+NEW | pickup/dto/NoShowAmountsView.kt | AC-05 | money DTO
+NEW | pickup/dto/NoShowCaseSummaryView.kt, NoShowCaseDetailView.kt | AC-03..08 | case DTO
+NEW | surprisebox/dto/BoxRecheckRequest.kt, AwaitingInspectionBoxView.kt | AC-09..13 | recheck DTO
+NEW | pickup/service/NoShowOverdueService.kt, NoShowOverdueJob.kt | AC-01,02 | quá hạn theo lô, skip locked
+NEW | pickup/service/NoShowService.kt | AC-03..07,13 | queue/detail/confirm nguyên tử
+NEW | pickup/service/NoShowCompensationService.kt, NoShowCompensationJob.kt | AC-08 | receipt/deadline/eligibility
+NEW | pickup/service/NoShowAttachmentPolicy.kt | AC-13 | file scope
+MODIFIED | pickup/service/PickupIncidentService.kt | AC-06 | PENDING_NO_SHOW incident
+NEW | surprisebox/service/BoxRecheckService.kt | AC-09..13 | kiểm tra và gắn đợt hợp lệ
+NEW | pickup/controller/StoreNoShowController.kt | AC-03,04,13 | HTTP No-show
+MODIFIED | surprisebox/controller/BoxController.kt | AC-09..13 | HTTP recheck
+MODIFIED | docs/api/openapi.yaml | AC-14 | 5 endpoint, schemas/examples/errors
+NEW | src/test/kotlin/com/foodrescue/backend/NoShowTests.kt | AC-01..13 | HTTP/SQL/Clock/concurrency/rollback
+MODIFIED | AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt | AC-14 | 20 migrations, 43 entities, 106 paths/26 tags
+MODIFIED | support/AuthTestFixtures.kt | test config | chỉ thêm tắt hai job No-show, giữ evidence thay đổi có sẵn
+MODIFIED | .gitignore, roadmap-3-9.md, 02-plan.md | tracking | whitelist/checklist/task status
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, profile dev)
+1) Đăng nhập owner hoặc staff NO_SHOW_CONFIRM và Authorize token. Chuẩn bị đơn CONFIRMED đã thanh toán
+   và qua pickupEndsAt. Job tự chuyển PENDING_NO_SHOW sau chu kỳ orders.no-show-scan-ms (mặc định 30000).
+2) GET /stores/{storeId}/no-shows/overdue. Thử date theo ngày pickupEndsAt và status PENDING_NO_SHOW,
+   kiểm tra projectedAmounts, boxes, activeSessionId, incidents và customerArrivedIncident.
+3) POST /stores/{storeId}/orders/{orderId}/no-show, Idempotency-Key=no-show-001,
+   {"storeOpenedOnTime":true,"boxesReadyAndCompliant":true,"evidence":"Cửa hàng mở đúng giờ, hộp đạt chuẩn, khách không đến","attachmentIds":[]}.
+   Kỳ vọng 201, NO_SHOW, HELD, notificationStatus=PENDING, receipt/deadline null, giữ/hoàn đúng policy snapshot,
+   allocation RELEASED và hộp AWAITING_INSPECTION. GET /no-shows/{caseId} trả chi tiết cùng refundRequests.
+4) Gửi lại cùng key/payload -> 200 cùng case; sửa evidence cùng key -> IDEMPOTENCY_KEY_REUSED;
+   key mới -> NO_SHOW_ALREADY_CONFIRMED. Thử cờ opened/ready=false -> NO_SHOW_PRECONDITION_FAILED.
+5) Thử chưa hết giờ, phiên OPEN/RECONCILING, COMPLETED/CANCELLED/EXPIRED -> 409 phù hợp.
+   Trên PENDING_NO_SHOW, ghi pickup-incident customerArrived=true: đơn sang HANDOVER_IN_PROGRESS,
+   confirm No-show -> CUSTOMER_ARRIVED_INCIDENT; owner có thể xử lý hủy lỗi cửa hàng qua T7.3.
+6) Upload chứng cứ bằng tài khoản actor và gắn attachmentIds. Customer chủ đơn, owner/staff NO_SHOW_CONFIRM
+   và ADMIN tải /files/{id}/content được; người ngoài 404 theo chính sách nền của FileAccessService.
+7) Với owner/staff BOX_MANAGE, GET /stores/{storeId}/boxes/awaiting-inspection.
+   POST /stores/{storeId}/boxes/{boxId}/recheck
+   {"result":"PASSED","safeUntil":"<ISO tương lai>","notes":"Đã kiểm tra an toàn"}.
+   Kỳ vọng 200, thêm inspection PASSED, hộp vẫn AWAITING_INSPECTION và ngoài lượng bán.
+8) Kiểm tra FAILED với notes rỗng -> 400. FAILED có notes -> BLOCKED, không thể recheck lại bằng endpoint này.
+9) Với hộp khác đang chờ, PASSED kèm targetBatchId cùng store. Target DRAFT/OPEN/PAUSED, pickupEndsAt>now,
+   safeUntil>=pickupEndsAt, hộp đủ minimumValue -> AVAILABLE ở target, available tăng 1.
+   Target ENDED/BLOCKED, hết hạn hoặc thiếu giá trị/an toàn -> TARGET_BATCH_INELIGIBLE; khác store -> 404.
+10) D06 được kiểm tra qua service nội bộ recordNotificationReceived cho T8.2 và NoShowCompensationJob,
+    chưa có endpoint công khai đặt receipt. Chưa receipt thì giữ HELD; đủ 48h snapshot sau receipt, không complaint mở -> ELIGIBLE.
+11) Token customer hoặc thiếu permission -> 403; thiếu token -> 401; sai scope store/order/case/box -> 403/404 phù hợp.
+
+5. GIỚI HẠN VÀ QUYẾT ĐỊNH TRIỂN KHAI
+- Notification delivery do T8.2 tích hợp. T7.4 ghi PENDING và cung cấp hook nhận receipt.
+- File evidence ngoài scope dùng 404 theo FileAccessService hiện hữu, thay cho 403 trong phần test mô tả plan.
+- Recheck khóa target batch trước box để tương thích packing/placement. Không có target thì chỉ khóa box.
+- SaleBatchStatus hiện có ENDED, dùng tương ứng với đợt đã đóng trong kịch bản kế hoạch.
+- Hai job dùng properties trực tiếp qua annotation, theo phương án thay thế đã nêu trong plan.
+- Không bấm Swagger thủ công; kịch bản trên để người dùng thử môi trường dev.
+- Giữ nguyên các thay đổi TestEvidence/fixture/resources có sẵn của người dùng.
+- Không thực hiện commit/push theo .agents/CLAUDE.md §3.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Chưa ghi nhận lỗi ngoài phạm vi T7.4.
