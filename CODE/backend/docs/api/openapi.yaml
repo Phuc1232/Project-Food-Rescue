@@ -6611,17 +6611,12 @@
     },
     "/api/v1/orders/{orderId}/cancel": {
       "post": {
-        "operationId": "post_orders_orderId_cancel",
+        "operationId": "cancelOrder",
         "tags": [
           "Orders"
         ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "Cancel my unpaid order",
-        "description": "PENDING_PAYMENT only: releases the held boxes; no refund is created (UC-17 A2). Paid orders: 409 (handled later).",
+        "summary": "cancelOrder",
+        "description": "Cancel unpaid orders or confirmed orders before pickupStartsAt. Creates a pending refund obligation for all verified funds; no bank transfer. CANCELLATION_REQUIRES_REVIEW from pickupStartsAt, HANDOVER_IN_PROGRESS for an active session, ORDER_ALREADY_COMPLETED after delivery. Optional key replays the same payload; IDEMPOTENCY_KEY_REUSED for a different payload.",
         "parameters": [
           {
             "name": "orderId",
@@ -6630,38 +6625,22 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
             },
-            "description": "Order id"
+            "example": "cancelOrder-001"
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OrderCancelRequest"
-              },
-              "examples": {
-                "changedMind": {
-                  "value": {
-                    "reason": "Đổi ý"
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Cancelled",
-            "headers": {
-              "X-Request-ID": {
-                "schema": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
-            },
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6676,11 +6655,27 @@
           "401": {
             "$ref": "#/components/responses/Error401"
           },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
           "404": {
             "$ref": "#/components/responses/Error404"
           },
           "409": {
             "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCancelRequest"
+              },
+              "example": {
+                "reason": "Changed plans"
+              }
+            }
           }
         }
       }
@@ -8334,6 +8329,589 @@
                 "customerArrived": true,
                 "affectedBoxIds": [],
                 "resolution": "PENDING_ADMIN_REVIEW"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/cancellation-preview": {
+      "get": {
+        "operationId": "previewOrderCancellation",
+        "tags": [
+          "Orders"
+        ],
+        "summary": "previewOrderCancellation",
+        "description": "Read-only cancellation preview from the accepted policy snapshot. Before pickup: full verified refund; from pickupStartsAt: admin review. Active handover blocks cancellation.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/cancellation-requests": {
+      "post": {
+        "operationId": "submitOrderCancellation",
+        "tags": [
+          "Orders"
+        ],
+        "summary": "submitOrderCancellation",
+        "description": "Submit for review from pickupStartsAt or after an incident has cancelled the handover session. Order and allocations stay unchanged. Key replay returns 200. Conflicts: CANCELLATION_ALREADY_REQUESTED, IMMEDIATE_CANCELLATION_AVAILABLE, INVALID_ORDER_STATUS, HANDOVER_IN_PROGRESS, ORDER_ALREADY_COMPLETED, IDEMPOTENCY_KEY_REUSED. Evidence must be uploaded by this customer and unattached.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "example": "submitOrderCancellation-001"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationView"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent replay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerCancellationSubmitRequest"
+              },
+              "example": {
+                "reason": "Changed plans",
+                "attachmentIds": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/cancellation-requests/{requestId}/supplement": {
+      "post": {
+        "operationId": "supplementOrderCancellation",
+        "tags": [
+          "Orders"
+        ],
+        "summary": "supplementOrderCancellation",
+        "description": "Add reason/evidence while NEEDS_INFO; returns SUBMITTED. INVALID_REQUEST_STATUS otherwise. File ownership and unattached status are checked under file locks.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerCancellationSupplementRequest"
+              },
+              "example": {
+                "reason": "Changed plans",
+                "attachmentIds": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/cancellation-requests/{requestId}/withdraw": {
+      "post": {
+        "operationId": "withdrawOrderCancellation",
+        "tags": [
+          "Orders"
+        ],
+        "summary": "withdrawOrderCancellation",
+        "description": "Withdraw a SUBMITTED or NEEDS_INFO request. No change to order, inventory or money. INVALID_REQUEST_STATUS for processed requests.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/cancellation": {
+      "get": {
+        "operationId": "getOrderCancellation",
+        "tags": [
+          "Orders"
+        ],
+        "summary": "getOrderCancellation",
+        "description": "Customer-owned cancellation results, latest requests first, and separate live refund progress from T6.5.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationStatusView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/orders/{orderId}/cancel": {
+      "post": {
+        "operationId": "cancelStoreOrder",
+        "tags": [
+          "Stores"
+        ],
+        "summary": "cancelStoreOrder",
+        "description": "Store owner only. Cancels the order for store fault, releases allocations and refunds 100% of verified funds. Boxes are blocked by default; boxesUnsafe=false releases safe boxes, preserving existing BLOCKED status. unsafeBoxIds must belong to active allocations. An incident with a cancelled handover session allows cancellation. Active handover and completed orders are blocked.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "example": "cancelStoreOrder-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreOrderCancelRequest"
+              },
+              "example": {
+                "reason": "Cannot supply safe boxes",
+                "boxesUnsafe": true,
+                "unsafeBoxIds": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/cancellation-requests": {
+      "get": {
+        "operationId": "listAdminCancellations",
+        "tags": [
+          "Admin cancellations"
+        ],
+        "summary": "listAdminCancellations",
+        "description": "ADMIN only. Paginated queue, newest creation first, with optional status filter.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUBMITTED",
+                "NEEDS_INFO",
+                "APPROVED",
+                "REJECTED",
+                "WITHDRAWN"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseAdminCancellationSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/cancellation-requests/{id}": {
+      "get": {
+        "operationId": "getAdminCancellation",
+        "tags": [
+          "Admin cancellations"
+        ],
+        "summary": "getAdminCancellation",
+        "description": "ADMIN only. Accepted policy snapshot, verified money, cancellation evidence and pickup incidents.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCancellationDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/cancellation-requests/{id}/decision": {
+      "post": {
+        "operationId": "decideAdminCancellation",
+        "tags": [
+          "Admin cancellations"
+        ],
+        "summary": "decideAdminCancellation",
+        "description": "ADMIN only. APPROVE requires whole VND refundAmount between zero and verifiedPaid; storeFault requires full verified refund. Zero creates no refund obligation. REJECT and REQUEST_INFO require reason and leave the order unchanged. REQUEST_INFO enables supplement. Active handover/completed orders are blocked. Decision key is independent of submission key. Conflicts: IDEMPOTENCY_KEY_REUSED, CONFLICT, REFUND_AMOUNT_CONFLICT, REFUND_ALREADY_REQUESTED.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "example": "decideAdminCancellation-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCancellationDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCancellationDecisionRequest"
+              },
+              "example": {
+                "reason": "Cancellation approved based on evidence",
+                "decision": "APPROVE",
+                "refundAmount": 60000,
+                "storeFault": true,
+                "releaseBoxesToAvailable": false
               }
             }
           }
@@ -13396,6 +13974,382 @@
             ]
           }
         }
+      },
+      "OrderCancellationPreview": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "orderStatus",
+          "cancellableImmediately",
+          "requiresReview",
+          "estimatedRefundAmount",
+          "blockedReason",
+          "policy"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderStatus": {
+            "type": "string"
+          },
+          "cancellableImmediately": {
+            "type": "boolean"
+          },
+          "requiresReview": {
+            "type": "boolean"
+          },
+          "estimatedRefundAmount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "multipleOf": 1
+          },
+          "blockedReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy": {
+            "$ref": "#/components/schemas/PolicySummary"
+          }
+        }
+      },
+      "CustomerCancellationSubmitRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 20
+          }
+        }
+      },
+      "CustomerCancellationSupplementRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 20
+          }
+        }
+      },
+      "StoreOrderCancelRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "boxesUnsafe": {
+            "type": "boolean",
+            "default": true
+          },
+          "unsafeBoxIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 100
+          }
+        }
+      },
+      "AdminCancellationDecisionRequest": {
+        "type": "object",
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "REJECT",
+              "REQUEST_INFO"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "refundAmount": {
+            "type": "number",
+            "minimum": 0,
+            "multipleOf": 1
+          },
+          "storeFault": {
+            "type": "boolean",
+            "default": false
+          },
+          "releaseBoxesToAvailable": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "OrderCancellationView": {
+        "type": "object",
+        "required": [
+          "id",
+          "orderId",
+          "initiator",
+          "status",
+          "reason",
+          "storeFault",
+          "requestedAt",
+          "requestedById",
+          "reviewerId",
+          "reviewedAt",
+          "reviewNote",
+          "approvedRefundAmount",
+          "refundRequestId",
+          "attachmentIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initiator": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER",
+              "STORE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "NEEDS_INFO",
+              "APPROVED",
+              "REJECTED",
+              "WITHDRAWN"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "storeFault": {
+            "type": "boolean"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reviewerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approvedRefundAmount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "multipleOf": 1
+          },
+          "refundRequestId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "OrderCancellationStatusView": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "orderStatus",
+          "requests",
+          "refunds"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderStatus": {
+            "type": "string"
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderCancellationView"
+            }
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundRequestView"
+            }
+          }
+        }
+      },
+      "AdminCancellationSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "orderId",
+          "orderCode",
+          "customerName",
+          "status",
+          "initiator",
+          "reason",
+          "requestedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "initiator": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminCancellationDetail": {
+        "type": "object",
+        "required": [
+          "request",
+          "order",
+          "money",
+          "incidents"
+        ],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/OrderCancellationView"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderView"
+          },
+          "money": {
+            "$ref": "#/components/schemas/OrderMoneyView"
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickupIncidentView"
+            }
+          }
+        }
+      },
+      "PageResponseAdminCancellationSummary": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCancellationSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
       }
     },
     "responses": {
@@ -13656,6 +14610,10 @@
     {
       "name": "Pickup",
       "description": "Pickup credentials and handover verification"
+    },
+    {
+      "name": "Admin cancellations",
+      "description": "UC-71 review of cancellation requests, evidence and refund obligations"
     }
   ]
 }

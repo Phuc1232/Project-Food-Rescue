@@ -1,0 +1,117 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T7.3: HỦY ĐƠN
+Ngày: 2026-11-24 | Trạng thái: DONE — ĐÃ TRIỂN KHAI VÀ KIỂM CHỨNG
+Gate A: Q1–Q5 đã duyệt trong plan. Gate B: người dùng yêu cầu thực hiện 02-plan.md.
+
+1. KẾT QUẢ
+- Customer preview read-only theo policy snapshot, Clock và tiền VERIFIED.
+- Hủy ngay PENDING_PAYMENT hoặc CONFIRMED trước pickupStartsAt; hoàn 100% VERIFIED trước giờ nhận.
+- Từ pickupStartsAt trở đi, khách gửi/bổ sung/rút yêu cầu hủy và xem kết quả cùng tiến độ hoàn riêng.
+- Chỉ owner được hủy lỗi cửa hàng; cho phép HANDOVER_IN_PROGRESS nếu không còn phiên OPEN/RECONCILING.
+- Admin list/detail có phân trang, policy snapshot, money, pickup incidents và evidence;
+  APPROVE toàn phần/một phần/0đ, REJECT, REQUEST_INFO. Store fault bắt buộc hoàn 100% VERIFIED.
+- CustomerOrder khóa trước mọi thao tác ghi; request được khóa sau order; hộp và allocation theo UUID.
+  Complete của T7.2 giữ cùng khóa order nên hủy và bàn giao không thể cùng thành công.
+- Giải phóng HELD/CONFIRMED thành RELEASED, hộp safe về AVAILABLE, hộp unsafe/BLOCKED không mở lại.
+  Điều kiện safeUntil vẫn do bộ lọc tồn kho T4.3 quyết định; chuyển AVAILABLE không tự vượt kiểm tra an toàn.
+- RefundRequest PENDING liên kết payment VERIFIED, số tiền nguyên VND; hoàn 0đ không tạo nghĩa vụ.
+  Tất cả cập nhật order/box/allocation/request/refund/audit cùng transaction, không gọi ngân hàng.
+- V19 thêm order_cancellation_request, partial unique cho request mở/key, FK/check và attachment owner thứ 11.
+  request_fingerprint giữ payload gửi ban đầu; decision_key/decision_fingerprint tách key admin khỏi key gửi.
+- Evidence kiểm tra uploader, unattached, khóa StoredFile trước gắn; chủ đơn, owner và ADMIN đọc được.
+- 9 path mới, cập nhật /orders/{orderId}/cancel: tổng 101 paths, 25 tags. Kế hoạch ban đầu đếm nhầm 8 path.
+
+2. KIỂM CHỨNG
+- Baseline build: BUILD SUCCESSFUL, up-to-date; kết quả gốc 239 tests: 238 PASS / 1 SKIP.
+- TDD trước service/controller: preview trả 404 thay vì 200, test đỏ đúng nguyên nhân; V19 khởi tạo thành công.
+- Targeted lần đầu: BUILD SUCCESSFUL, OrderCancellationTests 15/15 PASS.
+- Targeted mở rộng: 45 tests, 44 PASS / 1 FAIL. Migration/entity/Swagger/hợp đồng/hủy chưa trả đều PASS.
+  Lỗi duy nhất ở hai admin cùng key trả 200/503 vì request đã nạp phiên bản cũ trước khóa order.
+  Đã đổi sang query scalar orderId trước khi khóa order rồi tải/khóa request; đang chạy lại 20 test T7.3.
+- Lượt chạy ngày 2026-11-24 đầu tiên không khởi tạo được Docker nên 20 test lỗi môi trường.
+  Đã khởi động Docker Desktop, xác nhận Docker Server 29.9.3 và chạy lại.
+- Targeted sau sửa: BUILD SUCCESSFUL trong 3m22s, 20/20 OrderCancellationTests PASS.
+  Ca admin cùng key nay trả 200/200 và chỉ một RefundRequest; payload khác bị 409.
+- FULL BUILD CUỐI: BUILD SUCCESSFUL trong 8m22s, exit code 0.
+  259 tests: 258 PASS, 0 FAIL, 0 ERROR, 1 SKIPPED có sẵn (browser sandbox opt-in).
+  OrderCancellationTests 20/20 PASS; AuthMigrationTests 1/1, FoodRescueApplicationTests 9/9,
+  ApiContractTests 4/4, ProductionApiContractTests 1/1, SwaggerUiTests 2/2 và SwaggerUiDevTests 2/2 PASS.
+  Đã đọc build/reports/tests/test/index.html và XML từng suite.
+  Lệnh .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain.
+  OpenAPI parse hợp lệ, 101 paths/25 tags, không thiếu tham chiếu schema; git diff --check sạch.
+  Đã đánh dấu T7.3 hoàn thành trong kế hoạch và roadmap.
+
+3. FILE ↔ AC/TEST
+NEW | resources/db/migration/V19__order_cancellation_requests.sql | AC-05..15 | schema, partial unique, FK, evidence
+NEW | order/CancellationInitiator.kt, CancellationRequestStatus.kt, CancellationDecision.kt | AC-05..09 | enums
+NEW | order/entity/OrderCancellationRequest.kt | AC-05..15 | request persistence
+NEW | order/repository/OrderCancellationRequestRepository.kt | AC-05..12 | lock, replay, open request
+MODIFIED | file/entity/Attachment.kt | AC-07,14,15 | new evidence parent
+NEW | order/service/OrderCancellationAttachmentPolicy.kt | AC-07,14 | scoped download
+NEW | order/dto/OrderCancellationPreview.kt | AC-01,02 | preview
+NEW | order/dto/CustomerCancellationSubmitRequest.kt, CustomerCancellationSupplementRequest.kt | AC-05..07 | request validation
+NEW | order/dto/OrderCancellationView.kt, OrderCancellationStatusView.kt | AC-12,13 | cancellation and refund progress
+NEW | order/dto/StoreOrderCancelRequest.kt | AC-08 | owner cancellation
+NEW | order/dto/AdminCancellationSummary.kt, AdminCancellationDetail.kt, AdminCancellationDecisionRequest.kt | AC-09,14 | review
+NEW | order/service/PaidOrderCancellationExecutor.kt | AC-03,04,08..12 | atomic inventory/refund changes
+NEW | order/service/OrderCancellationViews.kt | AC-01,09,13 | snapshot/evidence/refund DTO mapping
+MODIFIED | order/service/OrderCancellationService.kt | AC-01..07,10..14 | customer workflow
+NEW | order/service/StoreOrderCancellationService.kt | AC-08,10..12,14 | owner workflow
+NEW | order/service/AdminCancellationService.kt | AC-07,09..12,14 | admin workflow
+MODIFIED | order/controller/OrderController.kt | AC-03,04,12 | compatible cancel endpoint + optional key
+NEW | order/controller/OrderCancellationController.kt | AC-01,02,05..07,13,14 | customer HTTP
+NEW | order/controller/StoreOrderCancellationController.kt | AC-08,14 | store HTTP
+NEW | order/controller/AdminCancellationController.kt | AC-09,14 | ADMIN HTTP
+MODIFIED | pickup/repository/PickupIncidentRepository.kt | AC-09 | incident details
+MODIFIED | docs/api/openapi.yaml | AC-15 | schema, examples, error contracts
+NEW | src/test/kotlin/com/foodrescue/backend/OrderCancellationTests.kt | AC-01..14 | HTTP/PostgreSQL, concurrency, rollback
+MODIFIED | AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt | AC-15 | 19 migrations, 43 entities, 101 paths/25 tags
+MODIFIED | .gitignore | whitelist spec T7.3
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, profile dev)
+1) Đăng nhập customer sở hữu đơn, owner cửa hàng hoặc ADMIN; Authorize token tương ứng.
+2) Customer GET /orders/{orderId}/cancellation-preview với đơn CONFIRMED trước pickupStartsAt:
+   kiểm tra cancellableImmediately=true, estimatedRefundAmount=verifiedPaid và policy snapshot.
+3) Customer POST /orders/{orderId}/cancel, optional Idempotency-Key=customer-cancel-001,
+   body {"reason":"Đổi kế hoạch"}. Kỳ vọng 200 OrderView CANCELLED, allocation RELEASED,
+   hộp safe AVAILABLE, refund nghĩa vụ PENDING. Gửi cùng key/payload trả kết quả cũ; đổi reason -> 409.
+4) Đơn khác CONFIRMED từ pickupStartsAt: cancel -> 409 CANCELLATION_REQUIRES_REVIEW.
+   POST /orders/{orderId}/cancellation-requests, key=request-001,
+   {"reason":"Cần cửa hàng/admin hỗ trợ","attachmentIds":[]}; kỳ vọng 201 SUBMITTED, đơn chưa hủy.
+   Gửi lại cùng key -> 200; key mới khi yêu cầu còn mở -> 409 CANCELLATION_ALREADY_REQUESTED.
+5) ADMIN GET /admin/cancellation-requests?status=SUBMITTED&page=0&size=20,
+   GET /admin/cancellation-requests/{id}: kiểm tra order.policy, money, incidents, request.attachmentIds.
+6) ADMIN POST /admin/cancellation-requests/{id}/decision, key=info-001,
+   {"decision":"REQUEST_INFO","reason":"Cần bằng chứng bổ sung"}; kỳ vọng NEEDS_INFO.
+7) Customer upload file qua /files; POST /orders/{orderId}/cancellation-requests/{requestId}/supplement
+   {"reason":"Bổ sung thông tin","attachmentIds":["UUID file customer vừa upload"]}; kỳ vọng SUBMITTED.
+   File được owner/customer/admin tải /files/{id}/content; người ngoài 404.
+8) ADMIN APPROVE với key=approve-001,
+   {"decision":"APPROVE","reason":"Đủ căn cứ","refundAmount":30000,"storeFault":false,"releaseBoxesToAvailable":true}.
+   Kỳ vọng CANCELLED và RefundRequest PENDING 30000; key lặp không sinh trùng.
+   Thử refundAmount âm/lẻ đồng/vượt VERIFIED -> 400; storeFault=true với hoàn thiếu 100% -> 400.
+   APPROVE 0đ hủy đơn nhưng không tạo RefundRequest. REJECT giữ nguyên đơn, không hoàn.
+9) Customer GET /orders/{orderId}/cancellation: requests mới nhất trước, refunds và attempts tách biệt.
+   Hoàn thủ công theo T6.5; fail ngân hàng giữ nguyên đơn CANCELLED.
+10) Customer rút yêu cầu đang SUBMITTED/NEEDS_INFO qua .../{requestId}/withdraw; đơn/hộp không đổi.
+11) Owner POST /stores/{storeId}/orders/{orderId}/cancel, key=store-cancel-001,
+    {"reason":"Không cung cấp được thực phẩm an toàn","boxesUnsafe":true,"unsafeBoxIds":[]}.
+    Kỳ vọng CANCELLED, hộp BLOCKED, hoàn 100% VERIFIED; staff có PICKUP_HANDLE vẫn bị 403.
+12) Nếu đang HANDOVER_IN_PROGRESS có phiên OPEN: mọi luồng hủy/duyệt bị 409 HANDOVER_IN_PROGRESS.
+    Ghi incident T7.2 để phiên CANCELLED, sau đó owner được hủy hoặc customer gửi yêu cầu chờ admin.
+    Đơn COMPLETED -> 409 ORDER_ALREADY_COMPLETED, dùng quy trình khiếu nại sau giao.
+13) Thử thiếu token 401; customer khác 404; owner khác/staff/non-ADMIN 403; page=-1/size=101 -> 400.
+
+5. GIỚI HẠN
+- Không gọi payOS/ngân hàng thật. Hoàn tiền thực tế theo T6.5, trạng thái hủy tách khỏi tiến độ hoàn.
+- Một payment có tối đa một RefundRequest theo T6.4. Nếu tiền đã có nghĩa vụ hoàn,
+  hủy cần kiểm tra và báo xung đột thay vì ghi trùng hoặc vượt tiền VERIFIED.
+- Đơn có nhiều payment VERIFIED: nghĩa vụ được chia theo payment; request.refundRequestId trỏ nghĩa vụ đầu,
+  GET cancellation.refunds liệt kê đủ tất cả nghĩa vụ của đơn.
+- Idempotency-Key tùy chọn theo Q1. Có key phải cùng operation/payload; admin dùng key riêng mỗi quyết định.
+  Gọi không có key sau trạng thái cuối trả 409, không tạo nghĩa vụ hoàn lần hai.
+- Khi owner đóng yêu cầu khách đang mở, lưu thêm request STORE để giữ riêng khóa customer và owner.
+- Chưa bấm Swagger thủ công; đây là kịch bản cho người dùng kiểm tra môi trường dev.
+- Không thực hiện commit/push theo .agents/CLAUDE.md §3.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Chưa ghi nhận lỗi ngoài phạm vi; T7.4/no-show tiếp tục ở phiên sau.

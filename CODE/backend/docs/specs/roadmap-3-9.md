@@ -42,7 +42,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
-| 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [ ] T7.3 · [ ] T7.4 · [ ] T7.5 |
+| 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [ ] T7.4 · [ ] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
@@ -291,7 +291,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** ngoài khung giờ → từ chối, không tự gia hạn; hai nhân viên mở phiên cùng đơn → một phiên; gửi lại
   hoàn tất cùng key → không ghi trùng.
 
-### [ ] T7.3 — Hủy đơn
+### [x] T7.3 — Hủy đơn
 - **Phụ thuộc:** T6.5, T7.2. **Tài liệu:** UC-17, UC-18, UC-56, UC-71, BR-38, BR-39, SD-06.
 - **Phạm vi:** khách xem trước tác động hủy + số dự kiến được hoàn, nhập lý do, xác nhận hoặc rút yêu cầu.
   Trước `pickup_starts_at` → hủy ngay, hoàn 100% tiền đã thu. Từ `pickup_starts_at` → tạo **yêu cầu hủy chờ admin xét

@@ -47,3 +47,5 @@ local.properties
 !docs/specs/t7-2-pickup-session/
 
 !docs/specs/t7-2-handover-session/
+
+!docs/specs/t7-3-order-cancellation/

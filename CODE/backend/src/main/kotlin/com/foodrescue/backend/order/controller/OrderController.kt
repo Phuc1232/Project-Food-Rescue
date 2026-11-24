@@ -35,8 +35,9 @@ class OrderController(
     fun money(@PathVariable orderId: UUID): OrderMoneyView = queries.myMoney(current.get().accountId, orderId)
 
     @PostMapping("/{orderId}/cancel")
-    fun cancel(@PathVariable orderId: UUID, @Valid @RequestBody r: OrderCancelRequest): OrderView =
-        cancellation.cancelUnpaid(current.get().accountId, orderId, r.reason!!)
+    fun cancel(@PathVariable orderId: UUID, @Valid @RequestBody r: OrderCancelRequest,
+               @RequestHeader("Idempotency-Key", required = false) key: String?): OrderView =
+        cancellation.cancelImmediate(current.get().accountId, orderId, r.reason!!, key)
 
     @PostMapping("/preview")
     fun preview(@Valid @RequestBody r: OrderPreviewRequest): OrderPreview = placement.preview(current.get().accountId, r)

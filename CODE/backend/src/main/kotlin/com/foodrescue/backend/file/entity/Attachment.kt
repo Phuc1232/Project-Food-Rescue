@@ -61,5 +61,9 @@ class Attachment(
     // T4.1: listed-price reference document (UC-53).
     @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
     @field:JoinColumn(name = "price_document_id", nullable = true)
-    var priceDocument: PriceReferenceDocument? = null
+    var priceDocument: PriceReferenceDocument? = null,
+
+    @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @field:JoinColumn(name = "order_cancellation_request_id", nullable = true)
+    var orderCancellationRequest: com.foodrescue.backend.order.entity.OrderCancellationRequest? = null
 ) : MutableEntity()
