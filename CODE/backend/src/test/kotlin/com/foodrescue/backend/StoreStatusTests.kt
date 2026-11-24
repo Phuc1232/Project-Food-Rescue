@@ -18,10 +18,12 @@ class StoreStatusTests : StoreTestFixtures() {
 
         assertField(setStatus(id, adminToken, "SUSPEND", " "), "reason")
         assertEquals(400, setStatus(id, adminToken, "CLOSE").statusCode())
-        val r = setStatus(id, adminToken, "SUSPEND", "Vi phạm ATTP"); assertEquals(200, r.statusCode(), r.body())
+        val missing = setStatus(id, adminToken, "SUSPEND", "Vi phạm ATTP")
+        assertEquals(409, missing.statusCode()); assertEquals("EXISTING_ORDERS_DECISION_REQUIRED", json(missing)["code"].asString())
+        val r = call("$admin/$id/status", "POST", mapOf("action" to "SUSPEND", "reason" to "Vi phạm ATTP", "existingOrderHandling" to "CONTINUE_IF_SAFE"), adminToken); assertEquals(200, r.statusCode(), r.body())
         val p = json(r)["profile"]
         assertEquals("SUSPENDED", p["status"].asString()); assertEquals("Vi phạm ATTP", p["statusReason"].asString()); assertFalse(p["statusChangedAt"].isNull)
-        assertEquals(listOf("BLOCKED", "BLOCKED", "BLOCKED", "OPEN", "ENDED"), listOf(draft, open, paused, withOrder, ended).map(::batchStatus))
+        assertEquals(listOf("BLOCKED", "BLOCKED", "BLOCKED", "PAUSED", "ENDED"), listOf(draft, open, paused, withOrder, ended).map(::batchStatus))
         assertEquals("CONFIRMED", jdbc.queryForObject("select status from customer_order where id=?", String::class.java, order))
         assertEquals(3, json(r)["saleBatchCounts"]["BLOCKED"].asInt()); assertEquals(1, json(r)["orderCounts"]["CONFIRMED"].asInt())
         val log = jdbc.queryForMap("select after_state, store_id from audit_log where action='STORE_SUSPENDED'")
@@ -90,7 +92,7 @@ class StoreStatusTests : StoreTestFixtures() {
         assertEquals(200, patch(id, owner, mapOf("version" to version(id, owner), "openingHours" to listOf(mapOf("dayOfWeek" to 2, "opensAt" to "07:00", "closesAt" to "08:00")))).statusCode())
         val req = json(call("/api/v1/stores/$id/change-requests", "POST", mapOf("address" to "1 Nguyễn Huệ"), owner))["id"].asString()
         assertEquals(200, call("/api/v1/admin/store-change-requests/$req/decision", "POST", mapOf("decision" to "APPROVE"), adminToken).statusCode())
-        assertEquals(200, setStatus(id, adminToken, "SUSPEND").statusCode())
+        assertEquals(200, call("$admin/$id/status", "POST", mapOf("action" to "SUSPEND", "reason" to "Safety review", "existingOrderHandling" to "CONTINUE_IF_SAFE"), adminToken).statusCode())
         assertEquals(before, snapshot())
         assertEquals("1 Nguyễn Huệ", jdbc.queryForObject("select address from store where id=?", String::class.java, UUID.fromString(id)))
     }

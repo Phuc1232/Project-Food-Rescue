@@ -12,6 +12,14 @@ import java.util.UUID
 interface SaleBatchRepository : JpaRepository<SaleBatch, UUID> {
     fun findAllByStoreIdOrderByPickupStartsAtDesc(storeId: UUID): List<SaleBatch>
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select b from SaleBatch b where b.id = :id")
+    fun findForShare(id: UUID): SaleBatch?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from SaleBatch b where b.store.id = :storeId order by b.id")
+    fun lockAllByStoreId(storeId: UUID): List<SaleBatch>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from SaleBatch b where b.id = :id")
     fun findForUpdate(@Param("id") id: UUID): SaleBatch?

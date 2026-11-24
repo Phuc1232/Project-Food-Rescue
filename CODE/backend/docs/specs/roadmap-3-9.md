@@ -42,7 +42,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 4. Menu, Surprise Box, chính sách | [x] T4.1 · [x] T4.2 · [x] T4.3 · [x] T4.4 · [x] T4.5 |
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
-| 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [ ] T7.5 |
+| 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [x] T7.5 |
 | 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
@@ -313,7 +313,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** giữ + hoàn = đã trả; xác nhận lặp → một kết quả, một khoản giữ, một nghĩa vụ hoàn; chưa hết giờ/đã
   hoàn tất → từ chối.
 
-### [ ] T7.5 — Hộp không đạt, ngừng bán vi phạm, khóa cửa hàng có đơn tồn
+### [x] T7.5 — Hộp không đạt, ngừng bán vi phạm, khóa cửa hàng có đơn tồn
 - **Phụ thuộc:** T7.4. **Tài liệu:** UC-34, UC-78, UC-77 (phần đơn tồn), BR-20, BR-55, SD-08.
 - **Phạm vi:** staff (`BOX_MANAGE`)/owner đánh dấu hộp không đạt kèm lý do + bằng chứng → `BLOCKED`, loại khỏi tồn,
   chặn giao; với từng đơn bị ảnh hưởng (khóa đơn, đọc trạng thái mới nhất): chờ thanh toán → hủy đơn, nhả các hộp khác,

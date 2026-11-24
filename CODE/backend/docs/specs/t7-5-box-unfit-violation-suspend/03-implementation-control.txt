@@ -1,0 +1,120 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T7.5
+Ngày: 2026-11-24 | Trạng thái: DONE — ĐÃ TRIỂN KHAI VÀ KIỂM CHỨNG
+Gate A Q1–Q5 đã duyệt trong plan. Gate B được duyệt bằng yêu cầu thực hiện của người dùng.
+
+1. KẾT QUẢ
+- UC-34 BOX_MANAGE/owner đánh dấu hộp không đạt và UC-78 ADMIN chặn hộp dùng chung processor.
+- Hộp chưa giao -> BLOCKED + BoxInspection FAILED. Đơn chưa trả hủy, hộp đạt khác được nhả;
+  webhook đến muộn vẫn đi quy trình REQUIRES_REVIEW/RefundRequest của T6.4.
+- Đơn CONFIRMED/HANDOVER_IN_PROGRESS/PENDING_NO_SHOW hủy lỗi cửa hàng, hủy session OPEN/RECONCILING,
+  xóa mã nhận, giải phóng allocation, tạo nghĩa vụ hoàn 100% VERIFIED. Hộp unsafe/BLOCKED vẫn BLOCKED.
+  Yêu cầu hủy khách đang mở được đóng APPROVED/storeFault và ghi quyết định STORE để thống nhất T7.3.
+- Hộp đã giao giữ DELIVERED, order COMPLETED, thêm inspection FAILED và Complaint FOOD_SAFETY OPEN
+  có sourceBox, chuyển xử lý T8.1. Một sourceBox chỉ có tối đa một complaint mở theo partial unique index.
+- Idempotency lưu key/fingerprint và JSON BoxImpactResultView trên hộp, replay trả đúng ảnh chụp cũ.
+  Payload/operation khác cùng key -> IDEMPOTENCY_KEY_REUSED; key khác trên hộp BLOCKED/complaint mở -> 409.
+- Khóa batch FOR SHARE, lấy orderId scalar, khóa order tăng dần rồi box; kiểm tra allocation dưới khóa,
+  rollback/retry tối đa 3 lần nếu placement/reassignment chen vào. Unfit và completeSession tuần tự trên order.
+- UC-78 mức đợt chặn toàn bộ hộp chưa giao, hủy đơn tồn và tùy chọn thêm complaint hậu giao.
+  Bỏ qua complaint mở/hộp đã BLOCKED sẵn, audit đếm đúng complaint mới, SaleBatchView giữ schema cũ.
+- UC-77 bắt buộc existingOrderHandling khi còn đơn tồn. PENDING_PAYMENT hủy, không tạo hoàn 0đ.
+  CONTINUE_IF_SAFE giữ đơn đã xác nhận khi hộp an toàn, không có incident kẹt và còn owner ACTIVE verified
+  hoặc staff ACTIVE verified PICKUP_HANDLE. Đợt phục vụ đơn giữ chuyển PAUSED, đợt còn lại BLOCKED.
+  CANCEL_ALL/hộp không an toàn/thiếu người bàn giao -> hủy lỗi cửa hàng và hoàn đủ VERIFIED.
+  REACTIVATE đưa store về ACTIVE; các block được giữ để bảo vệ tồn kho.
+- suspensionOrderSummary trả IDs/counts các đơn giữ/hủy, đợt chặn/tạm dừng, refundRequestIds và khả năng bàn giao.
+- BoxAttachmentPolicy cho owner/staff BOX_PACK hoặc BOX_MANAGE/ADMIN. ComplaintAttachmentPolicy cho
+  customer chủ đơn, owner/ADMIN và uploader theo FileAccessService nền.
+- V21 bổ sung idempotency/snapshot hộp và nguồn complaint, partial unique indexes. Entity vẫn 43, migration 21.
+- 2 endpoint mới, cập nhật 2 endpoint hiện hữu. OpenAPI 108 paths/26 tags, không thiếu tham chiếu schema.
+
+2. KIỂM CHỨNG
+- Baseline build BUILD SUCCESSFUL (up-to-date).
+- TDD trước service/controller: test quyền endpoint đỏ đúng endpoint chưa tồn tại. V21/Hibernate validate khởi tạo được.
+- compileKotlin PASS.
+- Targeted đầu 16 tests, 14 PASS / 2 lỗi dữ liệu fixture dùng AccountStatus.SUSPENDED không tồn tại.
+  Đã sửa sang LOCKED theo enum tài khoản (khác StoreStatus.SUSPENDED).
+- Bổ sung ba test cho bỏ qua complaint đã mở, hộp không an toàn và HANDOVER_INCIDENT khi CONTINUE_IF_SAFE.
+- Ca unfit/complete chạy ba vòng độc lập để kiểm chứng hai kết quả hợp lệ và không deadlock.
+- Targeted mở rộng 52 tests: 50 PASS / 2 lỗi kỳ vọng test.
+  AC-06 chọn boxId bằng LIMIT 1 không ORDER BY, sau cập nhật allocation có thể chọn hộp sibling khác;
+  đã thêm ORDER BY box_id để giữ cùng hộp qua các lần gọi.
+  AC-07 đếm mọi inspection FAILED trong đợt thay vì chỉ các hộp DELIVERED; đã giới hạn đúng phạm vi.
+  Các suite StoreStatusTests, SaleBatchTests, migration/entity/Swagger/ApiContract đều PASS.
+- Targeted cuối BUILD SUCCESSFUL trong 2m08s, 19/19 BoxUnfitViolationSuspendTests PASS.
+- FULL BUILD CUỐI: BUILD SUCCESSFUL trong 10m50s, exit code 0.
+  296 tests: 295 PASS, 0 FAIL, 0 ERROR, 1 SKIPPED có sẵn (browser sandbox opt-in).
+  BoxUnfitViolationSuspendTests 19/19 PASS, gồm ba vòng tranh chấp unfit/complete.
+  StoreStatusTests, SaleBatchTests, AuthMigrationTests, FoodRescueApplicationTests,
+  ApiContractTests, ProductionApiContractTests, SwaggerUiTests và SwaggerUiDevTests đều PASS.
+  Đã đọc build/reports/tests/test/index.html và XML từng suite.
+  Lệnh .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain.
+  OpenAPI 108 paths/26 tags, không thiếu tham chiếu schema. Checklist/roadmap T7.5 hoàn thành.
+
+3. FILE ↔ AC/TEST
+NEW | resources/db/migration/V21__box_unfit_idempotency_and_complaint_source.sql | AC-01,04,06,12 | columns, FK, unique indexes
+MODIFIED | surprisebox/entity/PhysicalBox.kt, complaint/entity/Complaint.kt | AC-01,04,06 | persistence map
+MODIFIED | complaint/repository/ComplaintRepository.kt | AC-04,06,07 | open complaint and source key lookup
+MODIFIED | surprisebox/repository/PhysicalBoxRepository.kt, SaleBatchRepository.kt | AC-05,07..10 | batch/box discovery and locks
+MODIFIED | order/service/PaidOrderCancellationExecutor.kt | AC-03,07..10 | forceCancelStoreFault
+NEW | surprisebox/dto/BoxUnfitRequest.kt, BoxImpactResultView.kt | AC-01..07,11 | validation and replay result
+MODIFIED | surprisebox/dto/SaleBatchBlockRequest.kt | AC-07 | includeDeliveredBoxesIncident
+NEW | store/StoreSuspendOrderHandling.kt, store/dto/StoreSuspensionOrderSummary.kt | AC-08..10 | handling enum and summary
+MODIFIED | store/dto/StoreStatusRequest.kt, AdminStoreDetail.kt | AC-08..10 | existingOrderHandling/summary
+NEW | surprisebox/service/BoxUnfitProcessor.kt, BoxUnfitService.kt | AC-01..07 | common impact processor and locking/retry
+NEW | surprisebox/service/BoxAttachmentPolicy.kt, complaint/service/ComplaintAttachmentPolicy.kt | AC-11 | attachment access
+MODIFIED | surprisebox/controller/BoxController.kt | AC-01..06,11 | store unfit endpoint
+NEW | surprisebox/controller/AdminBoxController.kt | AC-06,07,11 | ADMIN box block endpoint
+MODIFIED | surprisebox/controller/AdminSaleBatchController.kt, service/SaleBatchLifecycleService.kt | AC-07 | expanded batch block
+MODIFIED | store/service/StoreStatusService.kt | AC-08..10 | suspend/reactivate order impact
+MODIFIED | docs/api/openapi.yaml | AC-12 | API schemas, examples and errors
+NEW | src/test/kotlin/com/foodrescue/backend/BoxUnfitViolationSuspendTests.kt | AC-01..11 | HTTP, concurrency, rollback, permissions
+MODIFIED | StoreStatusTests.kt | AC-08,09,12 | existing-order decision + PAUSED batch, immutable commitments
+MODIFIED | AuthMigrationTests.kt, FoodRescueApplicationTests.kt, SwaggerUiTests.kt | AC-12 | 21 migrations/43 entities/108 paths
+MODIFIED | .gitignore, roadmap-3-9.md, 02-plan.md | tracking | whitelist, checklist and task close
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, profile dev)
+1) Đăng nhập owner hoặc staff BOX_MANAGE, Authorize token. POST /stores/{storeId}/boxes/{boxId}/unfit,
+   optional Idempotency-Key=unfit-001, {"reason":"Hộp không an toàn","notes":"Bao bì hỏng","attachmentIds":[]}.
+   Hộp AVAILABLE chưa gắn đơn -> 200, box.box.status BLOCKED, inspection FAILED, available giảm 1.
+2) Trên hộp thuộc đơn PENDING_PAYMENT, gọi unfit. Kiểm tra cancelledOrderIds có đơn, allocation RELEASED,
+   hộp lỗi BLOCKED, releasedSafeBoxIds có hộp đạt khác; không có RefundRequest 0đ.
+   Nếu thanh toán đến muộn, kiểm tra REQUIRES_REVIEW và nghĩa vụ hoàn theo T6.4.
+3) Trên hộp CONFIRMED, HANDOVER_IN_PROGRESS hoặc PENDING_NO_SHOW, gọi unfit.
+   Kỳ vọng CANCELLED, session OPEN/RECONCILING -> CANCELLED, mã nhận xóa, hoàn PENDING 100% VERIFIED.
+   Complete phiên cũ -> 409. Nếu có cancellation request khách đang chờ thì request đó thành APPROVED/storeFault.
+4) Gửi lại cùng key/payload -> kết quả JSON cũ, không thêm inspection/refund/complaint.
+   Đổi reason cùng key -> IDEMPOTENCY_KEY_REUSED; key mới trên hộp BLOCKED -> BOX_ALREADY_BLOCKED.
+5) Hoàn tất bàn giao trước, sau đó đánh dấu hộp đó unfit. Kỳ vọng POST_DELIVERY_INCIDENT và complaintId,
+   hộp DELIVERED, đơn COMPLETED, inspection FAILED, complaint FOOD_SAFETY OPEN, không tạo nghĩa vụ hoàn thêm.
+   Gọi key khác khi complaint còn mở -> POST_DELIVERY_INCIDENT_ALREADY_OPEN.
+6) Upload chứng cứ bằng actor hiện tại, gắn attachmentIds. Hộp chưa giao gắn attachment.box;
+   hộp đã giao gắn attachment.complaint. File của người khác hoặc đã gắn -> 400.
+   Box evidence được owner/BOX_PACK/BOX_MANAGE/ADMIN đọc; complaint evidence được customer/owner/ADMIN đọc.
+   File ngoài phạm vi trả 404 theo chính sách nền FileAccessService.
+7) Đăng nhập ADMIN, POST /admin/boxes/{boxId}/block với cùng BoxUnfitRequest/key.
+   Owner/staff gọi đường dẫn ADMIN -> 403; thiếu token -> 401.
+8) ADMIN POST /admin/sale-batches/{batchId}/block,
+   {"reason":"Đợt vi phạm an toàn","includeDeliveredBoxesIncident":true}.
+   Kiểm tra SaleBatchView status BLOCKED, các hộp chưa giao BLOCKED, đơn tồn CANCELLED và hoàn đủ tiền đã xác minh.
+   Hộp đã giao có complaint mới nếu chưa có complaint mở. false bỏ qua phần hậu giao; đợt BLOCKED/ENDED gọi lại -> 409.
+9) ADMIN POST /admin/stores/{storeId}/status {"action":"SUSPEND","reason":"Rà soát an toàn"} khi còn đơn tồn
+   -> EXISTING_ORDERS_DECISION_REQUIRED. Truyền existingOrderHandling=CONTINUE_IF_SAFE để giữ đơn an toàn,
+   còn người bàn giao và không kẹt incident. Kiểm tra summary, đơn giữ nguyên và đợt PAUSED; đơn chưa trả bị hủy.
+10) Thử CANCEL_ALL hoặc CONTINUE_IF_SAFE khi hộp quá hạn/không đủ safeUntil/owner LOCKED và không có staff bàn giao,
+    hoặc đơn HANDOVER_INCIDENT: kỳ vọng hủy lỗi cửa hàng, hoàn 100% VERIFIED, hộp unsafe BLOCKED, hộp đạt AVAILABLE.
+11) ADMIN REACTIVATE với reason hợp lệ: store ACTIVE, hộp/đợt BLOCKED tiếp tục BLOCKED.
+12) Thử thiếu reason/invalid key -> 400, customer hoặc staff thiếu BOX_MANAGE -> 403, box sai store -> 403/404.
+
+5. GIỚI HẠN VÀ CHI TIẾT TRIỂN KHAI
+- Khiếu nại hậu giao chuyển T8.1 tiếp nhận xử lý; T7.5 mở complaint với nguồn sourceBox và evidence.
+- Hoàn tiền thực tế qua T6.5. Lỗi tạo nghĩa vụ hoàn rollback toàn bộ thao tác an toàn tương ứng.
+- Vết idempotency mức hộp giữ lần thao tác có key gần nhất theo schema Q5; các unique index và trạng thái cuối bảo vệ
+  thao tác khác key/không key khỏi hoàn hoặc mở complaint trùng.
+- Truy vấn tập orderId dùng scalar SQL trong service để tránh load entity trước khi chờ khóa,
+  khóa bằng findForUpdate hiện có theo thứ tự ổn định. Không thêm các repository helper trùng chức năng chưa dùng.
+- Chưa bấm Swagger thủ công; các bước trên dành cho người dùng thử dev.
+- Không commit/push theo .agents/CLAUDE.md §3.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Chưa ghi nhận lỗi ngoài phạm vi T7.5.

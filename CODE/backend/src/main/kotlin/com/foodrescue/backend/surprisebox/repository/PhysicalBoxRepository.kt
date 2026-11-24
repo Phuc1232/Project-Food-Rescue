@@ -11,6 +11,7 @@ import java.util.UUID
 interface PhysicalBoxRepository : JpaRepository<PhysicalBox, UUID> {
     fun findAllByStoreIdAndStatusOrderByPackedAt(storeId: UUID, status: com.foodrescue.backend.surprisebox.BoxStatus): List<PhysicalBox>
     fun findByPackRequestKey(key: UUID): PhysicalBox?
+    fun findAllByCurrentBatchIdOrderById(batchId: UUID): List<PhysicalBox>
     fun existsByBoxCode(code: String): Boolean
     fun findAllByCurrentBatchIdOrderByPackedAtDesc(batchId: UUID): List<PhysicalBox>
 

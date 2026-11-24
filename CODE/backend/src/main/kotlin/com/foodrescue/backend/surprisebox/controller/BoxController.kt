@@ -14,7 +14,11 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/stores/{storeId}")
-class BoxController(private val packing: BoxPackingService, private val queries: BoxQueryService, private val current: CurrentAccount, private val recheck: com.foodrescue.backend.surprisebox.service.BoxRecheckService) {
+class BoxController(private val unfit: com.foodrescue.backend.surprisebox.service.BoxUnfitService, private val packing: BoxPackingService, private val queries: BoxQueryService, private val current: CurrentAccount, private val recheck: com.foodrescue.backend.surprisebox.service.BoxRecheckService) {
+    @PostMapping("/boxes/{boxId}/unfit")
+    fun unfit(@PathVariable storeId: UUID, @PathVariable boxId: UUID, @Valid @RequestBody r: BoxUnfitRequest,
+              @RequestHeader("Idempotency-Key", required = false) key: String?) = unfit.markStoreBoxUnfit(current.get().accountId, storeId, boxId, r, key)
+
     @GetMapping("/boxes/awaiting-inspection")
     fun awaiting(@PathVariable storeId: UUID) = recheck.listAwaitingInspection(current.get().accountId, storeId)
 

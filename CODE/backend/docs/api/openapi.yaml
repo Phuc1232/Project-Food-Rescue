@@ -2713,7 +2713,7 @@
           }
         ],
         "summary": "Suspend or reactivate a store (ADMIN)",
-        "description": "SUSPEND: ACTIVE -> SUSPENDED; the store is hidden from customers, cannot open sales or take new orders, and its DRAFT/OPEN/PAUSED batches without orders become BLOCKED. Batches with orders and confirmed orders are left untouched (handled in T7.5). REACTIVATE: SUSPENDED -> ACTIVE; blocked batches stay blocked. Reason is required. Admins cannot change their own store.",
+        "description": "ADMIN other than owner. SUSPEND with open orders requires existingOrderHandling or returns 409 EXISTING_ORDERS_DECISION_REQUIRED. Unpaid orders cancel. CONTINUE_IF_SAFE retains safe paid orders only when an active verified owner or PICKUP_HANDLE staff remains. Other paid orders cancel with full store-fault refunds. Retained batches pause, remaining sellable batches block. REACTIVATE restores store status; blocked boxes/batches remain blocked. suspensionOrderSummary reports impact.",
         "parameters": [
           {
             "name": "storeId",
@@ -2746,6 +2746,11 @@
                     "reason": "Đã nộp giấy ATTP mới, kiểm tra đạt"
                   }
                 }
+              },
+              "example": {
+                "action": "SUSPEND",
+                "reason": "Safety review",
+                "existingOrderHandling": "CONTINUE_IF_SAFE"
               }
             }
           }
@@ -5226,7 +5231,7 @@
           }
         ],
         "summary": "Block a batch (ADMIN)",
-        "description": "Stops a DRAFT/OPEN/PAUSED batch for good with a reason. Orders of the batch are handled in T7.5.",
+        "description": "ADMIN blocks undelivered boxes and cancels all open orders in the violating batch with full verified refund obligations. Delivered boxes optionally create FOOD_SAFETY complaints (includeDeliveredBoxesIncident defaults true). Response keeps SaleBatchView. A blocked/ended batch returns 409.",
         "parameters": [
           {
             "name": "batchId",
@@ -9258,6 +9263,159 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/boxes/{boxId}/unfit": {
+      "post": {
+        "operationId": "markStoreBoxUnfit",
+        "tags": [
+          "Boxes"
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "boxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "example": "box-unfit-001"
+          }
+        ],
+        "description": "Store endpoint requires BOX_MANAGE or owner. Admin endpoint requires ADMIN. Evidence must be uploaded by actor and unattached. Unfit undelivered box is BLOCKED and related orders are cancelled, active handover closed, verified funds fully reserved for refund. Delivered boxes remain DELIVERED and create FOOD_SAFETY complaints. Same key/payload replays stored result. Conflicts IDEMPOTENCY_KEY_REUSED, BOX_ALREADY_BLOCKED, POST_DELIVERY_INCIDENT_ALREADY_OPEN, CONCURRENT_MODIFICATION, REFUND_AMOUNT_CONFLICT, REFUND_ALREADY_REQUESTED.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxUnfitRequest"
+              },
+              "example": {
+                "reason": "Food safety concern",
+                "notes": "Packaging damaged",
+                "attachmentIds": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Blocked box and cancellation/refund impact, or post-delivery complaint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxImpactResultView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/boxes/{boxId}/block": {
+      "post": {
+        "operationId": "blockAdminBox",
+        "tags": [
+          "Boxes"
+        ],
+        "parameters": [
+          {
+            "name": "boxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "example": "box-unfit-001"
+          }
+        ],
+        "description": "Store endpoint requires BOX_MANAGE or owner. Admin endpoint requires ADMIN. Evidence must be uploaded by actor and unattached. Unfit undelivered box is BLOCKED and related orders are cancelled, active handover closed, verified funds fully reserved for refund. Delivered boxes remain DELIVERED and create FOOD_SAFETY complaints. Same key/payload replays stored result. Conflicts IDEMPOTENCY_KEY_REUSED, BOX_ALREADY_BLOCKED, POST_DELIVERY_INCIDENT_ALREADY_OPEN, CONCURRENT_MODIFICATION, REFUND_AMOUNT_CONFLICT, REFUND_ALREADY_REQUESTED.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoxUnfitRequest"
+              },
+              "example": {
+                "reason": "Food safety concern",
+                "notes": "Packaging damaged",
+                "attachmentIds": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Blocked box and cancellation/refund impact, or post-delivery complaint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxImpactResultView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10878,6 +11036,18 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 2000
+          },
+          "existingOrderHandling": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "CONTINUE_IF_SAFE",
+              "CANCEL_ALL",
+              null
+            ],
+            "description": "Required for SUSPEND when open orders exist. CONTINUE_IF_SAFE keeps safe paid orders with an authorized pickup actor and pauses their batches. CANCEL_ALL cancels open orders with store-fault refunds."
           }
         }
       },
@@ -10993,6 +11163,16 @@
               "$ref": "#/components/schemas/StoreHistoryItem"
             },
             "description": "Newest 50, with actorId"
+          },
+          "suspensionOrderSummary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreSuspensionOrderSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -11988,6 +12168,10 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 2000
+          },
+          "includeDeliveredBoxesIncident": {
+            "type": "boolean",
+            "default": true
           }
         }
       },
@@ -15077,6 +15261,165 @@
           "sourceOrderCode",
           "noShowCaseId",
           "noShowVerifiedAt"
+        ]
+      },
+      "BoxUnfitRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "BoxImpactResultView": {
+        "type": "object",
+        "properties": {
+          "box": {
+            "$ref": "#/components/schemas/BoxDetail"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "BOX_BLOCKED",
+              "POST_DELIVERY_INCIDENT"
+            ]
+          },
+          "cancelledOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "refundRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "complaintId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "releasedSafeBoxIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "cancelledOrders": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "box",
+          "outcome",
+          "cancelledOrderIds",
+          "refundRequestIds",
+          "complaintId",
+          "releasedSafeBoxIds",
+          "cancelledOrders"
+        ]
+      },
+      "StoreSuspensionOrderSummary": {
+        "type": "object",
+        "properties": {
+          "retainedOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "cancelledUnpaidOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "cancelledConfirmedOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "blockedBatchIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "pausedBatchIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "refundRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "hasAuthorizedHandoverActor": {
+            "type": "boolean"
+          },
+          "retainedConfirmedOrders": {
+            "type": "integer"
+          },
+          "cancelledUnpaidOrders": {
+            "type": "integer"
+          },
+          "cancelledConfirmedOrders": {
+            "type": "integer"
+          },
+          "blockedSaleBatches": {
+            "type": "integer"
+          },
+          "pausedSaleBatches": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retainedOrderIds",
+          "cancelledUnpaidOrderIds",
+          "cancelledConfirmedOrderIds",
+          "blockedBatchIds",
+          "pausedBatchIds",
+          "refundRequestIds",
+          "hasAuthorizedHandoverActor",
+          "retainedConfirmedOrders",
+          "cancelledUnpaidOrders",
+          "cancelledConfirmedOrders",
+          "blockedSaleBatches",
+          "pausedSaleBatches"
         ]
       }
     },

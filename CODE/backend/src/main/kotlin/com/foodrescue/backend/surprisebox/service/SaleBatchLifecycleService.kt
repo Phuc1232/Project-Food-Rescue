@@ -27,7 +27,11 @@ class SaleBatchLifecycleService(
     private val availability: BatchAvailability,
     private val history: StoreHistoryRecorder,
     private val views: SaleBatchViews,
-    private val clock: Clock
+    private val clock: Clock,
+    private val boxes: com.foodrescue.backend.surprisebox.repository.PhysicalBoxRepository,
+    private val orders: com.foodrescue.backend.order.repository.CustomerOrderRepository,
+    private val processor: BoxUnfitProcessor,
+    private val jdbc: org.springframework.jdbc.core.JdbcTemplate
 ) {
     @Transactional
     fun apply(ownerId: UUID, storeId: UUID, batchId: UUID, action: SaleBatchAction): SaleBatchView {
@@ -52,15 +56,39 @@ class SaleBatchLifecycleService(
 
     /** Admin stop of a batch (card: admin BLOCKED). Final: a blocked batch is never reopened. */
     @Transactional
-    fun block(adminId: UUID, batchId: UUID, reason: String): SaleBatchView {
+    fun block(adminId: UUID, batchId: UUID, request: com.foodrescue.backend.surprisebox.dto.SaleBatchBlockRequest): SaleBatchView {
         val b = batches.findForUpdate(batchId) ?: throw ApiException(404, "NOT_FOUND", "Resource not found")
         if (b.status == ENDED || b.status == BLOCKED) throw ApiException(409, "CONFLICT", "Batch is already ${b.status}")
         val before = b.status
-        b.status = BLOCKED; b.statusReason = reason.trim()
+        b.status = BLOCKED; b.statusReason = request.reason!!.trim()
         batches.saveAndFlush(b)
         val admin = accounts.findById(adminId).orElse(null) ?: authenticationFailed()
+        val relatedIds = jdbc.queryForList("""select distinct o.id from customer_order o where
+            (o.sale_batch_id=? or exists(select 1 from box_allocation a join physical_box p on p.id=a.box_id where a.order_id=o.id and p.current_batch_id=?))
+            and o.status in ('PENDING_PAYMENT','CONFIRMED','HANDOVER_IN_PROGRESS','PENDING_NO_SHOW','COMPLETED') order by o.id""",
+            UUID::class.java, batchId, batchId).filterNotNull()
+        val related = relatedIds.map { orders.findForUpdate(it)!! }
+        val boxIds = boxes.findAllByCurrentBatchIdOrderById(batchId).map { it.id!! }
+        val lockedBoxes = boxIds.map { boxes.findForUpdate(it)!! }
+        val beforeStatuses = lockedBoxes.associate { it.id!! to it.status }
+        val cancelledUnpaid = related.filter { it.status == com.foodrescue.backend.order.OrderStatus.PENDING_PAYMENT }.map { it.id!! }.toSet()
+        val existingComplaintIds = jdbc.queryForList("select c.id from complaint c join physical_box p on p.id=c.source_box_id where p.current_batch_id=?", UUID::class.java, batchId).toSet()
+        val results = lockedBoxes.filter { beforeStatuses[it.id] != com.foodrescue.backend.surprisebox.BoxStatus.BLOCKED &&
+            (request.includeDeliveredBoxesIncident || beforeStatuses[it.id] != com.foodrescue.backend.surprisebox.BoxStatus.DELIVERED) }.map {
+            processor.process(it, admin, com.foodrescue.backend.surprisebox.dto.BoxUnfitRequest(request.reason), related,
+                "ADMIN_BATCH_BLOCK", null, boxIds.toSet(), batchMode = true)
+        }
+        related.filter { it.status in BoxUnfitProcessor.ACTIVE_ORDERS }.forEach {
+            processor.cancelOrder(it, admin, "BATCH_BLOCKED: ${request.reason.trim()}", boxIds.toSet())
+        }
+        batches.flush()
+        val cancelled = related.filter { it.status == com.foodrescue.backend.order.OrderStatus.CANCELLED }
         history.record(admin, b.store, SaleBatchService.ENTITY, b.id!!, "SALE_BATCH_BLOCKED", mapOf("status" to before.name),
-            mapOf("status" to BLOCKED.name, "reason" to b.statusReason))
+            mapOf("status" to BLOCKED.name, "reason" to b.statusReason,
+                "blockedBoxes" to lockedBoxes.count { it.status == com.foodrescue.backend.surprisebox.BoxStatus.BLOCKED },
+                "cancelledUnpaidOrders" to cancelled.count { it.id in cancelledUnpaid },
+                "cancelledConfirmedOrders" to cancelled.count { it.id !in cancelledUnpaid },
+                "createdComplaints" to results.count { it.complaintId != null && it.complaintId !in existingComplaintIds }))
         return views.view(b)
     }
 

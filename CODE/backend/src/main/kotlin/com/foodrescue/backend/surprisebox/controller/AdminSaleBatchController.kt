@@ -16,5 +16,5 @@ import java.util.UUID
 class AdminSaleBatchController(private val lifecycle: SaleBatchLifecycleService, private val current: CurrentAccount) {
     @PostMapping("/{batchId}/block")
     fun block(@PathVariable batchId: UUID, @Valid @RequestBody r: SaleBatchBlockRequest): SaleBatchView =
-        lifecycle.block(current.get().accountId, batchId, r.reason!!)
+        lifecycle.block(current.get().accountId, batchId, r)
 }

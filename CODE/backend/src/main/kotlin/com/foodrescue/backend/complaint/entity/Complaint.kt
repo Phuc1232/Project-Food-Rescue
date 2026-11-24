@@ -43,5 +43,8 @@ class Complaint(
     var decision: String? = null,
 
     @field:Column(name = "resolved_at", nullable = true)
-    var resolvedAt: Instant? = null
+    var resolvedAt: Instant? = null,
+    @field:ManyToOne(fetch = FetchType.LAZY) @field:JoinColumn(name = "source_box_id")
+    var sourceBox: com.foodrescue.backend.surprisebox.entity.PhysicalBox? = null,
+    @field:Column(name = "idempotency_key", length = 255) var idempotencyKey: String? = null
 ) : MutableEntity()

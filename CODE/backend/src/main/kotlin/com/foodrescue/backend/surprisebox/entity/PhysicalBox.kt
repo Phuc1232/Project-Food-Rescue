@@ -48,5 +48,8 @@ class PhysicalBox(
 
     // T4.4: idempotency key of the packing request (UC-26 E3).
     @field:Column(name = "pack_request_key", nullable = true, unique = true)
-    var packRequestKey: java.util.UUID? = null
+    var packRequestKey: java.util.UUID? = null,
+    @field:Column(name = "unfit_idempotency_key", length = 255) var unfitIdempotencyKey: String? = null,
+    @field:Column(name = "unfit_fingerprint", columnDefinition = "text") var unfitFingerprint: String? = null,
+    @field:Column(name = "unfit_result_json", columnDefinition = "text") var unfitResultJson: String? = null
 ) : MutableEntity()

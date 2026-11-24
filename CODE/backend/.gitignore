@@ -51,3 +51,5 @@ local.properties
 !docs/specs/t7-3-order-cancellation/
 
 !docs/specs/t7-4-no-show/
+
+!docs/specs/t7-5-box-unfit-violation-suspend/

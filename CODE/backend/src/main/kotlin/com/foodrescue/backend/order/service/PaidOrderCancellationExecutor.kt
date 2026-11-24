@@ -32,6 +32,7 @@ import java.util.UUID
 class PaidOrderCancellationExecutor(private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository,
     private val payments: PaymentRepository, private val refunds: RefundRequestRepository, private val money: OrderMoneyReader,
     private val sessions: PickupSessionRepository, private val history: StoreHistoryRecorder,
+    private val cancellations: com.foodrescue.backend.order.repository.OrderCancellationRequestRepository,
     private val em: EntityManager, private val clock: Clock, private val mapper: ObjectMapper) {
     fun validateKey(key: String?) {
         if (key != null && !key.matches(Regex("^[A-Za-z0-9_-]{1,255}$"))) invalid("Invalid Idempotency-Key")
@@ -77,6 +78,29 @@ class PaidOrderCancellationExecutor(private val allocations: BoxAllocationReposi
         history.record(actor, order.store, "CUSTOMER_ORDER", order.id!!, "ORDER_CANCELLED", null,
             mapOf("status" to "CANCELLED", "reason" to reason, "refundAmount" to amount, "refundRequestIds" to obligations.map { it.id }))
         return obligations.firstOrNull()
+    }
+    /** System/store safety intervention. Caller holds the order lock; normal customer cancellation keeps its existing guards. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun forceCancelStoreFault(order: CustomerOrder, actor: Account, reason: String,
+                              blockAll: Boolean = false, unsafeIds: Collection<UUID> = emptyList()): RefundRequest? {
+        if (order.status !in listOf(OrderStatus.CONFIRMED, OrderStatus.HANDOVER_IN_PROGRESS, OrderStatus.PENDING_NO_SHOW))
+            conflict("INVALID_ORDER_STATUS", "Order is not eligible for forced store-fault cancellation")
+        sessions.findByOrderIdAndStatusIn(order.id!!, listOf(PickupStatus.OPEN, PickupStatus.RECONCILING))?.let {
+            it.status = PickupStatus.CANCELLED; sessions.saveAndFlush(it)
+        }
+        order.pickupCodeHash = null; order.pickupCodeEncrypted = null; order.pickupCodeKeyId = null
+        val amount = money.money(order).verifiedPaid
+        val refund = execute(order, actor, amount, "STORE_FAULT", reason, blockAll, unsafeIds)
+        cancellations.findByOrderIdAndStatusIn(order.id!!, OrderCancellationService.OPEN)?.let {
+            it.status = com.foodrescue.backend.order.CancellationRequestStatus.APPROVED; it.storeFault = true
+            it.approvedRefundAmount = amount; it.refundRequest = refund; it.reviewer = actor
+            it.reviewedAt = clock.instant(); it.reviewNote = reason; cancellations.saveAndFlush(it)
+        }
+        cancellations.save(com.foodrescue.backend.order.entity.OrderCancellationRequest(order, actor,
+            com.foodrescue.backend.order.CancellationInitiator.STORE, com.foodrescue.backend.order.CancellationRequestStatus.APPROVED,
+            reason, true, clock.instant(), requestFingerprint = fingerprint("FORCED_STORE_FAULT", reason), reviewer = actor,
+            reviewedAt = clock.instant(), reviewNote = reason, approvedRefundAmount = amount, refundRequest = refund))
+        return refund
     }
     fun invalid(message: String): Nothing = throw ApiException(400, "VALIDATION_FAILED", message)
     fun conflict(code: String, message: String): Nothing = throw ApiException(409, code, message)
