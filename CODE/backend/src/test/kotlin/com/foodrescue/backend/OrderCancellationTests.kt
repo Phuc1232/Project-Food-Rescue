@@ -27,7 +27,7 @@ class OrderCancellationTests : StoreTestFixtures() {
     private lateinit var startsAt: Instant
     private val path get() = "/api/v1/orders/$orderId"
     @BeforeEach fun setup() {
-        clock.time = Instant.now(); (gateway as FakePaymentGateway).reset()
+        clock.time = fixtureNow(); (gateway as FakePaymentGateway).reset()
         owner = user("owner@example.test"); admin = makeAdmin("admin@example.test")
         storeId = store(owner, admin); openAllWeek(storeId, owner); batch = openOffer(storeId, owner, boxes = 8)
         customer = user("customer@example.test")

@@ -32,7 +32,7 @@ class NoShowTests : StoreTestFixtures() {
     private lateinit var end: Instant
     private val base get() = "/api/v1/stores/$storeId"
     @BeforeEach fun setup() {
-        clock.time = Instant.now(); (gateway as FakePaymentGateway).reset()
+        clock.time = fixtureNow(); (gateway as FakePaymentGateway).reset()
         owner = user("owner@example.test"); admin = makeAdmin("admin@example.test")
         storeId = store(owner, admin); openAllWeek(storeId, owner); batch = openOffer(storeId, owner, boxes=2)
         customer = user("customer@example.test"); order = UUID.fromString(json(placeOrder(customer,batch,2))["id"].asString())
@@ -136,8 +136,8 @@ class NoShowTests : StoreTestFixtures() {
     }
     @Test fun `AC-08 open complaint holds compensation past deadline`() {
         confirmed();val notification=jdbc.queryForObject("select notification_id from no_show_case",UUID::class.java)!!;compensation.recordNotificationReceived(notification,end)
-        jdbc.update("""insert into complaint(id,created_at,updated_at,version,store_id,order_id,customer_id,type,description,status)
-            select ?,now(),now(),0,store_id,id,customer_id,'NO_SHOW','Disputed','OPEN' from customer_order where id=?""",UUID.randomUUID(),order)
+        jdbc.update("""insert into complaint(id,created_at,updated_at,version,store_id,order_id,customer_id,type,description,status,complaint_code)
+            select ?,now(),now(),0,store_id,id,customer_id,'NO_SHOW','Disputed','OPEN','CMP-TEST-NOSHOW' from customer_order where id=?""",UUID.randomUUID(),order)
         assertEquals(0,compensation.releaseEligible(end.plusSeconds(49*3600)))
         jdbc.update("update complaint set status='CLOSED'");assertEquals(1,compensation.releaseEligible(end.plusSeconds(49*3600)))
     }

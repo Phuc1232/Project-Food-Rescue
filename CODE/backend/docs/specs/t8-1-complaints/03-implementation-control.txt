@@ -1,0 +1,173 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T8.1 KHIẾU NẠI
+Ngày: 2026-11-24 | Trạng thái: DONE
+Plan: docs/specs/t8-1-complaints/02-plan.md
+
+1. KẾT QUẢ
+- CUSTOMER: gửi hồ sơ có mã CMP-yyMMdd-XXXXXX, replay idempotency, danh sách/chi tiết của mình, bổ sung chứng cứ được yêu cầu.
+- ADMIN: bộ lọc phân trang, chi tiết đối chiếu đơn/hộp/kiểm tra/thanh toán/hoàn/giao nhận/No-show/audit; yêu cầu bổ sung; quyết định bất biến; đóng hồ sơ.
+- No-show đúng hạn (bao gồm deadline null và đúng ranh giới) giữ DISPUTED; quá hạn ghi withinDisputeWindow=false, không tự khôi phục cửa sổ phản ánh.
+- Lỗi STORE/SHARED hủy khoản bù FORFEITED; REJECTED đóng ngay và mở khóa chỉ khi không còn hồ sơ hoạt động khác.
+- Hoàn theo Payment VERIFIED gốc, trừ cả SUCCEEDED refund và PENDING/APPROVED refund_request. Có thể mở phần hoàn bổ sung cùng Payment của No-show.
+- COMPLAINT_RESOLVED được ghi một lần với snapshot trách nhiệm/điều chỉnh; không phát sinh ADJUSTMENT của T8.3.
+- T6.5 tự đóng khi mọi nghĩa vụ của Complaint đều FULFILLED; FAILED giữ nguyên DECIDED. Duyệt/tái duyệt/confirm tuần tự hóa theo Order, không chiếm tiền nghĩa vụ khác.
+- V22 giữ 43 entities, nâng 22 migrations, 116 OpenAPI paths / 28 tags. Không sửa V1–V21.
+
+2. KIỂM CHỨNG
+Baseline: BUILD SUCCESSFUL, 295 PASS / 0 FAIL / 1 SKIPPED (baseline cached, khớp plan).
+TDD RED: ComplaintTests đầu tiên 11/11 fail, chủ yếu HTTP 404 do endpoint chưa tồn tại; một fixture deadline vi phạm CHECK được sửa.
+TDD mở rộng: ca tăng lại approvedAmount sau khi có nghĩa vụ khác trả 200 thay vì 400 trước sửa; đã thêm kiểm soát reservation.
+Các lượt trung gian phát hiện fixture payment thiếu verified_at và contract đóng gói trước bản 28 tags; đã sửa fixture và chạy lại.
+Targeted cuối: ComplaintTests 20/20, ManualRefundTests 6/6, SwaggerUiTests 2/2 PASS.
+Contract: 937 local refs resolve; giữ nguyên toàn bộ 108 paths và 156 schema cũ (so sánh cấu trúc JSON).
+Full build đầu: 316 tests = 312 PASS / 3 FAIL / 1 SKIPPED (16m33s).
+- BoxUnfitViolationSuspendTests AC-08: setup POST order trả 503 SERVICE_UNAVAILABLE, No financial policy in force.
+- OrderCancellationTests AC-01,02 và AC-12: setup không có id đơn (NullPointerException).
+- T8.1 ComplaintTests vẫn 20/20 PASS trong lượt full này.
+- Sửa fixtureNow() dùng max(host now, seeded policy effective_from) trong các suite PickupTestClock để loại trừ lệch đồng hồ host/PostgreSQL; không sửa migration/nghiệp vụ hay assertion cũ.
+Kết quả cuối: BUILD SUCCESSFUL in 18m, 316 tests = 315 PASS / 0 FAIL / 0 ERROR / 1 SKIPPED có sẵn.
+Command: ./gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain
+Đã đọc trực tiếp build/reports/tests/test/index.html và XML của tất cả 56 suite.
+HTML: 316 tests / 0 failures / 1 skipped; XML khớp tổng. ComplaintTests: 20/20 PASS.
+Skip có sẵn: SwaggerUiContextPathTests.hold disposable browser sandbox until stop signal() (ca opt-in).
+Artifacts: build/libs/foodrescue-backend.jar; build/reports/tests/test/index.html; build/reports/tests/evidence-report.html.
+Final checks: 22 migrations / 43 entities, 116 paths / 28 tags, 937 local OpenAPI refs resolve, git diff --check PASS.
+
+3. TRUY VẾT AC / TEST
+AC-01: submit mã/evidence/replay/changed payload/duplicate; concurrent submit; evidence single-use.
+AC-02: timely/no deadline/exact boundary; job giữ tiền cả DECIDED.
+AC-03: late support giữ trạng thái khoản bù.
+AC-04: admin list filters và chi tiết đa nguồn.
+AC-05: request-info → AWAITING_EVIDENCE → supplement → INVESTIGATING.
+AC-06: refund → confirm → CLOSED; nhiều Payment chỉ đóng sau nghĩa vụ cuối; fail không đóng.
+AC-07: NO_SHOW_REFUND 70% + hoàn bổ sung 30% cùng Payment; FORFEITED.
+AC-08: REJECTED → CLOSED + HELD/ELIGIBLE; hồ sơ khác hoạt động giữ DISPUTED.
+AC-09: over-refund; immutable decisions/replay; pending close; invalid money/source; tái duyệt không lấy tiền hồ sơ khác.
+AC-10: concurrent decide cùng Complaint / khác Complaint cùng Order; một quyết định/thao tác reservation hợp lệ.
+AC-11: unauthenticated, customer khác, non-admin, file người khác, quyền đọc evidence của chủ hồ sơ.
+AC-12: AuthMigrationTests, FoodRescueApplicationTests, ApiContractTests, SwaggerUiTests và toàn bộ suite.
+
+4. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+1) Khởi động profile dev, mở /docs, đăng nhập CUSTOMER và Authorize access token.
+2) Chọn đơn COMPLETED của khách có Payment VERIFIED. Upload ảnh qua POST /api/v1/files để lấy fileId chưa được dùng.
+3) POST /api/v1/complaints: orderId, type=FOOD_SAFETY, description, attachmentIds=[fileId], Idempotency-Key=complaint-demo-1 → 201 và complaintCode.
+4) Gửi lại nguyên payload/key → 200 cùng id; đổi description giữ key → 409 IDEMPOTENCY_KEY_REUSED.
+5) GET danh sách/chi tiết khách. Dùng tài khoản khách khác xem id này → 404.
+6) Đổi Authorize sang ADMIN. GET /api/v1/admin/complaints?status=OPEN; GET chi tiết để xem nguồn thanh toán và refundableAmount.
+7) POST /request-info với note. Đổi sang CUSTOMER, POST /supplement với mô tả và file mới → INVESTIGATING.
+8) Đổi sang ADMIN. POST /decide: outcome=PARTIAL, responsibility=STORE, reason, refundAllocations=[{paymentId,amount}] không vượt refundableAmount; điều chỉnh nguyên đồng nếu cần → DECIDED.
+9) Gửi lại nguyên decision/key → 200; dùng key khác để quyết định lại → 409. POST /close khi còn PENDING → 409 REFUND_PENDING.
+10) Mở Admin refunds: approve đúng amount, thực hiện chuyển khoản ngoài hệ thống, upload biên lai rồi confirm với bankTransactionId/evidenceFileId/transferredAt. GET hồ sơ → CLOSED. Với nhiều nghĩa vụ, chỉ nghĩa vụ cuối đóng hồ sơ.
+11) No-show: ghi nhận thông báo qua luồng hiện có để có deadline. Gửi NO_SHOW trước/đúng deadline → DISPUTED; sau deadline → withinDisputeWindow=false. REJECTED đóng ngay, HELD/ELIGIBLE theo deadline nếu không còn hồ sơ khác.
+12) No-show lỗi cửa hàng đã có NO_SHOW_REFUND: quyết định STORE và hoàn đúng phần còn lại trên cùng paymentId → FORFEITED; thử vượt phần còn lại → 409 REFUND_EXCEEDS_REFUNDABLE.
+Không thực hiện giao dịch thật trong kiểm thử tự động. Kịch bản này là hướng dẫn thao tác, không tuyên bố đã kiểm chứng browser bằng tay.
+
+5. GIỚI HẠN VÀ PHÁT HIỆN NGOÀI PHẠM VI
+- Không thêm endpoint Store Owner. Quyền đọc file T7.5 được giữ qua ComplaintAttachmentPolicy.
+- Notification delivery thuộc T8.2; ledger ADJUSTMENT thuộc T8.3. T8.1 chỉ lưu snapshot và COMPLAINT_RESOLVED.
+- T7.5 BoxUnfitProcessor.OPEN_COMPLAINTS hiện không gồm DECIDED; không thay quy tắc tái mở sự cố hậu giao trong task này ngoài việc cấp complaintCode theo plan.
+- Phát hiện ngoài phạm vi nghiệp vụ: fixture Clock của các task trước có thể sớm hơn policy seed theo PostgreSQL. Đã sửa hẹp ở fixture vì chặn kiểm chứng AC-12; lý do được ghi trong plan §10.
+- Không commit/push; quy tắc Git trong .agents/CLAUDE.md đang tạm ngưng để người dùng tự thực hiện.
+
+6. FILE | NEW/MODIFIED | AC / TEST | SHA-256
+.gitignore | MODIFIED | AC-12 / contract + regression suite | 927ee4968ba74f184946204ce27c8e9d6f58c7771c258d22fd2c4e976f1bd064
+docs/api/openapi.yaml | MODIFIED | AC-12 / contract + regression suite | ed3235bf1393efcfb325ca8f5a8e4c3d6fcbc53bcd54abd7a59a2b6bffc9ca06
+src/main/kotlin/com/foodrescue/backend/complaint/ComplaintOutcome.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | a352a20922e3c5916cac18770595bc459fb70f24678b405909a1e0c3c8cf6431
+src/main/kotlin/com/foodrescue/backend/complaint/ComplaintResponsibility.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 9aa0b33188a033ec5256361b538db34c7155c412845438664ad7055d035f2686
+src/main/kotlin/com/foodrescue/backend/complaint/controller/AdminComplaintController.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 81f12eeac89d67e1f7eaa84d6dc0227ce2e82188fc40fcbb5127f608a4dd9a7f
+src/main/kotlin/com/foodrescue/backend/complaint/controller/ComplaintController.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 01573fb17d48ab993dfcd9f177a7731690c779086003b5841c0664e23a27c648
+src/main/kotlin/com/foodrescue/backend/complaint/dto/AdminComplaintDetail.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 5a236c397fb9fdbcf1b61e1781d56fb2679bbdbf66c00156752b2df874e2d707
+src/main/kotlin/com/foodrescue/backend/complaint/dto/AdminComplaintSummary.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 3b1659af74ec7408d9644587f8dfdb82602111a49b8dff4a68b90feca3dcc7e1
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintBoxView.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 3510c18f3fd0c1acad0f687cdec9d03136816a0f534f5573a4f38ae2c69a7c41
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintDecisionRequest.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | aaac9c84de2385859bf2833f1aef6b91a222b4a227b44d113d79062441061876
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintHandoverView.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | e309e99f33f17c537e0ef322d8c002109d6c509c53e9c9ca2ff36fb9e5f9fa55
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintPaymentView.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 20fbfcdb4273bb4def29733bf88abe97602a2103cc5a2f38b5ca6f731220eb4b
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintRequestInfoRequest.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 1db2196e9e312380a08425ef6f344ddd04ec706e6bd12e3fdaa452715a29c867
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintSubmitRequest.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 890d393832bc80b210497fa8d34be4cd3480731ec1f216a37a7e413c065940e4
+src/main/kotlin/com/foodrescue/backend/complaint/dto/ComplaintSupplementRequest.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 3005c64b4565adeb379f2c3f44f61bc9682afc6cb6038f71286b4f673e879b2a
+src/main/kotlin/com/foodrescue/backend/complaint/dto/CustomerComplaintDetail.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | e5a6275794d97ff919ec7b829ed8177afcb682c06d531756acabb23507fda0c0
+src/main/kotlin/com/foodrescue/backend/complaint/dto/CustomerComplaintSummary.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | f8c600756eb7225758e05ad1c7f16cd9d37733e6df6485993a9e4c0e1454d995
+src/main/kotlin/com/foodrescue/backend/complaint/dto/PaymentRefundAllocation.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 49768dc7532f8680e7f3a51969203ffaf4e5321882152b232dd1ee7b636fd9d2
+src/main/kotlin/com/foodrescue/backend/complaint/entity/Complaint.kt | MODIFIED | AC-01..11 / ComplaintTests (20 tests) | 521f32ff65263d4c1102cd9b1c0e4bcb52a164d43a9a122adc50ba751fae303b
+src/main/kotlin/com/foodrescue/backend/complaint/repository/ComplaintRepository.kt | MODIFIED | AC-01..11 / ComplaintTests (20 tests) | bef625e1556f49d0fcde6ba84691bb92feae48e296b69d84b984ac5435ae4b36
+src/main/kotlin/com/foodrescue/backend/complaint/service/AdminComplaintService.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 3471e2b1dfe506625c6983bc18f8e95647dfb5a4e409dc49b52177e5480d5b2e
+src/main/kotlin/com/foodrescue/backend/complaint/service/ComplaintCodeGenerator.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | a9002638b08fa786249fa145111adc68a1fde05e3f35a3bbfaaaab7e9e1a04f8
+src/main/kotlin/com/foodrescue/backend/complaint/service/ComplaintService.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 85327c7804538e38d94b920d7091b219b4a1209432b9ec3057375e678393fbc1
+src/main/kotlin/com/foodrescue/backend/complaint/service/ComplaintViews.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 0a88b270fe767e3a52564c2ef1f478819c6a5aad1d9493aafefc3fb36bcf7e03
+src/main/kotlin/com/foodrescue/backend/payment/repository/RefundRequestRepository.kt | MODIFIED | AC-06,07,09,10 / ComplaintTests + ManualRefundTests | 3abdde12ac46e620545c9a7d5d7c66f0b91f16923537aa8252fc850ff8339c1f
+src/main/kotlin/com/foodrescue/backend/payment/service/ManualRefundService.kt | MODIFIED | AC-06,07,09,10 / ComplaintTests + ManualRefundTests | 2f2d61dbbe5910dc888d61ee5bb6caa48bd4081dce9b7ade2d0d5e0188ddd737
+src/main/kotlin/com/foodrescue/backend/pickup/service/NoShowCompensationService.kt | MODIFIED | AC-02,03,08,12 / No-show + Clock fixture | 91b923ab2f16ee47ed58d5928d853352ab6edc8fd4932221d0b59c86baecd570
+src/main/kotlin/com/foodrescue/backend/store/service/StoreHistoryRecorder.kt | MODIFIED | AC-01,04,05,06 / audit history | 473c8938dd5ce9dc8c78e8ad0faba3e660c5258fc5bb4b7ec8a5448ce5a0812a
+src/main/kotlin/com/foodrescue/backend/surprisebox/service/BoxUnfitProcessor.kt | MODIFIED | AC-01,06,12 / post-delivery + Clock fixture | 75c6a64a1bf4151a7d5788bf4ad52551b11f1e45213bb306cc0e82bb1f7e2d6f
+src/main/resources/db/migration/V22__complaint_workflow_and_resolution.sql | NEW | AC-01,06,07,12 / migration + all entities | 1d1b2eb611f4fdee043b358eec7e1f1bcad07345c3492f627eec903b00707cbb
+src/test/kotlin/com/foodrescue/backend/AuthMigrationTests.kt | MODIFIED | AC-12 / contract + regression suite | 65f2d66444a20d0daf7b69e62c6f99f1efc36d158cd5508079a80ecdbbdc3c3d
+src/test/kotlin/com/foodrescue/backend/BoxUnfitViolationSuspendTests.kt | MODIFIED | AC-01,06,12 / post-delivery + Clock fixture | 9d5a6f806a1cf59e622725ff026e3a46a751cfa0cd541057ef959365c5ce47ed
+src/test/kotlin/com/foodrescue/backend/ComplaintTests.kt | NEW | AC-01..11 / ComplaintTests (20 tests) | 19bd8a62b228bc61f8986143dfaca82c00d55c42fe71dbe893c1482b2d4a6ea7
+src/test/kotlin/com/foodrescue/backend/FoodRescueApplicationTests.kt | MODIFIED | AC-12 / contract + regression suite | cb2e15e391e6c9b04d894b1730848c90fd91fec2d071685637d3e43636f9edb7
+src/test/kotlin/com/foodrescue/backend/NoShowTests.kt | MODIFIED | AC-02,03,08,12 / No-show + Clock fixture | 047e8b9cbea1aad51c9b41606bf2dd986a372128215d55d0e4827cc33f990445
+src/test/kotlin/com/foodrescue/backend/OrderCancellationTests.kt | MODIFIED | AC-12 / seed-aware test Clock; assertions unchanged | e5b71e5dc994f9df42eac106c325012930e4e930f4413f27db92ed8b208712c8
+src/test/kotlin/com/foodrescue/backend/PickupCodeTests.kt | MODIFIED | AC-12 / seed-aware test Clock; assertions unchanged | c7251c4829c6fc722729b0c71e0fcb398e499d20bf82f11760e5d7105b2503d6
+src/test/kotlin/com/foodrescue/backend/PickupHandoverTests.kt | MODIFIED | AC-12 / seed-aware test Clock; assertions unchanged | 566abc8adc6d005eeb1e37c5f7561e1d4dbfd2b5074947fd9732b11519a842d1
+src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | MODIFIED | AC-12 / contract + regression suite | 9da82b77ed71249d6355d382b26cb19ee6241b5d2936dc0e9a046feeda486c63
+src/test/kotlin/com/foodrescue/backend/support/StoreTestFixtures.kt | MODIFIED | AC-12 / seed-aware test Clock; assertions unchanged | 3fcbf0a31d248ef51f68275a88b67ee31eeab14e54e63ce5988a12fd3417afbf
+docs/specs/t8-1-complaints/02-plan.md | MODIFIED | task progress + locking/reservation/Clock rationale
+docs/specs/t8-1-complaints/03-implementation-control.txt | NEW | verification + traceability + Swagger runbook
+docs/specs/roadmap-3-9.md | MODIFIED | T8.1 marked complete after successful full build
+
+7. XML SUITES (đọc trực tiếp sau full build cuối)
+Suite | Tests | Pass | Failures | Errors | Skipped
+com.foodrescue.backend.AdminAccountTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.AdminBootstrapTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.ApiContractTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.AuthFlowTests | 7 | 7 | 0 | 0 | 0
+com.foodrescue.backend.AuthMigrationTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.BoxPackingTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.BoxTemplateTests | 5 | 5 | 0 | 0 | 0
+com.foodrescue.backend.BoxUnfitViolationSuspendTests | 19 | 19 | 0 | 0 | 0
+com.foodrescue.backend.ComplaintTests | 20 | 20 | 0 | 0 | 0
+com.foodrescue.backend.FakePaymentGatewayTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.FileStorageFailureTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.FileTypeDetectorTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.FileUploadTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.FinancialPolicyTests | 7 | 7 | 0 | 0 | 0
+com.foodrescue.backend.FoodRescueApplicationTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.JwtSecurityTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.LocalDiskFileStorageTests | 5 | 5 | 0 | 0 | 0
+com.foodrescue.backend.ManualRefundTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.MenuTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.NoShowAmountsTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.NoShowTests | 18 | 18 | 0 | 0 | 0
+com.foodrescue.backend.OpeningHoursValidatorTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.OrderCancellationTests | 20 | 20 | 0 | 0 | 0
+com.foodrescue.backend.OrderLifecycleTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.OrderPlacementTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.PartnerApplicationTests | 11 | 11 | 0 | 0 | 0
+com.foodrescue.backend.PasswordRecoveryTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.PaymentReconciliationTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.PaymentRequestTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.PaymentWebhookTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.PayOsPaymentGatewayTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.PayOsSignatureTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.PickupCodeCodecTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.PickupCodeTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.PickupHandoverTests | 14 | 14 | 0 | 0 | 0
+com.foodrescue.backend.ProductionApiContractTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.ProfileUpdateCorsTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.ProfileUpdateRequestParserTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.ProfileUpdateTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.RateLimitTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.RefreshTokenConcurrencyTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.SaleBatchTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.SearchTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.StaffManagementTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.StoreAuthorizationTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.StoreChangeRequestTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.StoreProfileTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.StoreSalesPolicyTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.StoreStatusTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiContextPathTests | 3 | 2 | 0 | 0 | 1
+com.foodrescue.backend.SwaggerUiDefaultProfileTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiDevTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiMixedDevProfileTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiMixedTestProfileTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiProductionTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiTests | 2 | 2 | 0 | 0 | 0

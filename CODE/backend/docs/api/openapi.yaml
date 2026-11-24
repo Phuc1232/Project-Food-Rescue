@@ -9416,6 +9416,967 @@
           }
         }
       }
+    },
+    "/api/v1/complaints": {
+      "post": {
+        "operationId": "post__api_v1_complaints",
+        "tags": [
+          "Complaints"
+        ],
+        "summary": "CUSTOMER submits complaint; timely no-show disputes retention; late submission records support",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "description": "Same key and normalized payload replays; changed payload returns 409 IDEMPOTENCY_KEY_REUSED."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerComplaintDetail"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Complaint created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplaintSubmitRequest"
+              },
+              "example": {
+                "orderId": "10000000-0000-0000-0000-000000000001",
+                "type": "FOOD_SAFETY",
+                "description": "Food was unsafe",
+                "attachmentIds": []
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get__api_v1_complaints",
+        "tags": [
+          "Complaints"
+        ],
+        "summary": "CUSTOMER lists own complaints",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ComplaintStatus"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageCustomerComplaintSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/complaints/{complaintId}": {
+      "get": {
+        "operationId": "get__api_v1_complaints__complaintId_",
+        "tags": [
+          "Complaints"
+        ],
+        "summary": "CUSTOMER views own complaint",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/complaints/{complaintId}/supplement": {
+      "post": {
+        "operationId": "post__api_v1_complaints__complaintId__supplement",
+        "tags": [
+          "Complaints"
+        ],
+        "summary": "CUSTOMER supplies requested evidence",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplaintSupplementRequest"
+              },
+              "example": {
+                "description": "More pickup evidence",
+                "attachmentIds": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/complaints": {
+      "get": {
+        "operationId": "get__api_v1_admin_complaints",
+        "tags": [
+          "Admin complaints"
+        ],
+        "summary": "ADMIN filters complaints",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ComplaintStatus"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ComplaintType"
+            }
+          },
+          {
+            "name": "storeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminComplaintSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/complaints/{complaintId}": {
+      "get": {
+        "operationId": "get__api_v1_admin_complaints__complaintId_",
+        "tags": [
+          "Admin complaints"
+        ],
+        "summary": "ADMIN inspects order, boxes, payments, handover, no-show and audit history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/complaints/{complaintId}/request-info": {
+      "post": {
+        "operationId": "post__api_v1_admin_complaints__complaintId__request_info",
+        "tags": [
+          "Admin complaints"
+        ],
+        "summary": "ADMIN requests additional evidence",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplaintRequestInfoRequest"
+              },
+              "example": {
+                "note": "Please provide pickup photos"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/complaints/{complaintId}/decide": {
+      "post": {
+        "operationId": "post__api_v1_admin_complaints__complaintId__decide",
+        "tags": [
+          "Admin complaints"
+        ],
+        "summary": "ADMIN records immutable decision and refund obligations",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            },
+            "description": "Same key and normalized payload replays; changed payload returns 409 IDEMPOTENCY_KEY_REUSED."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplaintDecisionRequest"
+              },
+              "example": {
+                "outcome": "PARTIAL",
+                "responsibility": "STORE",
+                "reason": "Evidence supports partial refund",
+                "refundAllocations": [
+                  {
+                    "paymentId": "20000000-0000-0000-0000-000000000001",
+                    "amount": 30000
+                  }
+                ],
+                "storeAdjustmentAmount": -30000,
+                "commissionAdjustmentAmount": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/complaints/{complaintId}/close": {
+      "post": {
+        "operationId": "post__api_v1_admin_complaints__complaintId__close",
+        "tags": [
+          "Admin complaints"
+        ],
+        "summary": "ADMIN closes when all refund obligations are FULFILLED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminComplaintDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED (body, evidence ownership/reuse, key, money), INVALID_PAGINATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (missing resource or different customer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COMPLAINT_ALREADY_OPEN, NO_SHOW_NOT_FOUND, INVALID_ORDER_STATUS, INVALID_COMPLAINT_STATUS, IDEMPOTENCY_KEY_REUSED, COMPLAINT_ALREADY_DECIDED, REFUND_EXCEEDS_REFUNDABLE, REFUND_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -15421,6 +16382,613 @@
           "blockedSaleBatches",
           "pausedSaleBatches"
         ]
+      },
+      "ComplaintStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "INVESTIGATING",
+          "AWAITING_EVIDENCE",
+          "DECIDED",
+          "CLOSED"
+        ]
+      },
+      "ComplaintType": {
+        "type": "string",
+        "enum": [
+          "FOOD_SAFETY",
+          "BOX_VALUE",
+          "PAYMENT",
+          "PICKUP",
+          "NO_SHOW",
+          "OTHER"
+        ]
+      },
+      "ComplaintOutcome": {
+        "type": "string",
+        "enum": [
+          "APPROVED",
+          "PARTIAL",
+          "REJECTED"
+        ]
+      },
+      "ComplaintResponsibility": {
+        "type": "string",
+        "enum": [
+          "STORE",
+          "PLATFORM",
+          "CUSTOMER",
+          "SHARED",
+          "NONE"
+        ]
+      },
+      "AdminComplaintDetail": {
+        "type": "object",
+        "properties": {
+          "complaint": {
+            "$ref": "#/components/schemas/CustomerComplaintDetail"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderView"
+          },
+          "money": {
+            "$ref": "#/components/schemas/OrderMoneyView"
+          },
+          "boxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplaintBoxView"
+            }
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplaintPaymentView"
+            }
+          },
+          "refundRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundRequestView"
+            }
+          },
+          "handover": {
+            "$ref": "#/components/schemas/ComplaintHandoverView"
+          },
+          "noShowCase": {
+            "$ref": "#/components/schemas/NoShowCaseSummaryView"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "complaint",
+          "order",
+          "money",
+          "boxes",
+          "payments",
+          "refundRequests",
+          "handover",
+          "history"
+        ]
+      },
+      "AdminComplaintSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "complaintCode": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ComplaintType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComplaintStatus"
+          },
+          "withinDisputeWindow": {
+            "type": "boolean"
+          },
+          "approvedRefundAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ComplaintOutcome"
+          },
+          "responsibility": {
+            "$ref": "#/components/schemas/ComplaintResponsibility"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "customerDisplayName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "verifiedPaid": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "heldCompensationAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          }
+        },
+        "required": [
+          "id",
+          "complaintCode",
+          "orderId",
+          "orderCode",
+          "type",
+          "status",
+          "withinDisputeWindow",
+          "createdAt",
+          "storeId",
+          "storeName",
+          "customerDisplayName",
+          "verifiedPaid",
+          "heldCompensationAmount"
+        ]
+      },
+      "ComplaintBoxView": {
+        "type": "object",
+        "properties": {
+          "allocation": {
+            "$ref": "#/components/schemas/AllocatedBoxView"
+          },
+          "box": {
+            "$ref": "#/components/schemas/BoxDetail"
+          }
+        },
+        "required": [
+          "allocation",
+          "box"
+        ]
+      },
+      "ComplaintDecisionRequest": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "$ref": "#/components/schemas/ComplaintOutcome"
+          },
+          "responsibility": {
+            "$ref": "#/components/schemas/ComplaintResponsibility"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "refundAllocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentRefundAllocation"
+            }
+          },
+          "storeAdjustmentAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "commissionAdjustmentAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          }
+        },
+        "required": [
+          "outcome",
+          "responsibility",
+          "reason"
+        ],
+        "description": "Final immutable resolution. Distinct VERIFIED payments of this order only; remaining funds subtract succeeded refunds and PENDING/APPROVED obligations. REJECTED requires no refunds or adjustments. Zero-refund closes immediately; otherwise DECIDED until all obligations are FULFILLED."
+      },
+      "ComplaintHandoverView": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickupSessionView"
+            }
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickupIncidentView"
+            }
+          }
+        },
+        "required": [
+          "sessions",
+          "incidents"
+        ]
+      },
+      "ComplaintPaymentView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "receivedAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "providerTransactionId": {
+            "type": "string"
+          },
+          "refundedAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "openObligationAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "refundableAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "receivedAmount",
+          "receivedAt",
+          "provider",
+          "providerTransactionId",
+          "refundedAmount",
+          "openObligationAmount",
+          "refundableAmount"
+        ]
+      },
+      "ComplaintRequestInfoRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "ComplaintSubmitRequest": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ComplaintType"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "orderId",
+          "type",
+          "description"
+        ]
+      },
+      "ComplaintSupplementRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "description"
+        ]
+      },
+      "CustomerComplaintDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "complaintCode": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ComplaintType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComplaintStatus"
+          },
+          "withinDisputeWindow": {
+            "type": "boolean"
+          },
+          "approvedRefundAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ComplaintOutcome"
+          },
+          "responsibility": {
+            "$ref": "#/components/schemas/ComplaintResponsibility"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "requestedInfoNote": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "sourceBoxId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attachmentFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "refundRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundRequestView"
+            }
+          },
+          "noShowCase": {
+            "$ref": "#/components/schemas/NoShowCaseSummaryView"
+          },
+          "heldCompensationAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "storeAdjustmentAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "commissionAdjustmentAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          }
+        },
+        "required": [
+          "id",
+          "complaintCode",
+          "orderId",
+          "orderCode",
+          "type",
+          "status",
+          "withinDisputeWindow",
+          "createdAt",
+          "description",
+          "attachmentFileIds",
+          "refundRequests",
+          "heldCompensationAmount"
+        ]
+      },
+      "CustomerComplaintSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "complaintCode": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ComplaintType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComplaintStatus"
+          },
+          "withinDisputeWindow": {
+            "type": "boolean"
+          },
+          "approvedRefundAmount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ComplaintOutcome"
+          },
+          "responsibility": {
+            "$ref": "#/components/schemas/ComplaintResponsibility"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "complaintCode",
+          "orderId",
+          "orderCode",
+          "type",
+          "status",
+          "withinDisputeWindow",
+          "createdAt"
+        ]
+      },
+      "PaymentRefundAllocation": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "number",
+            "multipleOf": 1,
+            "description": "Whole VND",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "paymentId",
+          "amount"
+        ]
+      },
+      "PageCustomerComplaintSummary": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerComplaintSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "PageAdminComplaintSummary": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminComplaintSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
       }
     },
     "responses": {
@@ -15689,6 +17257,14 @@
     {
       "name": "No-show",
       "description": "Overdue pickup, no-show confirmation and held compensation"
+    },
+    {
+      "name": "Complaints",
+      "description": "UC-23 customer complaints and evidence"
+    },
+    {
+      "name": "Admin complaints",
+      "description": "UC-63..65 investigation, resolution and closure"
     }
   ]
 }

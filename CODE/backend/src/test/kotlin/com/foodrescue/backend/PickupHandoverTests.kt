@@ -26,7 +26,7 @@ class PickupHandoverTests : StoreTestFixtures() {
     private lateinit var endsAt: Instant
     private val key = "handover-key"
     @BeforeEach fun setup() {
-        clock.time = Instant.now(); (gateway as FakePaymentGateway).reset()
+        clock.time = fixtureNow(); (gateway as FakePaymentGateway).reset()
         owner = user("owner@example.test"); val admin = makeAdmin("admin@example.test")
         store = store(owner, admin); openAllWeek(store, owner)
         val batch = openOffer(store, owner, boxes = 4)

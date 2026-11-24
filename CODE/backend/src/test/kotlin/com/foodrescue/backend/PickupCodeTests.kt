@@ -47,7 +47,7 @@ class PickupCodeTests : StoreTestFixtures() {
     private val fake get() = gateway as FakePaymentGateway
     private lateinit var owner: String; private lateinit var customer: String; private lateinit var store: String
     private lateinit var batch: UUID
-    @BeforeEach fun reset() { fake.reset(); clock.time = Instant.now() }
+    @BeforeEach fun reset() { fake.reset(); clock.time = fixtureNow() }
     private fun setup() {
         owner = user("owner@example.test"); val admin = makeAdmin("admin@example.test")
         store = store(owner, admin); openAllWeek(store, owner); batch = openOffer(store, owner, boxes = 8)

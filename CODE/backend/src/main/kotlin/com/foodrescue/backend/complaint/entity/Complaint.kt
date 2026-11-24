@@ -35,6 +35,27 @@ class Complaint(
     @field:Column(name = "status", nullable = false, length = 50)
     var status: ComplaintStatus,
 
+    @field:Column(name = "complaint_code", nullable = false, length = 64)
+    var complaintCode: String,
+    @field:Column(name = "within_dispute_window", nullable = false)
+    var withinDisputeWindow: Boolean = true,
+    @field:Column(name = "requested_info_note", columnDefinition = "text")
+    var requestedInfoNote: String? = null,
+    @field:Enumerated(EnumType.STRING) @field:Column(name = "outcome", length = 32)
+    var outcome: com.foodrescue.backend.complaint.ComplaintOutcome? = null,
+    @field:Enumerated(EnumType.STRING) @field:Column(name = "responsibility", length = 32)
+    var responsibility: com.foodrescue.backend.complaint.ComplaintResponsibility? = null,
+    @field:Column(name = "approved_refund_amount", precision = 19, scale = 2)
+    var approvedRefundAmount: java.math.BigDecimal? = null,
+    @field:Column(name = "store_adjustment_amount", precision = 19, scale = 2)
+    var storeAdjustmentAmount: java.math.BigDecimal? = null,
+    @field:Column(name = "commission_adjustment_amount", precision = 19, scale = 2)
+    var commissionAdjustmentAmount: java.math.BigDecimal? = null,
+    @field:Column(name = "closed_at") var closedAt: Instant? = null,
+    @field:Column(name = "request_fingerprint", columnDefinition = "text") var requestFingerprint: String? = null,
+    @field:Column(name = "decision_key", length = 255) var decisionKey: String? = null,
+    @field:Column(name = "decision_fingerprint", columnDefinition = "text") var decisionFingerprint: String? = null,
+
     @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
     @field:JoinColumn(name = "handled_by_id", nullable = true)
     var handledBy: Account? = null,

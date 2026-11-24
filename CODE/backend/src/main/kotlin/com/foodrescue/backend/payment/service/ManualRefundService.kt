@@ -39,6 +39,8 @@ import java.util.UUID
  */
 @Service
 class ManualRefundService(
+    private val complaints: com.foodrescue.backend.complaint.repository.ComplaintRepository,
+    private val orders: com.foodrescue.backend.order.repository.CustomerOrderRepository,
     private val obligations: RefundRequestRepository,
     private val refunds: RefundRepository,
     private val payments: PaymentRepository,
@@ -64,6 +66,8 @@ class ManualRefundService(
 
     @Transactional
     fun approve(adminId: UUID, id: UUID, r: RefundApproveRequest): RefundRequestView {
+        // T8.1: serialize reservations and transfers across all obligations of the same order.
+        orders.findForUpdate(obligations.findOrderId(id) ?: notFound()) ?: notFound()
         val o = obligations.findForUpdate(id) ?: notFound()
         if (o.status != RefundRequestStatus.PENDING && o.status != RefundRequestStatus.APPROVED) throw conflict("Refund obligation is ${o.status}")
         prices.check(r.amount!!, "amount")?.let { throw invalid(it) }
@@ -78,9 +82,11 @@ class ManualRefundService(
         return views.view(o, true)
     }
 
-    /** Lock on the obligation: two confirmations of the same refund give one success and one 409 (BR-T65-02). */
+    /** Lock order then obligation: two confirmations of the same refund give one success and one 409 (BR-T65-02). */
     @Transactional
     fun confirm(adminId: UUID, id: UUID, r: RefundConfirmRequest): RefundRequestView {
+        // T8.1: serialize reservations and transfers across all obligations of the same order.
+        orders.findForUpdate(obligations.findOrderId(id) ?: notFound()) ?: notFound()
         val o = obligations.findForUpdate(id) ?: notFound()
         if (o.status != RefundRequestStatus.APPROVED) throw conflict("Refund obligation must be APPROVED (it is ${o.status})")
         val bankId = r.bankTransactionId!!.trim()
@@ -96,6 +102,14 @@ class ManualRefundService(
             recordedBy = admin, transferredAt = r.transferredAt, note = r.note?.trim()?.takeIf { it.isNotEmpty() }))
         attachments.save(Attachment(file, refund = refund))
         o.status = RefundRequestStatus.FULFILLED; obligations.saveAndFlush(o)
+        o.complaint?.id?.let { complaintId ->
+            val c = complaints.findForUpdate(complaintId)!!
+            if (c.status == com.foodrescue.backend.complaint.ComplaintStatus.DECIDED &&
+                obligations.findAllByComplaintIdOrderByCreatedAt(complaintId).all { it.status == RefundRequestStatus.FULFILLED }) {
+                c.status = com.foodrescue.backend.complaint.ComplaintStatus.CLOSED; c.closedAt = now
+                history.record(admin, c.store, "COMPLAINT", complaintId, "COMPLAINT_CLOSED", null, mapOf("status" to c.status))
+            }
+        }
         val event = events.saveAndFlush(FinancialEvent(o.order, FinancialEventType.REFUND_SUCCEEDED, refund = refund, occurredAt = now,
             businessKey = "REFUND_SUCCEEDED:${refund.id}"))
         // Only money that was booked as order revenue is reversed in the store ledger (BR-T65-05).
@@ -117,7 +131,10 @@ class ManualRefundService(
         return views.view(o, true)     // obligation stays APPROVED (UC-72 E3)
     }
 
-    private fun refundable(o: RefundRequest): BigDecimal = o.payment?.let { it.receivedAmount - refunds.refundedForPayment(it.id!!) } ?: BigDecimal.ZERO
+    private fun refundable(o: RefundRequest): BigDecimal = o.payment?.let {
+        val ownReservation = if (o.status in listOf(RefundRequestStatus.PENDING, RefundRequestStatus.APPROVED)) o.approvedAmount ?: o.requestedAmount else BigDecimal.ZERO
+        it.receivedAmount - refunds.refundedForPayment(it.id!!) - obligations.openObligationsForPayment(it.id!!) + ownReservation
+    } ?: BigDecimal.ZERO
 
     private fun invalid(v: FieldViolation) = ApiException(400, "VALIDATION_FAILED", "Invalid request", listOf(v))
     private fun conflict(m: String) = ApiException(409, "CONFLICT", m)

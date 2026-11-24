@@ -43,7 +43,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
 | 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [x] T7.5 |
-| 8. Khiếu nại, thông báo, đối soát | [ ] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
+| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [ ] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
 Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu đề card.
@@ -330,7 +330,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 
 **Điều kiện hoàn thành giai đoạn:** truy vết được từng khoản; không giải tỏa hoặc chi tiền chưa đủ điều kiện.
 
-### [ ] T8.1 — Khiếu nại
+### [x] T8.1 — Khiếu nại
 - **Phụ thuộc:** T7.5. **Tài liệu:** UC-23, UC-63..65, BR-43, BR-45, SD-10.
 - **Phạm vi:** khách gửi khiếu nại theo loại (`ComplaintType`) kèm bằng chứng, cấp mã tiếp nhận; phản ánh no-show đúng
   48h → tiếp tục giữ khoản bù; quá hạn → ghi nhận như yêu cầu hỗ trợ (D06); sự cố sau giao từ T7.5 cũng tạo hồ sơ.

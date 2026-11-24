@@ -33,7 +33,7 @@ class NoShowCompensationService(private val cases: NoShowCaseRepository, private
         require(batchSize in 1..1000)
         val ids = jdbc.queryForList("""SELECT n.id FROM no_show_case n WHERE n.compensation_status='HELD'
             AND n.notification_received_at IS NOT NULL AND n.dispute_deadline IS NOT NULL AND n.dispute_deadline<=:now
-            AND NOT EXISTS (SELECT 1 FROM complaint c WHERE c.order_id=n.order_id AND c.status IN ('OPEN','INVESTIGATING','AWAITING_EVIDENCE'))
+            AND NOT EXISTS (SELECT 1 FROM complaint c WHERE c.order_id=n.order_id AND c.status IN ('OPEN','INVESTIGATING','AWAITING_EVIDENCE','DECIDED'))
             ORDER BY n.dispute_deadline,n.id LIMIT :n FOR UPDATE SKIP LOCKED""",
             MapSqlParameterSource("now", Timestamp.from(now.truncatedTo(java.time.temporal.ChronoUnit.MICROS))).addValue("n", batchSize), UUID::class.java).filterNotNull()
         ids.forEach { id ->

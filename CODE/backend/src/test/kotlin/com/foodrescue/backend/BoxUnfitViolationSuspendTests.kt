@@ -24,7 +24,7 @@ class BoxUnfitViolationSuspendTests : StoreTestFixtures() {
     private lateinit var order: UUID
     private val base get()="/api/v1/stores/$storeId"
     @BeforeEach fun setup() {
-        clock.time=Instant.now();(gateway as FakePaymentGateway).reset()
+        clock.time=fixtureNow();(gateway as FakePaymentGateway).reset()
         owner=user("owner@example.test");admin=makeAdmin("admin@example.test");storeId=store(owner,admin);openAllWeek(storeId,owner)
         batch=openOffer(storeId,owner,boxes=10);customer=user("customer@example.test");newOrder()
     }
@@ -112,7 +112,7 @@ class BoxUnfitViolationSuspendTests : StoreTestFixtures() {
     }
     @Test fun `AC-07 batch block processes delivered paid and unpaid orders with the existing response schema`() {
         pay();tick();assertEquals(200,complete(start()).statusCode())
-        clock.time=Instant.now();owner=login("owner@example.test")["accessToken"].asString();customer=login("customer@example.test")["accessToken"].asString();admin=login("admin@example.test")["accessToken"].asString()
+        clock.time=fixtureNow();owner=login("owner@example.test")["accessToken"].asString();customer=login("customer@example.test")["accessToken"].asString();admin=login("admin@example.test")["accessToken"].asString()
         newOrder();pay();val paid=order;newOrder();val unpaid=order
         val r=call("/api/v1/admin/sale-batches/$batch/block","POST",mapOf("reason" to "Violation"),admin)
         assertEquals(200,r.statusCode(),r.body());assertEquals("BLOCKED",json(r)["status"].asString())

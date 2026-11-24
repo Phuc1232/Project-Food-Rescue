@@ -6,6 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 
 interface RefundRequestRepository : JpaRepository<RefundRequest, UUID> {
+    @org.springframework.data.jpa.repository.Query("select r.order.id from RefundRequest r where r.id = :id")
+    fun findOrderId(id: UUID): UUID?
+    fun findAllByComplaintIdOrderByCreatedAt(complaintId: UUID): List<RefundRequest>
+    @org.springframework.data.jpa.repository.Query("select coalesce(sum(coalesce(r.approvedAmount,r.requestedAmount)),0) from RefundRequest r where r.payment.id = :paymentId and r.status in (com.foodrescue.backend.payment.RefundRequestStatus.PENDING, com.foodrescue.backend.payment.RefundRequestStatus.APPROVED)")
+    fun openObligationsForPayment(paymentId: UUID): java.math.BigDecimal
     fun existsByPaymentId(paymentId: UUID): Boolean
     fun findByPaymentId(paymentId: UUID): RefundRequest?
     fun findAllByOrderIdOrderByCreatedAt(orderId: UUID): List<RefundRequest>

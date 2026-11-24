@@ -53,3 +53,5 @@ local.properties
 !docs/specs/t7-4-no-show/
 
 !docs/specs/t7-5-box-unfit-violation-suspend/
+
+!docs/specs/t8-1-complaints/

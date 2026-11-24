@@ -19,6 +19,12 @@ import java.util.concurrent.TimeUnit
 abstract class StoreTestFixtures : AuthTestFixtures() {
     val pdf = "%PDF-1.7\n".toByteArray() + ByteArray(256)
 
+    /** A fixed application clock must include the policy just seeded by PostgreSQL's clock.
+     * Host and container clocks can differ slightly; using host time alone intermittently yields HTTP 503 on placing an order.
+     */
+    fun fixtureNow(): Instant = maxOf(Instant.now(), jdbc.queryForObject(
+        "select max(effective_from) from financial_policy", Timestamp::class.java)!!.toInstant())
+
     fun user(email: String): String { register(email); return login(email)["accessToken"].asString() }
     fun makeAdmin(email: String): String {
         val token = user(email)

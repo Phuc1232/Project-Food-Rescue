@@ -36,7 +36,7 @@ import java.util.UUID
 /** Caller has locked all affected orders before the box. Also used while an entire batch is locked. */
 @Component
 class BoxUnfitProcessor(private val allocations: BoxAllocationRepository, private val inspections: BoxInspectionRepository,
-    private val complaints: ComplaintRepository, private val attachments: AttachmentRepository, private val refunds: RefundRequestRepository,
+    private val complaintCodes: com.foodrescue.backend.complaint.service.ComplaintCodeGenerator, private val complaints: ComplaintRepository, private val attachments: AttachmentRepository, private val refunds: RefundRequestRepository,
     private val releaser: OrderReleaser, private val cancellation: PaidOrderCancellationExecutor, private val views: BoxViews,
     private val history: StoreHistoryRecorder, private val mapper: ObjectMapper, private val em: EntityManager, private val clock: Clock) {
     fun fingerprint(operation: String, boxId: UUID, r: BoxUnfitRequest) = mapper.writeValueAsString(listOf(operation, boxId,
@@ -75,7 +75,7 @@ class BoxUnfitProcessor(private val allocations: BoxAllocationRepository, privat
                 ?: conflict("INVALID_ORDER_STATUS", "Delivered box has no completed order")
             box.status = BoxStatus.DELIVERED
             val complaint = complaints.save(Complaint(box.store, order, order.customer, ComplaintType.FOOD_SAFETY, notes,
-                ComplaintStatus.OPEN, sourceBox = box, idempotencyKey = key))
+                ComplaintStatus.OPEN, complaintCode = complaintCodes.next(), sourceBox = box, idempotencyKey = key))
             complaintId = complaint.id
             files.forEach { attachments.save(Attachment(it, complaint = complaint)) }
         } else {
