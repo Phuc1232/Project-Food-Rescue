@@ -1,5 +1,7 @@
 // AC-01..14 (T7.4): NoShowOverdueService responsibility.
 package com.foodrescue.backend.pickup.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 import com.foodrescue.backend.order.OrderStatus
 import com.foodrescue.backend.order.repository.CustomerOrderRepository
 import com.foodrescue.backend.store.service.StoreHistoryRecorder
@@ -11,7 +13,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Service
-class NoShowOverdueService(private val jdbc: NamedParameterJdbcTemplate, private val orders: CustomerOrderRepository,
+class NoShowOverdueService(private val outbox: NotificationOutboxService, private val jdbc: NamedParameterJdbcTemplate, private val orders: CustomerOrderRepository,
     private val history: StoreHistoryRecorder, private val sessions: com.foodrescue.backend.pickup.repository.PickupSessionRepository) {
     @Transactional
     fun markOverdue(now: Instant, batchSize: Int = 100): Int {
@@ -25,6 +27,7 @@ class NoShowOverdueService(private val jdbc: NamedParameterJdbcTemplate, private
             if (order.status != OrderStatus.CONFIRMED || order.pickupEndsAt.isAfter(now) ||
                 sessions.findByOrderIdAndStatusIn(id, listOf(com.foodrescue.backend.pickup.PickupStatus.OPEN,
                     com.foodrescue.backend.pickup.PickupStatus.RECONCILING)) != null) return@forEach
+            outbox.orderEvent(order,NType.ORDER_STATUS,"ORDER_PENDING_NO_SHOW",key="PENDING_NO_SHOW:${order.id}",store=true,payload=mapOf("status" to "PENDING_NO_SHOW"))
             order.status = OrderStatus.PENDING_NO_SHOW; order.statusReason = "PICKUP_WINDOW_ENDED"; order.statusChangedAt = now
             history.record(null, order.store, "CUSTOMER_ORDER", id, "ORDER_MARKED_PENDING_NO_SHOW",
                 mapOf("status" to "CONFIRMED"), mapOf("status" to "PENDING_NO_SHOW"))

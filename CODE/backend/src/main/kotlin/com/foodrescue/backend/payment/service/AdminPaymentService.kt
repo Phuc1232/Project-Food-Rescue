@@ -1,5 +1,7 @@
 // AC-02,04,05 (T6.4): AdminPaymentService responsibility.
 package com.foodrescue.backend.payment.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.common.exception.ApiException
 import com.foodrescue.backend.common.response.FieldViolation
@@ -22,7 +24,7 @@ import java.util.UUID
 
 /** Admin lookup of received money by order / transaction / status, and assignment of unmatched payments (UC-14 E1). Callers are ADMIN. */
 @Service
-class AdminPaymentService(
+class AdminPaymentService(private val outbox: NotificationOutboxService,
     private val jdbc: NamedParameterJdbcTemplate,
     private val payments: PaymentRepository,
     private val orders: CustomerOrderRepository,
@@ -74,6 +76,7 @@ class AdminPaymentService(
         payment.order = order; payments.saveAndFlush(payment)
         obligations.open(payment, order, RefundObligationService.ASSIGNED_BY_ADMIN, note.trim())
         history.record(admin, order.store, "PAYMENT", payment.id!!, "PAYMENT_ASSIGNED", null, mapOf("orderCode" to order.orderCode, "note" to note.trim()))
+        outbox.orderEvent(order,NType.PAYMENT,"PAYMENT_ASSIGNED",key="PAYMENT_ASSIGNED:${payment.id}",payload=mapOf("paymentId" to payment.id))
         return detail(payment.id!!)
     }
 

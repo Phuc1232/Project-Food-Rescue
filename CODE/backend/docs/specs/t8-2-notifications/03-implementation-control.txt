@@ -1,0 +1,190 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T8.2 THÔNG BÁO
+Ngày: 2026-11-24 | Trạng thái: DONE
+Plan: docs/specs/t8-2-notifications/02-plan.md
+
+1. KẾT QUẢ
+- Transactional outbox trong bảng notification; enqueue bắt buộc transaction hiện hữu, dedupe atomic bằng partial unique index + ON CONFLICT DO NOTHING.
+- V23 thêm 4 NotificationType, 6 cột outbox/retry và 3 index; giữ 43 entities; không sửa V1–V22.
+- Worker claim FOR UPDATE SKIP LOCKED, lease, gọi port ngoài transaction DB rồi ghi kết quả trong transaction riêng. Claim ngay trước từng lần gửi trong giới hạn batchSize, không để cả lô hết lease khi đợi SMTP.
+- claimUntil ngăn completion của claim cũ ghi đè claim mới; retry theo Clock/backoff, maxAttempts → FAILED. SENT nâng DELIVERED khi đọc, FAILED vẫn xem/đọc được trong inbox.
+- Adapter SMTP dùng JavaMailSender + SimpleMailMessage, mail-from fallback auth.mailFrom; emailEnabled=false giữ kênh in-app. Email không sao chép raw payload; lastError không lưu message nhạy cảm của SMTP.
+- 5 API inbox yêu cầu đăng nhập, truy vấn theo recipient server-side; 404 với thông báo tài khoản khác; phân trang/loại/trạng thái/unread; DTO không lộ recipientEmail, dedupeKey, lastError hay thông tin claim.
+- GET/email delivery không mở mốc No-show. Lần read/read-all đầu tiên cố định notification_received_at + dispute_deadline trong cùng transaction; replay không dời mốc 48h.
+- Hook enqueueSettlement sẵn cho T8.4; không triển khai nghiệp vụ đối soát trong task này.
+
+2. KIỂM CHỨNG
+Baseline: BUILD SUCCESSFUL in 9s (cached), 315 PASS / 0 FAIL / 1 SKIPPED có sẵn theo baseline T8.1.
+TDD RED: 11/11 NotificationTests fail (chưa có worker/outbox/controller; HTTP 404 hoặc NoSuchBeanDefinitionException).
+TDD GREEN đầu: 11/11 NotificationTests PASS sau cài đặt.
+Mở rộng: thêm kiểm tra lease/reclaim/stale completion, caller transaction, atomic concurrent enqueue, lỗi ghi outbox rollback đơn/tồn, hoàn tiền, store lifecycle và SMTP adapter.
+Lượt targeted phát hiện constraint thử nghiệm rollback cần NOT VALID do đã có ORDER_CREATED từ setup; sửa test fixture để chỉ chặn insert mới, không thay assertion hay logic sản phẩm.
+Contract: 121 paths / 29 tags, 959 local refs resolve, giữ nguyên nội dung tất cả 116 paths cũ.
+Targeted mở rộng đầu: 101 tests, 99 PASS / 2 FAIL. Một lỗi constraint test fixture (đã sửa NOT VALID); một lỗi hồi quy 500 thay vì 409 do raw EntityManager.flush() trong outbox.
+Đã thay raw flush bằng NotificationRepository.flush() để exception translation giữ hợp đồng HTTP 409. Không sửa assertion OrderCancellationTests cũ.
+Targeted cuối: BUILD SUCCESSFUL in 5m24s; 101 PASS / 0 FAIL / 0 ERROR / 0 SKIPPED.
+Kết quả full cuối: BUILD SUCCESSFUL in 11m17s; 337 tests = 336 PASS / 0 FAIL / 0 ERROR / 1 SKIPPED có sẵn.
+Command: ./gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain
+Đã đọc trực tiếp build/reports/tests/test/index.html và XML của tất cả 58 suite. HTML và XML khớp tổng.
+NotificationTests 19/19 PASS; SmtpNotificationSenderTests 2/2 PASS.
+Skip có sẵn: com.foodrescue.backend.SwaggerUiContextPathTests.hold disposable browser sandbox until stop signal()
+Artifacts: build/libs/foodrescue-backend.jar; build/reports/tests/test/index.html; build/reports/tests/evidence-report.html.
+23 migrations / 43 entities; 121 paths / 29 tags; 959 local refs resolve; không sửa migration cũ.
+Final whitespace check: git diff --check PASS.
+
+3. MA TRẬN TÍCH HỢP (cùng transaction nghiệp vụ gốc)
+ORDER_CREATED → CUSTOMER.
+PAYMENT_VERIFIED → CUSTOMER + STORE OWNER; PAYMENT_REQUIRES_REVIEW/PAYMENT_ASSIGNED → CUSTOMER.
+ORDER_EXPIRED / hủy chưa thanh toán → CUSTOMER; hủy đơn đã thanh toán → CUSTOMER + STORE OWNER.
+CANCELLATION_REQUESTED/SUPPLEMENTED/WITHDRAWN → STORE OWNER; REJECTED/INFO_REQUESTED → CUSTOMER.
+HANDOVER_STARTED / ORDER_COMPLETED / HANDOVER_INCIDENT → CUSTOMER.
+ORDER_PENDING_NO_SHOW → CUSTOMER + STORE OWNER; NO_SHOW_CONFIRMED → CUSTOMER và gắn NoShowCase.notification.
+NO_SHOW_COMPENSATION_ELIGIBLE → STORE OWNER.
+REFUND_APPROVED/SUCCEEDED/FAILED → CUSTOMER; auto-close complaint → COMPLAINT_CLOSED đến CUSTOMER.
+COMPLAINT_SUBMITTED (bao gồm hậu giao T7.5) → CUSTOMER + STORE OWNER; SUPPLEMENTED → STORE OWNER.
+COMPLAINT_INFO_REQUESTED/CLOSED → CUSTOMER; DECIDED → CUSTOMER + STORE OWNER.
+PARTNER_APPLICATION_{decision} → applicant; STORE_CHANGE_{status} / STORE_{status} → STORE OWNER.
+
+4. TRUY VẾT AC / TEST
+AC-01: order/payment/cancellation/handover/expiry; MANDATORY; rollback transaction; lỗi outbox insert rollback cả order và inventory hold.
+AC-02: complaint lifecycle, store review/status, refund approve/fail/confirm, overdue recipients, atomic concurrent dedupe, NoShowCase link.
+AC-03: worker DELIVERED/SENT, no active transaction khi gửi kể cả caller đang có transaction; SMTP configured/fallback sender và email-disabled.
+AC-04: retry tại 60s/300s, tới maxAttempts=3 FAILED; không đổi trạng thái đơn; không lộ raw exception/payload nhạy cảm.
+AC-05: hai worker đồng thời claim mỗi row một lần trong lease; reclaim đúng hạn; stale TX2 không ghi đè claim mới.
+AC-06: own inbox/filter/pagination/unread-count/detail, GET không đánh dấu đọc, IDOR 404, unauthenticated 401, malformed UUID/size 400.
+AC-07: read/read-all khởi động 48h đúng lần đầu, gửi email không khởi động; replay giữ deadline; chỉ release ELIGIBLE sau deadline.
+AC-08: AuthMigrationTests (23), FoodRescueApplicationTests (43 entities), SwaggerUiTests (121 paths/29 tags), ApiContractTests và full build.
+NoShowTests rollback giữ kiểm tra tổng notification trước/sau không đổi + không có NO_SHOW mới; không tắt hoặc bỏ assertion.
+
+5. KỊCH BẢN BẤM THỬ TRÊN SWAGGER
+1) Khởi động profile dev; cấu hình SMTP local của bạn hoặc NOTIFICATIONS_EMAIL_ENABLED=false để thử riêng in-app. Mở /docs, đăng nhập CUSTOMER, Authorize access token.
+2) Đặt đơn hợp lệ → GET /api/v1/notifications?type=ORDER_PLACED&unreadOnly=true; xem ORDER_CREATED và payload orderId/orderCode.
+3) GET /unread-count và /{notificationId}: readAt vẫn null. Thử tài khoản khác GET/POST read cùng id → 404; bỏ token → 401.
+4) POST /{notificationId}/read: readAt được ghi, PENDING/SENT → DELIVERED; gửi lại giữ readAt. POST /read-all trả updatedCount; gửi lần hai → 0.
+5) Dùng các luồng thanh toán/hủy/bàn giao/hoàn tiền/khiếu nại/xét duyệt cửa hàng hiện hữu. CUSTOMER và STORE OWNER mở inbox riêng để đối chiếu ma trận mục 3; replay webhook/idempotency không thêm thông báo cùng dedupeKey.
+6) Thử No-show bằng luồng T7.4: trước read, NoShowCase.notificationReceivedAt/disputeDeadline đều null, kể cả email đã gửi. Đọc thông báo NO_SHOW hoặc read-all → deadline = lần đọc đầu + order.disputeWindowHours; đọc lại không dời deadline.
+7) Job worker mặc định bật, scan mỗi 10s. Với SMTP local hợp lệ, thông báo → DELIVERED; email chỉ chứa tóm tắt và hướng dẫn mở inbox (không raw payload).
+8) Để thử lỗi SMTP trong môi trường local: cấu hình SMTP không kết nối được. Nghiệp vụ vẫn commit; notification giữ PENDING với retry 60s rồi 300s, quá 3 lần → FAILED. Inbox vẫn đọc được; không có API để lộ lỗi SMTP.
+9) Kiểm chứng chính xác mốc 48h/retry/lease và hai worker song song qua NotificationTests với Clock/test double; không cần chờ 48h thực.
+Kịch bản là hướng dẫn Try it out; không tuyên bố đã thao tác browser hoặc gửi SMTP thật. Tests dùng RecordingNotificationSender/mock JavaMailSender, không gửi email ra ngoài.
+
+6. GIỚI HẠN / PHÁT HIỆN NGOÀI PHẠM VI
+- Giữ đúng scope Outbox DB + SMTP + In-App REST, không WebSocket/SSE/FCM, không API dispatch/admin inbox.
+- SMTP không hỗ trợ idempotency tuyệt đối: nếu crash sau SMTP nhận email trước TX2, hoặc send kéo dài quá lease, email có thể được gửi lại. Lease/fencing bảo vệ DB và chống xử lý trùng thông thường; không hứa exactly-once qua crash. Port mang dedupeKey để mở rộng provider idempotency sau này.
+- Dedupe key của sự kiện lặp hợp lệ (yêu cầu bổ sung, thay trạng thái cửa hàng, duyệt lại khoản hoàn) gắn revision/version để không mất sự kiện mới.
+- Chưa có nghiệp vụ T8.4; chỉ có hook SETTLEMENT.
+- Không sửa auth/mail, common/security, middleware, tiền/tồn kho hay migration cũ.
+- Không commit/push theo quy tắc Git tạm ngưng trong .agents/CLAUDE.md.
+
+7. FILE | NEW/MODIFIED | AC / TEST | SHA-256
+.gitignore | MODIFIED | AC-08 / baseline/contract verification | 4c2c708e5bbd9a8a37dbad860b29be2d38ee239ed923cbbc17d90547e1166163
+docs/api/openapi.yaml | MODIFIED | AC-08 / baseline/contract verification | 6fc8be347d8a7298d38766132689791a1a5fe2c52403de041cb9649dcc2b5546
+src/main/kotlin/com/foodrescue/backend/complaint/service/AdminComplaintService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | e97ae0c04dc4a29b274e39507e4d778cf25182b5ff1105593b51fd5d4ce66150
+src/main/kotlin/com/foodrescue/backend/complaint/service/ComplaintService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 802632195131ad8a1ef69d2ba24f06646e37cffc42889cd44e4113539c94fac8
+src/main/kotlin/com/foodrescue/backend/notification/NotificationProperties.kt | NEW | AC-01..08 / NotificationTests + contract/migration | fb30f745d5dd35f7c8b42181ce80ae3c9710a06689b296b20c9847f172219111
+src/main/kotlin/com/foodrescue/backend/notification/NotificationType.kt | MODIFIED | AC-01..08 / NotificationTests + contract/migration | f14a78ad626afae19cf36e005fcf4076f16d139fe8cb1fa11cbc626dfe1b5736
+src/main/kotlin/com/foodrescue/backend/notification/controller/NotificationController.kt | NEW | AC-01..08 / NotificationTests + contract/migration | 2f3d8855ce9de4070c1c55d3e0ba39d4286e018e9f5c21a8d9c95cded44647e0
+src/main/kotlin/com/foodrescue/backend/notification/dto/NotificationDispatchReport.kt | NEW | AC-01..08 / NotificationTests + contract/migration | d4508053cefe2a856964dcf8fe83737e81e3872c10295ba8187cf9fb81ac402e
+src/main/kotlin/com/foodrescue/backend/notification/dto/NotificationReadAllView.kt | NEW | AC-01..08 / NotificationTests + contract/migration | c5e901520478e95c90afcaa398bfb5536a6589688dbc943d3970204fef66a2a9
+src/main/kotlin/com/foodrescue/backend/notification/dto/NotificationView.kt | NEW | AC-01..08 / NotificationTests + contract/migration | 36c13c8cdc1c0d8f8ce6615795a9df27dcd62ceb4bbb24c0e0897b4028167291
+src/main/kotlin/com/foodrescue/backend/notification/dto/UnreadNotificationCountView.kt | NEW | AC-01..08 / NotificationTests + contract/migration | 284581b999dd4c600f1930e3ad01a977f07a8a28f14e30f04e11bb92ec6d9c89
+src/main/kotlin/com/foodrescue/backend/notification/entity/Notification.kt | MODIFIED | AC-01..08 / NotificationTests + contract/migration | 14b9b2729434fc6e7f641c4826faf835aee7786598b4ba49319ffda4c4d23f64
+src/main/kotlin/com/foodrescue/backend/notification/port/NotificationSender.kt | NEW | AC-01..08 / NotificationTests + contract/migration | cfd2c07d7908572ba32ca30e3d0a22a7177a5a12534fc3fad923821c318ef6a4
+src/main/kotlin/com/foodrescue/backend/notification/port/SmtpAndInAppNotificationSender.kt | NEW | AC-01..08 / NotificationTests + contract/migration | 0e5b6db40e359524a00188e702ad869307723b3f69782921b18bf7649c552701
+src/main/kotlin/com/foodrescue/backend/notification/repository/NotificationRepository.kt | MODIFIED | AC-01..08 / NotificationTests + contract/migration | 3b68d06c7053fb36dd4f9120236a47cc3928ab7445b0efad142c058ad3d361ab
+src/main/kotlin/com/foodrescue/backend/notification/service/NotificationDispatchJob.kt | NEW | AC-01..08 / NotificationTests + contract/migration | f07a251e0a3aeedafa0f2d4259c1c3f49466fd58285a284593baf81b667c1fb7
+src/main/kotlin/com/foodrescue/backend/notification/service/NotificationDispatchService.kt | NEW | AC-01..08 / NotificationTests + contract/migration | 9392724d3a8e32e4a55dafcab17d8fc8e5bbdaaee3239392f1cb04b558d66e87
+src/main/kotlin/com/foodrescue/backend/notification/service/NotificationDispatchStore.kt | NEW | AC-01..08 / NotificationTests + contract/migration | 4d33c8b38636c93e922eae8e6f84b6ae078b288e96faca41aba81b4a77662e98
+src/main/kotlin/com/foodrescue/backend/notification/service/NotificationOutboxService.kt | NEW | AC-01..08 / NotificationTests + contract/migration | c0c33487a0f5e8161b8d91546ca7feb024f4e3636830cfc5eda958ba4c2df8d7
+src/main/kotlin/com/foodrescue/backend/notification/service/NotificationService.kt | NEW | AC-01..08 / NotificationTests + contract/migration | a165b557482fec1cd108ee952eb827df362e6e28b3e06207180c1721ecabcf15
+src/main/kotlin/com/foodrescue/backend/notification/service/NotificationViews.kt | NEW | AC-01..08 / NotificationTests + contract/migration | a0d391776b7ec2654a0490d11b285361380bc8e93a374d1959b6a63620d63dde
+src/main/kotlin/com/foodrescue/backend/order/service/AdminCancellationService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | dcc85cbff8f0489853a48e889e2e4405b752dea1b477f6265e66aaca88e68d0d
+src/main/kotlin/com/foodrescue/backend/order/service/OrderCancellationService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | dff3144748f940430ac4308580044d7792cc4b6d235c2956c2d623d3916c4da1
+src/main/kotlin/com/foodrescue/backend/order/service/OrderPlacementService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 502ca4a4882cce9882de63ecb79f22792d4bb657d1e234a28356f13430dc5802
+src/main/kotlin/com/foodrescue/backend/order/service/OrderReleaser.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 4462beccd7f16b0b727ad1fc88dec858463599f9f6aa0fe913eda674b60606aa
+src/main/kotlin/com/foodrescue/backend/order/service/PaidOrderCancellationExecutor.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 3df7b005448ab1e149f6fe6fff6c4e4baf9463ae2ccfe8ac2f4d474fcbfe6035
+src/main/kotlin/com/foodrescue/backend/payment/service/AdminPaymentService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | b4d6a2d8d2487542bf693dd04d1319a67f9c9ca2c90cc641cfca7de207163387
+src/main/kotlin/com/foodrescue/backend/payment/service/ManualRefundService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | b3fc5cd79338637a6dc36af3464dbfd6619075f72e19792e37a9d47b1180ff25
+src/main/kotlin/com/foodrescue/backend/payment/service/PaymentConfirmationService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 78ccbc76ea2b47eb4789d9577c73e805ef5f8c3913ec7c2cb56fe862419d2d24
+src/main/kotlin/com/foodrescue/backend/pickup/service/NoShowCompensationService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | f226d04d2e17df2f478a8cd14bc9df12f13ba54b0e7e948425be39c6b830f580
+src/main/kotlin/com/foodrescue/backend/pickup/service/NoShowOverdueService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 09a48509a64ef4faf6bc31111ab37676eb47ca6a6a2350b4502fe8e56dd2b9e5
+src/main/kotlin/com/foodrescue/backend/pickup/service/NoShowService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 084945d42adc5a84db391aa70bca50f2e37d17b2bea601e40c280301e88e6344
+src/main/kotlin/com/foodrescue/backend/pickup/service/PickupIncidentService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 8130731a3e275b1b4ea5439e824dc2d1c576cb65cca6a9dc185291420f0f1757
+src/main/kotlin/com/foodrescue/backend/pickup/service/PickupSessionService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 78a9cf22ffcb5c6b236b12196f75342b6ea8bc9e92aa7a9ce3b48f7ddad876f2
+src/main/kotlin/com/foodrescue/backend/store/service/PartnerApplicationReviewService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | e3a75e8a721b3a18a69a74bcc373ff94b654346240f015ccf6ca9b147d3bf7f9
+src/main/kotlin/com/foodrescue/backend/store/service/StoreChangeReviewService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | fdaabd2b77ead75e265de24de23a3da7d1fd8c37d968fe4e29498dc3022f1fea
+src/main/kotlin/com/foodrescue/backend/store/service/StoreStatusService.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | b46aac21b70a9ba611d4f4054b23946e303490e0c533af96e9c4b94aa7b2a3f8
+src/main/kotlin/com/foodrescue/backend/surprisebox/service/BoxUnfitProcessor.kt | MODIFIED | AC-01,02 / transactional event integration + regression suites | 676305e5e62e9ec681a40054a4b9efdef92f4e7c91da9a1104891501b60c92d3
+src/main/resources/application.yml | MODIFIED | AC-08 / baseline/contract verification | 45b5759d2e0e6c583b5dc5bfb984d162975d7769f4628d51ab23ff62ca4022ac
+src/main/resources/db/migration/V23__notification_outbox_and_types.sql | NEW | AC-01..08 / NotificationTests + contract/migration | 914788ee67a9b9833efa2f8a39e5bde12c381b67f1da304d5620f3d08cb0b363
+src/test/kotlin/com/foodrescue/backend/AuthMigrationTests.kt | MODIFIED | AC-08 / baseline/contract verification | c6ce30d26c4deb93c5bd8ac11f288535620c517e6932012a588730e4d51466bf
+src/test/kotlin/com/foodrescue/backend/FoodRescueApplicationTests.kt | MODIFIED | AC-08 / baseline/contract verification | 8b2cd72860528dd43cfe90f1cd346fad7d1a8ee40e1372b3dc7aa35e1889980d
+src/test/kotlin/com/foodrescue/backend/NoShowTests.kt | MODIFIED | AC-01,02,07,08 / rollback keeps existing notifications | c06cbef6206de7516644d2257c3ae28b296d7bd411505ad6de03e05e4bb58e3c
+src/test/kotlin/com/foodrescue/backend/NotificationTests.kt | NEW | AC-01..08 / notification + SMTP tests | defbf7c509668cbab675e98446d276beedf70cbf69e99a2e5861d194aeeeeb98
+src/test/kotlin/com/foodrescue/backend/SmtpNotificationSenderTests.kt | NEW | AC-01..08 / notification + SMTP tests | c1d12b7f547dd219227cd2002446e9801193b77d82d9ffbc0f650b8c7b6c35d3
+src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | MODIFIED | AC-08 / baseline/contract verification | 72b31a645178ca5360abe39e761893afd8c4ea60cdca8900683b4c158d597f78
+src/test/kotlin/com/foodrescue/backend/support/AuthTestFixtures.kt | MODIFIED | AC-03..05,08 / recording port + disabled background dispatch | 26476cad6f90fdbf7ba98fc7ae00112b7254debdd44fd4acf8a2628b92babd63
+src/test/kotlin/com/foodrescue/backend/support/RecordingNotificationSender.kt | NEW | AC-03..05,08 / recording port + disabled background dispatch | 6e53e82d61768fa3e9e17079f728c86a79291e3e912f19737e2157efc13f6885
+docs/specs/t8-2-notifications/02-plan.md | MODIFIED | implementation progress + design clarifications
+docs/specs/t8-2-notifications/03-implementation-control.txt | NEW | results, test evidence, traceability, Swagger runbook
+docs/specs/roadmap-3-9.md | MODIFIED | T8.2 marked complete after successful full build
+
+8. XML SUITES (đọc trực tiếp sau full build cuối)
+Suite | Tests | Pass | Failures | Errors | Skipped
+com.foodrescue.backend.AdminAccountTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.AdminBootstrapTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.ApiContractTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.AuthFlowTests | 7 | 7 | 0 | 0 | 0
+com.foodrescue.backend.AuthMigrationTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.BoxPackingTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.BoxTemplateTests | 5 | 5 | 0 | 0 | 0
+com.foodrescue.backend.BoxUnfitViolationSuspendTests | 19 | 19 | 0 | 0 | 0
+com.foodrescue.backend.ComplaintTests | 20 | 20 | 0 | 0 | 0
+com.foodrescue.backend.FakePaymentGatewayTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.FileStorageFailureTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.FileTypeDetectorTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.FileUploadTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.FinancialPolicyTests | 7 | 7 | 0 | 0 | 0
+com.foodrescue.backend.FoodRescueApplicationTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.JwtSecurityTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.LocalDiskFileStorageTests | 5 | 5 | 0 | 0 | 0
+com.foodrescue.backend.ManualRefundTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.MenuTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.NoShowAmountsTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.NoShowTests | 18 | 18 | 0 | 0 | 0
+com.foodrescue.backend.NotificationTests | 19 | 19 | 0 | 0 | 0
+com.foodrescue.backend.OpeningHoursValidatorTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.OrderCancellationTests | 20 | 20 | 0 | 0 | 0
+com.foodrescue.backend.OrderLifecycleTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.OrderPlacementTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.PartnerApplicationTests | 11 | 11 | 0 | 0 | 0
+com.foodrescue.backend.PasswordRecoveryTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.PaymentReconciliationTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.PaymentRequestTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.PaymentWebhookTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.PayOsPaymentGatewayTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.PayOsSignatureTests | 4 | 4 | 0 | 0 | 0
+com.foodrescue.backend.PickupCodeCodecTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.PickupCodeTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.PickupHandoverTests | 14 | 14 | 0 | 0 | 0
+com.foodrescue.backend.ProductionApiContractTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.ProfileUpdateCorsTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.ProfileUpdateRequestParserTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.ProfileUpdateTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.RateLimitTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.RefreshTokenConcurrencyTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.SaleBatchTests | 8 | 8 | 0 | 0 | 0
+com.foodrescue.backend.SearchTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.SmtpNotificationSenderTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.StaffManagementTests | 9 | 9 | 0 | 0 | 0
+com.foodrescue.backend.StoreAuthorizationTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.StoreChangeRequestTests | 3 | 3 | 0 | 0 | 0
+com.foodrescue.backend.StoreProfileTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.StoreSalesPolicyTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.StoreStatusTests | 6 | 6 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiContextPathTests | 3 | 2 | 0 | 0 | 1
+com.foodrescue.backend.SwaggerUiDefaultProfileTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiDevTests | 2 | 2 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiMixedDevProfileTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiMixedTestProfileTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiProductionTests | 1 | 1 | 0 | 0 | 0
+com.foodrescue.backend.SwaggerUiTests | 2 | 2 | 0 | 0 | 0

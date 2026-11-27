@@ -1,5 +1,7 @@
 // AC-06,07,08,09,10,11,12,14: PartnerApplicationReviewService responsibility.
 package com.foodrescue.backend.store.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.audit.AuditService
@@ -23,7 +25,7 @@ import java.util.UUID
 
 /** Admin side of UC-66/UC-67. Callers must already be ADMIN (checked at the controller). */
 @Service
-class PartnerApplicationReviewService(
+class PartnerApplicationReviewService(private val outbox: NotificationOutboxService,
     private val applications: PartnerApplicationRepository,
     private val stores: StoreRepository,
     private val accounts: AccountRepository,
@@ -68,6 +70,8 @@ class PartnerApplicationReviewService(
         applications.saveAndFlush(application)
         audit.record(admin, PartnerApplicationService.ENTITY, application.id!!, ACTIONS.getValue(decision), store,
             """{"revision":${application.revision},"status":"${application.status}"}""")
+        outbox.enqueue(application.applicant,NType.STORE_REVIEW,"PARTNER_APPLICATION_${decision.name}","Partner application reviewed",
+            mapOf("applicationId" to application.id,"storeId" to store.id,"status" to application.status.name),dedupeKey="PARTNER_APPLICATION:${application.id}:${application.revision}:${decision.name}")
         return views.detail(application)
     }
 

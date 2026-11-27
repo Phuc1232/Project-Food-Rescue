@@ -37,5 +37,11 @@ class Notification(
     var deliveredAt: Instant? = null,
 
     @field:Column(name = "read_at", nullable = true)
-    var readAt: Instant? = null
+    var readAt: Instant? = null,
+    @field:Column(name = "event_code", length = 64) var eventCode: String? = null,
+    @field:Column(name = "title", length = 255) var title: String? = null,
+    @field:Column(name = "dedupe_key", length = 255) var dedupeKey: String? = null,
+    @field:Column(name = "attempt_count", nullable = false) var attemptCount: Int = 0,
+    @field:Column(name = "next_attempt_at") var nextAttemptAt: Instant? = null,
+    @field:Column(name = "last_error", columnDefinition = "text") var lastError: String? = null
 ) : MutableEntity()

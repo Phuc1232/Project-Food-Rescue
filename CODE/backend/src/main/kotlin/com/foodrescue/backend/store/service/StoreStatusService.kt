@@ -1,5 +1,7 @@
 // AC-09,10,11,14: StoreStatusService responsibility.
 package com.foodrescue.backend.store.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -19,7 +21,7 @@ import java.util.UUID
  * blocks batches without orders (BR-55); confirmed orders are T7.5. Owners have no path to change status (UC-41 E2).
  */
 @Service
-class StoreStatusService(
+class StoreStatusService(private val outbox: NotificationOutboxService,
     private val stores: StoreRepository,
     private val accounts: AccountRepository,
     private val batches: SaleBatchBlocker,
@@ -114,6 +116,8 @@ class StoreStatusService(
                 "cancelledConfirmedOrders" to summary?.cancelledConfirmedOrders, "retainedConfirmedOrders" to summary?.retainedConfirmedOrders,
                 "hasAuthorizedHandoverActor" to summary?.hasAuthorizedHandoverActor))
         stores.flush()
+        outbox.enqueue(store.owner,NType.STORE_REVIEW,"STORE_${to.name}","Store status updated",mapOf("storeId" to store.id,"status" to to.name),
+            dedupeKey="STORE_STATUS:${store.id}:${store.version}")
         return queries.detail(store).copy(suspensionOrderSummary = summary)
     }
 }

@@ -1,5 +1,7 @@
 // AC-01,03,04,05,06 (T6.3): PaymentConfirmationService responsibility.
 package com.foodrescue.backend.payment.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.finance.FinancialEventType
 import com.foodrescue.backend.finance.LedgerEntryType
@@ -40,7 +42,7 @@ enum class WebhookOutcome { CONFIRMED, DUPLICATE, REQUIRES_REVIEW, IGNORED }
  * (BR-25). Anything else is kept as REQUIRES_REVIEW — money is never dropped (BR-26, UC-14 E1/E2).
  */
 @Service
-class PaymentConfirmationService(
+class PaymentConfirmationService(private val outbox: NotificationOutboxService,
     private val requests: PaymentRequestRepository,
     private val payments: PaymentRepository,
     private val orders: CustomerOrderRepository,
@@ -104,6 +106,7 @@ class PaymentConfirmationService(
         ledger.save(LedgerEntry(event, order.store, LedgerEntryType.PAYMENT_RECEIPT, payment.receivedAmount, payment.currency, occurredAt = now))
         history.record(null, order.store, OrderPlacementService.ENTITY, order.id!!, "ORDER_CONFIRMED", mapOf("status" to "PENDING_PAYMENT"),
             mapOf("status" to "CONFIRMED", "paymentId" to payment.id, "boxes" to held.size))
+        outbox.orderEvent(order,NType.ORDER_CONFIRMED,"PAYMENT_VERIFIED",key="PAYMENT_VERIFIED:${payment.id}",store=true,payload=mapOf("paymentId" to payment.id,"amount" to payment.receivedAmount))
         log.info("Order {} confirmed by payment {}", order.orderCode, payment.id)
     }
 
@@ -111,6 +114,7 @@ class PaymentConfirmationService(
     private fun review(payment: Payment, why: String, order: CustomerOrder? = null, reasonCode: String? = null): WebhookOutcome {
         payment.status = PaymentStatus.REQUIRES_REVIEW; payments.saveAndFlush(payment)
         if (order != null && reasonCode != null) obligations.open(payment, order, reasonCode, why)
+        order?.let { outbox.orderEvent(it,NType.PAYMENT,"PAYMENT_REQUIRES_REVIEW",key="PAYMENT_REVIEW:${payment.id}",payload=mapOf("paymentId" to payment.id,"amount" to payment.receivedAmount)) }
         log.warn("Payment {} needs review: {}", payment.id, why)
         return WebhookOutcome.REQUIRES_REVIEW
     }

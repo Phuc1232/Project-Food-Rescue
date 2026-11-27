@@ -1,5 +1,7 @@
 // AC-01..15 (T7.3): AdminCancellationService responsibility.
 package com.foodrescue.backend.order.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -20,7 +22,7 @@ import java.util.UUID
 
 @Service
 @PreAuthorize("hasRole('ADMIN')")
-class AdminCancellationService(private val orders: CustomerOrderRepository, private val requests: OrderCancellationRequestRepository,
+class AdminCancellationService(private val outbox: NotificationOutboxService, private val orders: CustomerOrderRepository, private val requests: OrderCancellationRequestRepository,
     private val accounts: AccountRepository, private val executor: PaidOrderCancellationExecutor, private val views: OrderCancellationViews,
     private val money: OrderMoneyReader, private val history: StoreHistoryRecorder, private val em: EntityManager, private val clock: Clock) {
     @Transactional(readOnly = true)
@@ -70,6 +72,10 @@ class AdminCancellationService(private val orders: CustomerOrderRepository, priv
         requests.saveAndFlush(req)
         history.record(actor, order.store, "CUSTOMER_ORDER", orderId, "CANCELLATION_${r.decision.name}", null,
             mapOf("requestId" to id, "status" to req.status.name, "refundAmount" to req.approvedRefundAmount))
+        if(r.decision!=CancellationDecision.APPROVE) {
+            val code=if(r.decision==CancellationDecision.REJECT) "CANCELLATION_REJECTED" else "CANCELLATION_INFO_REQUESTED"
+            outbox.orderEvent(order,NType.ORDER_STATUS,code,key="$code:${req.id}:${req.version}",payload=mapOf("requestId" to req.id))
+        }
         return views.detail(req)
     }
     private fun notFound(): Nothing = throw ApiException(404, "NOT_FOUND", "Cancellation request not found")

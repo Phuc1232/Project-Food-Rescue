@@ -90,3 +90,14 @@ payos:
   cancel-url: ${PAYOS_CANCEL_URL:http://localhost:3000/payment/cancel}
   connect-timeout: ${PAYOS_CONNECT_TIMEOUT:5s}
   read-timeout: ${PAYOS_READ_TIMEOUT:10s}
+
+# T8.2: durable inbox and asynchronous email outbox.
+notifications:
+  dispatch-job-enabled: ${NOTIFICATIONS_DISPATCH_JOB_ENABLED:true}
+  dispatch-scan-ms: 10000
+  batch-size: 50
+  lease-seconds: 60
+  max-attempts: 3
+  retry-delays-seconds: [60, 300, 900]
+  mail-from: ${NOTIFICATIONS_MAIL_FROM:}
+  email-enabled: ${NOTIFICATIONS_EMAIL_ENABLED:true}

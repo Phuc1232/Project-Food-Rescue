@@ -37,6 +37,7 @@ object TestAuthKeys {
         r.add("pickup.code.active-key-id") { "test-v1" }
         r.add("pickup.code.keys") { "test-v1:" + Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
         // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.
+        r.add("notifications.dispatch-job-enabled") { "false" }
         r.add("orders.no-show-job-enabled") { "false" }; r.add("orders.no-show-compensation-job-enabled") { "false" }
         r.add("orders.expiry-job-enabled") { "false" }; r.add("payments.reconcile-job-enabled") { "false" }
         // T6.1: prod-profile tests build the payOS adapter; dummy credentials and an unreachable URL, never the real provider.
@@ -48,7 +49,7 @@ object TestAuthKeys {
 }
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Import(MailTestConfiguration::class)
+@Import(MailTestConfiguration::class, NotificationTestConfiguration::class)
 abstract class AuthTestFixtures {
     companion object {
         /** Tables holding migration-seeded reference data; never truncated. */
@@ -64,6 +65,7 @@ abstract class AuthTestFixtures {
     @Value("\${local.server.port}") var port: Int=0
     @Autowired lateinit var jdbc: JdbcTemplate
     @Autowired lateinit var mapper: ObjectMapper
+    @Autowired lateinit var notificationSender: RecordingNotificationSender
     @Autowired lateinit var mail: RecordingAuthMailSender
     @Value("\${server.servlet.context-path:}") var contextPath: String=""
     private val client=HttpClient.newHttpClient()
@@ -75,7 +77,7 @@ abstract class AuthTestFixtures {
         jdbc.execute("TRUNCATE "+tables.joinToString(",") { "\""+it+"\"" }+" CASCADE")
         // T4.5: financial_policy is insert-only, so it is truncated and re-seeded with the exact INSERT of migration V12.
         jdbc.execute(FINANCIAL_POLICY_SEED)
-        mail.messages.clear(); mail.fail=false
+        mail.messages.clear(); mail.fail=false; notificationSender.reset()
     }
     fun call(path: String,method: String="GET",body: Any?=null,token: String?=null): HttpResponse<String> {
         val b=HttpRequest.newBuilder(URI("http://localhost:"+port+contextPath+path)).header("Content-Type","application/json")

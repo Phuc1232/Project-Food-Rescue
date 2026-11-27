@@ -1,5 +1,7 @@
 // AC-01..08 (T5.2): OrderPlacementService responsibility.
 package com.foodrescue.backend.order.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -38,7 +40,7 @@ data class PlaceResult(val order: OrderView, val created: Boolean)
  * idempotency) -> store and batch FOR SHARE (a concurrent suspension or pause waits) -> boxes FOR UPDATE SKIP LOCKED.
  */
 @Service
-class OrderPlacementService(
+class OrderPlacementService(private val outbox: NotificationOutboxService,
     private val accounts: AccountRepository,
     private val orders: CustomerOrderRepository,
     private val allocations: BoxAllocationRepository,
@@ -115,6 +117,7 @@ class OrderPlacementService(
         allocations.flush()
         history.record(customer, batch.store, ENTITY, order.id!!, "ORDER_CREATED", null,
             mapOf("orderCode" to order.orderCode, "quantity" to order.quantity, "boxes" to held.map { it.boxCode }, "holdExpiresAt" to holdUntil.toString()))
+        outbox.orderEvent(order,NType.ORDER_PLACED,"ORDER_CREATED")
         return PlaceResult(views.view(order), true)
     }
 

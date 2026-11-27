@@ -1,5 +1,7 @@
 // AC-01..11 (T8.1): ComplaintService responsibility.
 package com.foodrescue.backend.complaint.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 import com.foodrescue.backend.complaint.*
 import com.foodrescue.backend.complaint.dto.*
 import com.foodrescue.backend.complaint.entity.Complaint
@@ -24,7 +26,7 @@ import java.util.UUID
 
 data class ComplaintSubmitResult(val view: CustomerComplaintDetail, val created: Boolean)
 @Service
-class ComplaintService(private val complaints: ComplaintRepository, private val orders: CustomerOrderRepository,
+class ComplaintService(private val outbox: NotificationOutboxService, private val complaints: ComplaintRepository, private val orders: CustomerOrderRepository,
     private val cases: NoShowCaseRepository, private val attachments: AttachmentRepository, private val codes: ComplaintCodeGenerator,
     private val history: StoreHistoryRecorder, private val views: ComplaintViews, private val mapper: ObjectMapper,
     private val em: EntityManager, private val clock: Clock) {
@@ -57,6 +59,7 @@ class ComplaintService(private val complaints: ComplaintRepository, private val 
         val c=complaints.saveAndFlush(Complaint(o.store,o,o.customer,r.type,r.description.trim(),ComplaintStatus.OPEN,complaintCode=codes.next(),withinDisputeWindow=timely,idempotencyKey=key,requestFingerprint=fp))
         files.forEach { attachments.save(Attachment(it,complaint=c)) }; attachments.flush()
         history.record(o.customer,o.store,"COMPLAINT",c.id!!,"COMPLAINT_SUBMITTED",null,mapOf("status" to c.status))
+        outbox.orderEvent(o,NType.COMPLAINT,"COMPLAINT_SUBMITTED",key="COMPLAINT_SUBMITTED:${c.id}",store=true,payload=mapOf("complaintId" to c.id,"complaintCode" to c.complaintCode))
         return ComplaintSubmitResult(views.customer(c),true)
     }
     @Transactional(readOnly=true)
@@ -74,6 +77,7 @@ class ComplaintService(private val complaints: ComplaintRepository, private val 
         lockFiles(customerId,r.attachmentIds).forEach { attachments.save(Attachment(it,complaint=c)) };attachments.flush()
         c.description+="\n[${clock.instant()}] ${r.description!!.trim()}";c.status=ComplaintStatus.INVESTIGATING
         history.record(c.customer,c.store,"COMPLAINT",id,"COMPLAINT_SUPPLEMENTED",null,mapOf("status" to c.status))
+        outbox.orderEvent(c.order,NType.COMPLAINT,"COMPLAINT_SUPPLEMENTED",key="COMPLAINT_SUPPLEMENTED:${c.id}:${c.version}",customer=false,store=true,payload=mapOf("complaintId" to c.id))
         return views.customer(c)
     }
     fun lock(id: UUID): Complaint {

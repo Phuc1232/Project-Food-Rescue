@@ -1,5 +1,7 @@
 // AC-07: StoreChangeReviewService responsibility.
 package com.foodrescue.backend.store.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -22,7 +24,7 @@ import java.util.UUID
 
 /** Admin side of change requests. Callers must already be ADMIN (checked at the controller). */
 @Service
-class StoreChangeReviewService(
+class StoreChangeReviewService(private val outbox: NotificationOutboxService,
     private val requests: StoreChangeRequestRepository,
     private val stores: StoreRepository,
     private val accounts: AccountRepository,
@@ -70,6 +72,8 @@ class StoreChangeReviewService(
         requests.saveAndFlush(request)
         history.record(admin, store, StoreHistoryRecorder.CHANGE_REQUEST, request.id!!,
             if (request.status == StoreChangeRequestStatus.APPROVED) "STORE_CHANGE_APPROVED" else "STORE_CHANGE_REJECTED", before, after)
+        outbox.enqueue(store.owner,NType.STORE_REVIEW,"STORE_CHANGE_${request.status.name}","Store change reviewed",
+            mapOf("requestId" to request.id,"storeId" to store.id,"status" to request.status.name),dedupeKey="STORE_CHANGE:${request.id}")
         return views.adminRequest(request)
     }
 

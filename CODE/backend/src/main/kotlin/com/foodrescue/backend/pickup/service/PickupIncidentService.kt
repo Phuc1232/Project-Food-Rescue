@@ -1,5 +1,7 @@
 // AC-01..14 (T7.2): PickupIncidentService responsibility.
 package com.foodrescue.backend.pickup.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -23,7 +25,7 @@ import java.time.Clock
 import java.util.UUID
 
 @Service
-class PickupIncidentService(private val orders: CustomerOrderRepository, private val sessions: PickupSessionRepository,
+class PickupIncidentService(private val outbox: NotificationOutboxService, private val orders: CustomerOrderRepository, private val sessions: PickupSessionRepository,
     private val incidents: PickupIncidentRepository, private val allocations: BoxAllocationRepository,
     private val boxes: PhysicalBoxRepository, private val accounts: AccountRepository,
     private val authorization: StoreAuthorizationService, private val history: StoreHistoryRecorder, private val clock: Clock) {
@@ -54,6 +56,7 @@ class PickupIncidentService(private val orders: CustomerOrderRepository, private
             resolution = request.resolution ?: "PENDING_REVIEW"))
         history.record(actor, order.store, "CUSTOMER_ORDER", orderId, "PICKUP_INCIDENT_RECORDED", null,
             mapOf("incidentId" to incident.id, "sessionId" to session?.id, "affectedBoxIds" to affected))
+        outbox.orderEvent(order,NType.ORDER_STATUS,"HANDOVER_INCIDENT",key="HANDOVER_INCIDENT:${incident.id}",payload=mapOf("incidentId" to incident.id))
         return PickupIncidentView(incident.id!!, orderId, session?.id, actorId, incident.reason,
             incident.customerArrived, incident.occurredAt, incident.resolution)
     }

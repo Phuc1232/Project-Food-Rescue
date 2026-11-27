@@ -1,5 +1,7 @@
 // AC-01..15 (T7.3): PaidOrderCancellationExecutor responsibility.
 package com.foodrescue.backend.order.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.entity.Account
 import com.foodrescue.backend.common.exception.ApiException
@@ -29,7 +31,7 @@ import java.util.UUID
 
 /** Caller holds CustomerOrder lock. No bank transfer is made here; only refundable obligations are recorded. */
 @Component
-class PaidOrderCancellationExecutor(private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository,
+class PaidOrderCancellationExecutor(private val outbox: NotificationOutboxService, private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository,
     private val payments: PaymentRepository, private val refunds: RefundRequestRepository, private val money: OrderMoneyReader,
     private val sessions: PickupSessionRepository, private val history: StoreHistoryRecorder,
     private val cancellations: com.foodrescue.backend.order.repository.OrderCancellationRequestRepository,
@@ -77,6 +79,7 @@ class PaidOrderCancellationExecutor(private val allocations: BoxAllocationReposi
         }
         history.record(actor, order.store, "CUSTOMER_ORDER", order.id!!, "ORDER_CANCELLED", null,
             mapOf("status" to "CANCELLED", "reason" to reason, "refundAmount" to amount, "refundRequestIds" to obligations.map { it.id }))
+        outbox.orderEvent(order,NType.ORDER_CANCELLED,"ORDER_CANCELLED",store=true,payload=mapOf("refundAmount" to amount))
         return obligations.firstOrNull()
     }
     /** System/store safety intervention. Caller holds the order lock; normal customer cancellation keeps its existing guards. */

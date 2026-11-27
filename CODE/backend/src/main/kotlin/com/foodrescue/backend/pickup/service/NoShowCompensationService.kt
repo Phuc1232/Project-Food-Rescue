@@ -1,5 +1,7 @@
 // AC-01..14 (T7.4): NoShowCompensationService responsibility.
 package com.foodrescue.backend.pickup.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 import com.foodrescue.backend.pickup.CompensationStatus
 import com.foodrescue.backend.pickup.entity.NoShowCase
 import com.foodrescue.backend.pickup.repository.NoShowCaseRepository
@@ -13,7 +15,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @Service
-class NoShowCompensationService(private val cases: NoShowCaseRepository, private val jdbc: NamedParameterJdbcTemplate,
+class NoShowCompensationService(private val outbox: NotificationOutboxService, private val cases: NoShowCaseRepository, private val jdbc: NamedParameterJdbcTemplate,
     private val history: StoreHistoryRecorder) {
     @Transactional
     fun recordNotificationReceived(notificationId: UUID, receivedAt: Instant): NoShowCase? {
@@ -38,6 +40,7 @@ class NoShowCompensationService(private val cases: NoShowCaseRepository, private
             MapSqlParameterSource("now", Timestamp.from(now.truncatedTo(java.time.temporal.ChronoUnit.MICROS))).addValue("n", batchSize), UUID::class.java).filterNotNull()
         ids.forEach { id ->
             val case = cases.findById(id).orElseThrow(); case.compensationStatus = CompensationStatus.ELIGIBLE
+            outbox.orderEvent(case.order,NType.NO_SHOW,"NO_SHOW_COMPENSATION_ELIGIBLE",key="NO_SHOW_ELIGIBLE:${case.id}",customer=false,store=true,payload=mapOf("caseId" to case.id,"compensationStatus" to case.compensationStatus.name))
             history.record(null, case.order.store, "CUSTOMER_ORDER", case.order.id!!, "NO_SHOW_COMPENSATION_ELIGIBLE", null,
                 mapOf("caseId" to id, "compensationStatus" to "ELIGIBLE"))
         }

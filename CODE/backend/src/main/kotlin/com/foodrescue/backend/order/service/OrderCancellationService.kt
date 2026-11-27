@@ -1,5 +1,7 @@
 // AC-01..15 (T7.3): OrderCancellationService responsibility.
 package com.foodrescue.backend.order.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -28,7 +30,7 @@ import java.util.UUID
 data class CancellationSubmitResult(val request: OrderCancellationView, val created: Boolean)
 
 @Service
-class OrderCancellationService(private val orders: CustomerOrderRepository, private val accounts: AccountRepository,
+class OrderCancellationService(private val outbox: NotificationOutboxService, private val orders: CustomerOrderRepository, private val accounts: AccountRepository,
     private val cancellations: OrderCancellationRequestRepository, private val executor: PaidOrderCancellationExecutor,
     private val releaser: OrderReleaser, private val ordersView: OrderViews, private val views: OrderCancellationViews,
     private val money: OrderMoneyReader, private val refunds: RefundRequestRepository, private val refundViews: RefundViews,
@@ -82,6 +84,7 @@ class OrderCancellationService(private val orders: CustomerOrderRepository, priv
             CancellationRequestStatus.SUBMITTED, r.reason.trim(), false, clock.instant(), key, fingerprint))
         attach(customerId, req, r.attachmentIds)
         history(req, customerId, "CANCELLATION_REQUEST_SUBMITTED")
+        outbox.orderEvent(req.order,NType.ORDER_STATUS,"CANCELLATION_REQUESTED",key="CANCELLATION_REQUESTED:${req.id}:${req.version}",customer=false,store=true,payload=mapOf("requestId" to req.id))
         cancellations.flush()
         return CancellationSubmitResult(views.view(req), true)
     }
@@ -96,6 +99,7 @@ class OrderCancellationService(private val orders: CustomerOrderRepository, priv
         req.status = CancellationRequestStatus.SUBMITTED
         cancellations.saveAndFlush(req)
         history(req, customerId, "CANCELLATION_REQUEST_SUPPLEMENTED")
+        outbox.orderEvent(req.order,NType.ORDER_STATUS,"CANCELLATION_SUPPLEMENTED",key="CANCELLATION_SUPPLEMENTED:${req.id}:${req.version}",customer=false,store=true,payload=mapOf("requestId" to req.id))
         return views.view(req)
     }
 
@@ -106,6 +110,7 @@ class OrderCancellationService(private val orders: CustomerOrderRepository, priv
         if (req.status !in OPEN) executor.conflict("INVALID_REQUEST_STATUS", "Only open requests can be withdrawn")
         req.status = CancellationRequestStatus.WITHDRAWN
         history(req, customerId, "CANCELLATION_REQUEST_WITHDRAWN")
+        outbox.orderEvent(req.order,NType.ORDER_STATUS,"CANCELLATION_WITHDRAWN",key="CANCELLATION_WITHDRAWN:${req.id}:${req.version}",customer=false,store=true,payload=mapOf("requestId" to req.id))
         return views.view(req)
     }
 

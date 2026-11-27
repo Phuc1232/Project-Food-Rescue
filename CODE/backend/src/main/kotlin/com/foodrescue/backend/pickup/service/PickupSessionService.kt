@@ -1,5 +1,7 @@
 // AC-01..14 (T7.2): PickupSessionService responsibility.
 package com.foodrescue.backend.pickup.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -29,7 +31,7 @@ import java.time.Clock
 import java.util.UUID
 
 @Service
-class PickupSessionService(
+class PickupSessionService(private val outbox: NotificationOutboxService,
     private val orders: CustomerOrderRepository, private val sessions: PickupSessionRepository,
     private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository,
     private val authorization: StoreAuthorizationService, private val accounts: AccountRepository,
@@ -59,6 +61,7 @@ class PickupSessionService(
         order.statusChangedAt = now
         history.record(actor, order.store, "CUSTOMER_ORDER", orderId, "HANDOVER_STARTED", null,
             mapOf("sessionId" to session.id, "status" to order.status.name))
+        outbox.orderEvent(order,NType.ORDER_STATUS,"HANDOVER_STARTED",key="HANDOVER_STARTED:${session.id}")
         return view(session)
     }
 
@@ -89,6 +92,7 @@ class PickupSessionService(
             occurredAt = now, businessKey = "ORDER_COMPLETED:${order.id}"))
         history.record(accounts.getReferenceById(actorId), order.store, "CUSTOMER_ORDER", order.id!!,
             "HANDOVER_COMPLETED", null, mapOf("sessionId" to session.id, "status" to order.status.name))
+        outbox.orderEvent(order,NType.ORDER_STATUS,"ORDER_COMPLETED")
         return view(session)
     }
 

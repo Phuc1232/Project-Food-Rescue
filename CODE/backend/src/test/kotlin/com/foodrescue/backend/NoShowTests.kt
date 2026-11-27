@@ -176,9 +176,9 @@ class NoShowTests : StoreTestFixtures() {
         assertEquals(403,recheck(token=staff).statusCode());assertEquals(200,recheck(token=boxStaff).statusCode())
     }
     @Test fun `AC-04 transaction rolls back when financial event insert fails`() {
-        tick();jdbc.execute("alter table financial_event add constraint test_reject_no_show check(type <> 'NO_SHOW_CONFIRMED')")
+        tick();val notificationsBefore=count("select count(*) from notification");jdbc.execute("alter table financial_event add constraint test_reject_no_show check(type <> 'NO_SHOW_CONFIRMED')")
         try {assertEquals(409,confirm().statusCode());assertEquals("CONFIRMED",state());assertEquals(0,count("select count(*) from no_show_case"))
-            assertEquals(0,count("select count(*) from refund_request"));assertEquals(0,count("select count(*) from notification"))
+            assertEquals(0,count("select count(*) from refund_request"));assertEquals(0,count("select count(*) from notification where type='NO_SHOW'"));assertEquals(notificationsBefore,count("select count(*) from notification"))
             assertEquals(2,count("select count(*) from box_allocation where order_id=? and status='CONFIRMED'",order))
         } finally {jdbc.execute("alter table financial_event drop constraint test_reject_no_show")}
     }

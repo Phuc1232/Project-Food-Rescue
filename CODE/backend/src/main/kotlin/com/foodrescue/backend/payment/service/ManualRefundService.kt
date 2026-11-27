@@ -1,5 +1,7 @@
 // AC-01..05 (T6.5): ManualRefundService responsibility.
 package com.foodrescue.backend.payment.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.catalog.service.PriceValidator
@@ -38,7 +40,7 @@ import java.util.UUID
  * changes money state, once, linked to the original payment; a failure leaves the obligation open (E3). Callers are ADMIN.
  */
 @Service
-class ManualRefundService(
+class ManualRefundService(private val outbox: NotificationOutboxService,
     private val complaints: com.foodrescue.backend.complaint.repository.ComplaintRepository,
     private val orders: com.foodrescue.backend.order.repository.CustomerOrderRepository,
     private val obligations: RefundRequestRepository,
@@ -79,6 +81,7 @@ class ManualRefundService(
         o.approvedAmount = amount; o.approvedBy = admin; o.approvedAt = clock.instant(); o.status = RefundRequestStatus.APPROVED
         obligations.saveAndFlush(o)
         history.record(admin, o.order.store, ENTITY, o.id!!, "REFUND_APPROVED", null, mapOf("amount" to amount, "note" to r.note!!.trim()))
+        outbox.orderEvent(o.order,NType.REFUND,"REFUND_APPROVED",key="REFUND_APPROVED:${o.id}:${o.version}",payload=mapOf("refundRequestId" to o.id,"amount" to amount))
         return views.view(o, true)
     }
 
@@ -107,6 +110,7 @@ class ManualRefundService(
             if (c.status == com.foodrescue.backend.complaint.ComplaintStatus.DECIDED &&
                 obligations.findAllByComplaintIdOrderByCreatedAt(complaintId).all { it.status == RefundRequestStatus.FULFILLED }) {
                 c.status = com.foodrescue.backend.complaint.ComplaintStatus.CLOSED; c.closedAt = now
+                outbox.orderEvent(c.order,NType.COMPLAINT,"COMPLAINT_CLOSED",key="COMPLAINT_CLOSED:${c.id}",payload=mapOf("complaintId" to c.id))
                 history.record(admin, c.store, "COMPLAINT", complaintId, "COMPLAINT_CLOSED", null, mapOf("status" to c.status))
             }
         }
@@ -115,6 +119,7 @@ class ManualRefundService(
         // Only money that was booked as order revenue is reversed in the store ledger (BR-T65-05).
         if (payment.status == PaymentStatus.VERIFIED)
             ledger.save(LedgerEntry(event, o.order.store, LedgerEntryType.CUSTOMER_REFUND, amount.negate(), payment.currency, occurredAt = now))
+        outbox.orderEvent(o.order,NType.REFUND,"REFUND_SUCCEEDED",key="REFUND_SUCCEEDED:${refund.id}",payload=mapOf("refundRequestId" to o.id,"refundId" to refund.id,"amount" to amount))
         history.record(admin, o.order.store, ENTITY, o.id!!, "REFUND_SUCCEEDED", null, mapOf("amount" to amount, "bankTransactionId" to bankId))
         return views.view(o, true)
     }
@@ -125,8 +130,9 @@ class ManualRefundService(
         if (o.status != RefundRequestStatus.APPROVED) throw conflict("Refund obligation must be APPROVED (it is ${o.status})")
         val admin = accounts.findById(adminId).orElse(null) ?: authenticationFailed()
         val n = refunds.countByRequestId(o.id!!) + 1
-        refunds.saveAndFlush(Refund(o.order, o, o.payment!!, o.approvedAmount!!, RefundStatus.FAILED, null, "refund:${o.id}:FAILED-$n", null,
+        val failedRefund=refunds.saveAndFlush(Refund(o.order, o, o.payment!!, o.approvedAmount!!, RefundStatus.FAILED, null, "refund:${o.id}:FAILED-$n", null,
             recordedBy = admin, note = note.trim()))
+        outbox.orderEvent(o.order,NType.REFUND,"REFUND_FAILED",key="REFUND_FAILED:${failedRefund.id}",payload=mapOf("refundRequestId" to o.id,"refundId" to failedRefund.id))
         history.record(admin, o.order.store, ENTITY, o.id!!, "REFUND_FAILED", null, mapOf("note" to note.trim()))
         return views.view(o, true)     // obligation stays APPROVED (UC-72 E3)
     }

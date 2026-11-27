@@ -1,5 +1,7 @@
 // AC-01..14 (T7.4): NoShowService responsibility.
 package com.foodrescue.backend.pickup.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.repository.AccountRepository
 import com.foodrescue.backend.common.exception.ApiException
@@ -11,10 +13,6 @@ import com.foodrescue.backend.finance.repository.FinancialEventRepository
 import com.foodrescue.backend.file.entity.Attachment
 import com.foodrescue.backend.file.entity.StoredFile
 import com.foodrescue.backend.file.repository.AttachmentRepository
-import com.foodrescue.backend.notification.NotificationStatus
-import com.foodrescue.backend.notification.NotificationType
-import com.foodrescue.backend.notification.entity.Notification
-import com.foodrescue.backend.notification.repository.NotificationRepository
 import com.foodrescue.backend.order.AllocationStatus
 import com.foodrescue.backend.order.OrderStatus
 import com.foodrescue.backend.order.dto.AllocatedBoxView
@@ -51,11 +49,11 @@ import java.util.UUID
 data class NoShowConfirmResult(val view: NoShowCaseDetailView, val created: Boolean)
 
 @Service
-class NoShowService(private val authorization: StoreAuthorizationService, private val orders: CustomerOrderRepository,
+class NoShowService(private val outbox: NotificationOutboxService, private val authorization: StoreAuthorizationService, private val orders: CustomerOrderRepository,
     private val cases: NoShowCaseRepository, private val sessions: PickupSessionRepository, private val incidents: PickupIncidentRepository,
     private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository, private val stores: StoreRepository,
     private val accounts: AccountRepository, private val payments: PaymentRepository, private val refunds: RefundRequestRepository,
-    private val refundViews: RefundViews, private val money: OrderMoneyReader, private val notifications: NotificationRepository,
+    private val refundViews: RefundViews, private val money: OrderMoneyReader,
     private val events: FinancialEventRepository, private val attachments: AttachmentRepository, private val history: StoreHistoryRecorder,
     private val mapper: ObjectMapper, private val em: EntityManager, private val jdbc: NamedParameterJdbcTemplate, private val clock: Clock) {
     @Transactional(readOnly = true)
@@ -139,8 +137,8 @@ class NoShowService(private val authorization: StoreAuthorizationService, privat
             }
         order.status = OrderStatus.NO_SHOW; order.statusReason = "NO_SHOW_CONFIRMED: ${r.evidence.trim()}"; order.statusChangedAt = now
         order.pickupCodeHash = null; order.pickupCodeEncrypted = null; order.pickupCodeKeyId = null
-        val notification = notifications.save(Notification(order.customer, order, NotificationType.NO_SHOW,
-            mapper.writeValueAsString(mapOf("orderId" to orderId, "retainedAmount" to amounts.retainedAmount, "refundAmount" to amounts.refundAmount)), NotificationStatus.PENDING))
+        val notification = outbox.enqueue(order.customer,NType.NO_SHOW,"NO_SHOW_CONFIRMED","No-show confirmed",
+            mapOf("orderId" to orderId,"retainedAmount" to amounts.retainedAmount,"refundAmount" to amounts.refundAmount),order,"NO_SHOW_CONFIRMED:$orderId")
         val actor = accounts.getReferenceById(actorId)
         val case = cases.save(NoShowCase(order = order, verifiedBy = actor, verifiedAt = now, evidence = r.evidence.trim(),
             notification = notification, retainedAmount = amounts.retainedAmount, compensationStatus = CompensationStatus.HELD,

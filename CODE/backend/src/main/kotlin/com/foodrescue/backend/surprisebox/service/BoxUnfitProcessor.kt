@@ -1,5 +1,7 @@
 // AC-01..12 (T7.5): BoxUnfitProcessor responsibility.
 package com.foodrescue.backend.surprisebox.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 
 import com.foodrescue.backend.account.entity.Account
 import com.foodrescue.backend.common.exception.ApiException
@@ -35,7 +37,7 @@ import java.util.UUID
 
 /** Caller has locked all affected orders before the box. Also used while an entire batch is locked. */
 @Component
-class BoxUnfitProcessor(private val allocations: BoxAllocationRepository, private val inspections: BoxInspectionRepository,
+class BoxUnfitProcessor(private val outbox: NotificationOutboxService, private val allocations: BoxAllocationRepository, private val inspections: BoxInspectionRepository,
     private val complaintCodes: com.foodrescue.backend.complaint.service.ComplaintCodeGenerator, private val complaints: ComplaintRepository, private val attachments: AttachmentRepository, private val refunds: RefundRequestRepository,
     private val releaser: OrderReleaser, private val cancellation: PaidOrderCancellationExecutor, private val views: BoxViews,
     private val history: StoreHistoryRecorder, private val mapper: ObjectMapper, private val em: EntityManager, private val clock: Clock) {
@@ -76,6 +78,7 @@ class BoxUnfitProcessor(private val allocations: BoxAllocationRepository, privat
             box.status = BoxStatus.DELIVERED
             val complaint = complaints.save(Complaint(box.store, order, order.customer, ComplaintType.FOOD_SAFETY, notes,
                 ComplaintStatus.OPEN, complaintCode = complaintCodes.next(), sourceBox = box, idempotencyKey = key))
+            outbox.orderEvent(order,NType.COMPLAINT,"COMPLAINT_SUBMITTED",key="COMPLAINT_SUBMITTED:${complaint.id}",store=true,payload=mapOf("complaintId" to complaint.id,"complaintCode" to complaint.complaintCode))
             complaintId = complaint.id
             files.forEach { attachments.save(Attachment(it, complaint = complaint)) }
         } else {

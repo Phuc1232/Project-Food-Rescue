@@ -1,0 +1,21 @@
+Starting a Gradle Daemon, 1 incompatible and 2 stopped Daemons could not be reused, use --status for details
+> Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :compileKotlin UP-TO-DATE
+> Task :compileJava NO-SOURCE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :resolveMainClassName UP-TO-DATE
+> Task :bootJar UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :assemble UP-TO-DATE
+> Task :compileTestKotlin UP-TO-DATE
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+> Task :test UP-TO-DATE
+> Task :check UP-TO-DATE
+> Task :build UP-TO-DATE
+
+BUILD SUCCESSFUL in 51s
+8 actionable tasks: 8 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

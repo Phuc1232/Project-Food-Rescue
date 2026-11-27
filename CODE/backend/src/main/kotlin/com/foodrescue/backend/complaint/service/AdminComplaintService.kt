@@ -1,5 +1,7 @@
 // AC-01..11 (T8.1): AdminComplaintService responsibility.
 package com.foodrescue.backend.complaint.service
+import com.foodrescue.backend.notification.service.NotificationOutboxService
+import com.foodrescue.backend.notification.NotificationType as NType
 import com.foodrescue.backend.complaint.*
 import com.foodrescue.backend.complaint.dto.*
 import com.foodrescue.backend.complaint.entity.Complaint
@@ -32,7 +34,7 @@ import java.math.BigDecimal
 import java.util.UUID
 @Service
 @PreAuthorize("hasRole('ADMIN')")
-class AdminComplaintService(private val complaints: ComplaintRepository,private val workflow: ComplaintService,private val views: ComplaintViews,
+class AdminComplaintService(private val outbox: NotificationOutboxService, private val complaints: ComplaintRepository,private val workflow: ComplaintService,private val views: ComplaintViews,
     private val accounts: AccountRepository,private val cases: NoShowCaseRepository,private val payments: PaymentRepository,
     private val refunds: RefundRepository,private val obligations: RefundRequestRepository,private val events: FinancialEventRepository,
     private val history: StoreHistoryRecorder,private val mapper: ObjectMapper,private val clock: Clock) {
@@ -104,6 +106,10 @@ class AdminComplaintService(private val complaints: ComplaintRepository,private 
     }
     private fun record(c: Complaint,action: String) {
         history.record(c.handledBy,c.store,"COMPLAINT",c.id!!,action,null,mapOf("status" to c.status,"outcome" to c.outcome,"approvedRefundAmount" to c.approvedRefundAmount))
+        complaints.flush()
+        val key=if(action=="COMPLAINT_INFO_REQUESTED") "$action:${c.id}:${c.version}" else "$action:${c.id}"
+        outbox.orderEvent(c.order,NType.COMPLAINT,action,key=key,store=action=="COMPLAINT_DECIDED",
+            payload=mapOf("complaintId" to c.id,"complaintCode" to c.complaintCode,"outcome" to c.outcome,"approvedRefundAmount" to c.approvedRefundAmount))
         complaints.flush() // The detail view reads audit history through JDBC in this transaction.
     }
 }
