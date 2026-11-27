@@ -43,7 +43,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
 | 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [x] T7.5 |
-| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [x] T8.2 · [x] T8.3 · [ ] T8.4 · [ ] T8.5 |
+| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [x] T8.2 · [x] T8.3 · [x] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
 Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu đề card.
@@ -357,7 +357,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** Σ bút toán của đơn khớp tiền thu − tiền hoàn; job chạy lại không ghi trùng (`business_key`); làm tròn
   thống nhất (NFR-17, chốt ở Gate A).
 
-### [ ] T8.4 — Đối soát và chi trả
+### [x] T8.4 — Đối soát và chi trả
 - **Phụ thuộc:** T8.3. **Tài liệu:** UC-42, UC-49, UC-80..83, BR-50..52, D05.
 - **Phạm vi:** owner quản lý tài khoản nhận tiền theo phiên bản (che thông tin nhạy cảm; xác minh trước khi dùng);
   admin lập bảng đối soát DRAFT theo cửa hàng + kỳ, mỗi dòng truy về bút toán gốc, tách khoản giữ/tranh chấp/ngoại lệ,

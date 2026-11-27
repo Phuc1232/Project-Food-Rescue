@@ -1,6 +1,7 @@
 // AC-04,12: FileAccessService responsibility.
 package com.foodrescue.backend.file.service
 
+import com.foodrescue.backend.common.exception.ApiException
 import com.foodrescue.backend.account.PlatformRole
 import com.foodrescue.backend.account.repository.AccountRoleRepository
 import com.foodrescue.backend.file.entity.StoredFile
@@ -19,6 +20,12 @@ class FileAccessService(
         val uploader = file.uploadedBy.id == accountId
         val links = attachments.findAllByFileId(file.id!!)
         if (links.isEmpty()) return uploader
+        // T8.4: payout evidence has an explicit owner/admin boundary and a documented 403 response.
+        val payoutLinks=links.filter { it.payout!=null }
+        if(payoutLinks.isNotEmpty()) {
+            if(payoutLinks.any { link -> policies.firstOrNull { it.supports(link) }?.canRead(accountId,link)==true }) return true
+            throw ApiException(403,"ACCESS_DENIED","Access denied")
+        }
         if (links.any { link -> policies.firstOrNull { it.supports(link) }?.canRead(accountId, link) == true }) return true
         return uploader || roles.existsByAccountIdAndRole(accountId, PlatformRole.ADMIN)
     }

@@ -13,4 +13,8 @@ interface SettlementRepository : JpaRepository<Settlement, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select entity from Settlement entity where entity.id = :id")
     fun findForUpdate(@Param("id") id: UUID): Settlement?
+    fun findFirstByStoreIdAndStatus(storeId: UUID, status: com.foodrescue.backend.finance.SettlementStatus): Settlement?
+    fun findByIdAndStoreId(id: UUID, storeId: UUID): Settlement?
+    fun findFirstByStoreIdAndStatusNotOrderByPeriodEndsAtDescCreatedAtDesc(storeId: UUID, status: com.foodrescue.backend.finance.SettlementStatus): Settlement?
+    fun existsBySettlementCode(code: String): Boolean
 }

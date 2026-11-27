@@ -34,6 +34,8 @@ object TestAuthKeys {
         r.add("spring.mail.host") { "localhost" }; r.add("spring.mail.port") { 1025 }
         r.add("auth.jwt.key-id") { "test-key" }; r.add("auth.rate-limit-key-secret") { "test-only-secret-at-least-32-bytes-long" }
         r.add("files.storage-dir") { fileRoot.toString() }
+        r.add("finance.payout-account.active-key-id") { "payout-test" }
+        r.add("finance.payout-account.keys") { "payout-test:" + Base64.getEncoder().encodeToString(ByteArray(32) { 11 }) }
         r.add("pickup.code.active-key-id") { "test-v1" }
         r.add("pickup.code.keys") { "test-v1:" + Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
         // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.

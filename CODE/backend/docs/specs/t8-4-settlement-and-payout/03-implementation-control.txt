@@ -1,0 +1,179 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T8.4
+Ngày: 2026-11-27 | Trạng thái: DONE
+Plan: docs/specs/t8-4-settlement-and-payout/02-plan.md
+
+1. KẾT QUẢ
+- V25 thêm metadata mã hóa/xác minh tài khoản, snapshot đối soát và thông tin chi trả. Giữ nguyên 43 entities, không sửa V1–V24 hay trigger V3. Unique: 1 tài khoản hiện hành/store, 1 DRAFT/store, settlement_code và transfer_reference.
+- Tài khoản nhận tiền theo phiên bản: AES-256-GCM, nonce ngẫu nhiên, AAD ràng buộc storeId + accountVersion, key ring riêng. Owner và danh sách Admin chỉ nhận số che; Admin reveal có audit PAYOUT_ACCOUNT_REVEALED. Audit không chứa số tài khoản plaintext.
+- Lập/rebuild DRAFT duy nhất: gom quyền lợi chưa thuộc bảng khác trước periodEndsAt, bao gồm khoản cũ vừa mở khóa và adjustment kỳ trước; loại commission adjustments của nền tảng. Rebuild chỉ xóa/chèn dòng DRAFT, flush/clear session và reload.
+- Tách heldItems (NO_SHOW_HELD, OPEN_DISPUTE, OPEN_COMPLAINT) và unresolvedExceptions (MISSING_LEDGER_ENTRY, LEDGER_IMBALANCE trên COMPLETED). No-show ELIGIBLE được đối soát dù nghĩa vụ hoàn tiền thủ công còn PENDING, đúng §2.3 của plan. Ngoại lệ hoặc fingerprint thay đổi -> 409 khi confirm. Fingerprint SHA-256 deterministic trên toàn tập eligible/held/exception, kiểm tra cả tổng header và tập dòng thực tế.
+- CONFIRMED idempotent; trigger V3 khóa dòng; NoShowCase ELIGIBLE có khoản compensation đã chốt chuyển SETTLED. Thông báo xác nhận nói rõ chưa đồng nghĩa đã chi tiền.
+- Bảng âm: recoveryAmount > 0, payableAmount = 0, chặn mọi payout. previousSettlement và originalSettlementId truy về kỳ gốc. Nợ được cấn trừ qua các kỳ dương đúng một lần, hạn mức chi = max(0, totalAmount - công nợ còn lại kỳ trước).
+- Chi trả thủ công PENDING/VERIFIED, verify/fail: tài khoản hiện hành phải đã xác minh và khớp id/version, PENDING + VERIFIED giữ hạn mức, VERIFIED bắt buộc thời điểm và chứng từ. FAILED giải phóng hạn mức nhưng không tái sử dụng mã chuyển khoản. Atomic INSERT ON CONFLICT bảo vệ transferReference toàn hệ thống, kể cả hai cửa hàng khác nhau.
+- Trạng thái theo tiền VERIFIED thực tế: CONFIRMED -> PARTIALLY_PAID -> PAID. Chứng từ chỉ Admin và Owner cửa hàng truy cập được; payout evidence từ chối 403 theo AC-11.
+- 14 paths mới, tổng 140 paths / 31 tags; 1.118 local references resolve, operationIds duy nhất; schema/example/errors đầy đủ. Hai path file được bổ sung response 403 cho payout evidence.
+
+2. KIỂM CHỨNG
+- Baseline: BUILD SUCCESSFUL, 24 migrations, 59 suites, 348 PASS / 1 SKIPPED.
+- TDD RED: viết SettlementAndPayoutTests trước service/controller; chạy AC-01 và xác nhận HTTP 404 thay vì 200 tại PUT payout-account trong XML, 1 test / 1 failure (2m20s).
+- Targeted T8.4 + codec: 13/13 PASS sau các sửa đổi concurrency và quyền chứng từ. Bổ sung thêm ca global reference giữa hai store, thiếu ledger, pending không chứng từ và khóa order NOWAIT.
+- Hồi quy theo plan: 94/94 PASS, 11 suite, 0 FAIL / 0 ERROR / 0 SKIPPED (9m28s).
+- Test bổ sung missing allocation PASS. Ca NOWAIT ban đầu phát hiện 503, đã chuyển ánh xạ theo SQLSTATE 55P03 và test đã PASS (2m17s).
+- Lượt full build đầu phát hiện context bootstrap không web thiếu hai thuộc tính payout key mới; đã bổ sung chuyển tiếp key giả trong AdminBootstrapTests, không thay đổi validation ứng dụng. Đã kiểm tra không còn context khởi động riêng khác trong test. Hai test AdminBootstrap + no-show ELIGIBLE còn refund PENDING đã PASS (3/3, 2m7s).
+- Đã rà lại điều kiện no-show theo §2.3: kiểm tra imbalance chỉ áp dụng COMPLETED; no-show ELIGIBLE không cần đợi refund thủ công. Có ca riêng chứng minh.
+- Pending payout cho phép dùng lại evidence đã gắn trên chính payout đó khi verify, không tạo link trùng. Ca dùng lại chứng từ đã PASS (1/1, 1m28s). Full build cuối đã thành công; đã đóng roadmap sau kiểm chứng.
+- Lệnh: .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain
+- Full build: BUILD SUCCESSFUL in 16m55s. Đã đọc trực tiếp HTML index và XML toàn bộ 61 suite.
+- Kết quả cuối: 367 test = 366 PASS / 1 SKIPPED / 0 FAIL / 0 ERROR.
+- SettlementAndPayoutTests 17/17 PASS; PayoutAccountCodecTests 1/1 PASS; AdminBootstrapTests 2/2 PASS.
+- Ca skip có sẵn: SwaggerUiContextPathTests :: hold disposable browser sandbox until stop signal().
+- Báo cáo kiểm thử: build/reports/tests/test/index.html; build/test-results/test/TEST-*.xml.
+- Test dùng PostgreSQL Testcontainers, FakePaymentGateway, khóa mã hóa giả; không dùng DB Compose hay giao dịch/chuyển tiền thật. Không tắt/skip/xóa test để làm xanh build.
+
+3. FILE ↔ AC / TEST
+- V25__settlement_and_payout_details.sql; finance/entity/{StorePayoutAccount,Settlement,StorePayout}.kt; finance/repository/{StorePayoutAccount,Settlement,SettlementLine,StorePayout}Repository.kt: AC-01..10,12; migration/entity reflection và T8.4 integration.
+- finance/PayoutAccountProperties.kt; finance/service/{PayoutAccountCodec,PayoutAccountService}.kt; DTO account: AC-01,02,09,11; PayoutAccountCodecTests, SettlementAndPayoutTests.
+- finance/service/{SettlementService,SettlementQueryService}.kt; DTO settlement: AC-03..08,11; snapshot, missing/imbalanced ledger, held/no-show, negative/carry-forward và lịch sử.
+- finance/service/{StorePayoutService,PayoutAttachmentPolicy}.kt; DTO payout: AC-09..11; partial/pending/verified/failed, account change, limits, cross-store concurrent duplicate reference, evidence.
+- file/service/FileAccessService.kt: AC-11; tích hợp payout policy và 403 cho chứng từ chi trả (phần Q5 đã nêu trong plan).
+- finance/controller/{StoreFinanceController,AdminSettlementController}.kt; docs/api/openapi.yaml: AC-01..12; HTTP integration/contract/Swagger.
+- .env.example; application.yml; support/AuthTestFixtures.kt: key ring riêng môi trường và key giả khi test.
+- {AdminBootstrapTests,AuthMigrationTests,FoodRescueApplicationTests,SwaggerUiTests}.kt: AC-12; 25 migrations, 43 entities, 140 paths, 31 tags.
+- .gitignore; 02-plan.md; roadmap-3-9.md; báo cáo này: kiểm soát và đã đóng task sau kiểm chứng.
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, dev)
+1) Owner login/Authorize. PUT /stores/{storeId}/finance/payout-account với bankCode, accountNumber 6..34 chữ/số và accountHolderName; response chỉ có accountNumberMasked. GET /payout-accounts xem lịch sử; PUT lần nữa tăng accountVersion, đóng bản cũ và yêu cầu verify lại.
+2) Admin login/Authorize. GET /admin/finance/stores/{storeId}/payout-accounts chỉ thấy bản che. GET /active-for-payout xem số đầy đủ để đối chiếu, có audit. POST /{accountId}/verify với expectedVersion: sai bản trả 409, đúng bản đánh dấu verifiedAt và thông báo Owner.
+3) Chuẩn bị đơn COMPLETED đã hạch toán T8.3. POST /admin/finance/settlements/draft với storeId, periodStartsAt, periodEndsAt (UTC, end > start): lines truy tới order/ledger gốc, heldItems và unresolvedExceptions tách riêng; tiền là nguyên đồng VND.
+4) Tạo khiếu nại hoặc thêm adjustment đủ trong cutoff sau khi có DRAFT; POST /{settlementId}/confirm trả 409. POST /draft cùng store để rebuild và xem lại số liệu trước khi confirm.
+5) Thiếu bút toán hoặc ledger không cân bằng: unresolvedExceptions có reason; confirm bị chặn 409. Hoàn tất hạch toán/đối soát dữ liệu rồi rebuild.
+6) No-show đang HELD/DISPUTED không vào lines; qua luồng T7.4/T8.3 đủ điều kiện, không còn tranh chấp, rebuild -> line compensation đủ điều kiện; confirm chuyển NoShowCase sang SETTLED. Gọi confirm lại idempotent; sửa/xóa line đã chốt bị DB chặn.
+7) Adjustment âm sau khi kỳ trước đã chốt: kỳ tiếp theo có line mới và originalSettlementId, previousSettlement. Tổng âm hiển thị recoveryAmount, payout 409; kỳ dương sau cấn nợ và chỉ cho chi phần payableAmount còn lại.
+8) POST /admin/finance/settlements/{id}/payouts: gửi payoutAccountId + expectedAccountVersion, amount, transferReference. VERIFIED mặc định cần transferredAt + evidenceFileId đã upload bởi Admin; PENDING có thể chưa có chứng từ và giữ chỗ hạn mức.
+9) Chi một phần -> PARTIALLY_PAID; phần còn lại VERIFIED -> PAID. Thử amount vượt remainingPayableAmount hoặc transferReference trùng -> 409. Hai request vượt hạn mức cùng lúc chỉ một thành công. Hai store dùng cùng transferReference cũng chỉ một thành công.
+10) PENDING: /payouts/{id}/verify cần ngày chuyển và chứng từ; vừa đổi tài khoản thì 409. /fail có reason giải phóng hạn mức, dùng reference mới cho lần chi sau.
+11) Owner GET /finance/settlements và /{id}, xem totals/held/exception/lines/payouts; Admin GET /admin/finance/settlements lọc storeId/from/to/status, page/size và sort periodEndsAt/confirmedAt/createdAt. Sort sai hoặc from>to trả 400.
+12) Tải /files/{id}/content: Admin và Owner đúng store 200; Staff đủ 6 quyền V7, Customer và Owner khác 403. Finance Owner APIs bị chặn 403 với Staff/người ngoài; chưa login 401; Owner gọi Admin APIs 403.
+Các thao tác ngân hàng trong kịch bản dùng môi trường/dữ liệu thử; phần mềm chỉ ghi nhận chuyển khoản thủ công, không gọi ngân hàng chuyển tiền.
+
+5. CẤU HÌNH VÀ GIỚI HẠN
+- Trước khi chạy ứng dụng cần cấu hình PAYOUT_ACCOUNT_ACTIVE_KEY_ID và PAYOUT_ACCOUNT_KEYS (id:base64_32bytes,...). AES-256 yêu cầu đúng 32 byte/key; đây là key ring riêng, giữ key cũ khi xoay key để đọc được ciphertext lịch sử. .env.example chỉ chứa placeholder rỗng, không lưu key thật.
+- Mọi write T8.4 khóa Store đầu tiên. Lấy store_id/settlement_id bằng scalar SQL trước khóa, tránh entity cũ khi chờ khóa. Snapshot khóa tập đơn hiện có bằng NOWAIT; đơn đang được cập nhật trả 409 để retry, tránh chờ khóa chéo với ledger job nhiều đơn. Đơn được tạo đồng thời sau điểm chụp được gom ở lần/kỳ sau theo carry-forward.
+- Phân loại hiện quét/khóa các đơn hiện có của store và tính tập ứng viên trong bộ nhớ. Nếu dữ liệu tăng lớn cần tối ưu truy vấn snapshot/phân loại trong task hiệu năng, giữ nguyên các bất biến và kiểm tra concurrency.
+- Công nợ được theo dõi và cấn trừ bằng chuỗi previousSettlement; không có API ghi nhận thu hồi tiền mặt riêng trong plan này.
+- Không triển khai thống kê/giám sát T8.5, không tự chuyển tiền, không tự cấu hình key thật hay chạy migration trên DB production. Không commit theo quy định Git đang tạm ngưng của repo.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Chưa ghi nhận lỗi ngoài phạm vi T8.4.
+
+7. DANH MỤC FILE / SHA-256
+
+File | Loại | SHA-256
+.env.example | MODIFIED | 0069e562b7d3f716310f42eebabd2d505fbff43c0ff6b9baacf2b71e53160bdd
+docs/api/openapi.yaml | MODIFIED | d931e1cf0a240b2172559ed2693307850aebb01181789f87bf9805ee3a024322
+src/main/kotlin/com/foodrescue/backend/file/service/FileAccessService.kt | MODIFIED | bb3e283204315e862b534a859bf24bc8c4589d7acbd1d97ff7ea025b1dba9f03
+src/main/kotlin/com/foodrescue/backend/finance/PayoutAccountProperties.kt | NEW | 4d731ed13566805ffd4fb460b99c5221124aab631b6cca404e8b115e43b70125
+src/main/kotlin/com/foodrescue/backend/finance/controller/AdminSettlementController.kt | NEW | c781066149b074017eecc21ee805d2bf578cdc8157553356ccf0f7b9bb2dbe14
+src/main/kotlin/com/foodrescue/backend/finance/controller/StoreFinanceController.kt | MODIFIED | 4ee312b4fa33b63acb055dd6af71a75aa465a7220e2cf993842ad2ed8f9cd40d
+src/main/kotlin/com/foodrescue/backend/finance/dto/AdminPayoutRecipientView.kt | NEW | cb91c4f2e8db00c87945760607435fd18a801f76674d10d2fc4d793262253ff2
+src/main/kotlin/com/foodrescue/backend/finance/dto/CreateSettlementDraftRequest.kt | NEW | 533422a3d8efde547a39060cf368cdf253418d4ab944cf2bae0636a00aeef669
+src/main/kotlin/com/foodrescue/backend/finance/dto/CreateStorePayoutRequest.kt | NEW | 2642fa4b82e59d86ab46facb40810d256dffa988bc73e922e613f3de417c7044
+src/main/kotlin/com/foodrescue/backend/finance/dto/FailStorePayoutRequest.kt | NEW | fe6f50f46666b3606d4ff6d721099cf4b7fe9e691bb097b32b4cc50202373d98
+src/main/kotlin/com/foodrescue/backend/finance/dto/HeldExceptionView.kt | NEW | 06c56b4c81f0138956543249e10037939c8ff314681f02afb50bacf1f6708fa1
+src/main/kotlin/com/foodrescue/backend/finance/dto/PayoutAccountHistoryView.kt | NEW | b899ca05e87140a876a7bb93bcbfecdbc13da1194d458218cb9859a153c209fa
+src/main/kotlin/com/foodrescue/backend/finance/dto/SettlementDetailView.kt | NEW | 4ba4e8a3e2d357d28b67231b19fad62579a589aeba0770e0d1880e0b279b4a44
+src/main/kotlin/com/foodrescue/backend/finance/dto/SettlementLineView.kt | NEW | 91b0710f78e5cef976976f9c1070d88fa7a234b930420e9497428502eb45ff39
+src/main/kotlin/com/foodrescue/backend/finance/dto/SettlementSnapshotView.kt | NEW | de2dd778953a27f57b23c08984d719c04d1ff74793a441c9d9fb853e480053c5
+src/main/kotlin/com/foodrescue/backend/finance/dto/SettlementSummaryView.kt | NEW | 650392d5f8e657a565cc4210db5630a0c8bffe23e6e3defaebc9a8950d2fab25
+src/main/kotlin/com/foodrescue/backend/finance/dto/StorePayoutAccountView.kt | NEW | 5177517d2e06beac6512ad373b4acca69a615e4bd669bca580aaeb02079e2eaf
+src/main/kotlin/com/foodrescue/backend/finance/dto/StorePayoutView.kt | NEW | af4e52e00d396974dc95e25a5ecc378f36c2c1729fd6c607058ec07f0902b97e
+src/main/kotlin/com/foodrescue/backend/finance/dto/UpsertPayoutAccountRequest.kt | NEW | ea48faadedb456504968033ee9d99279fce1195a9a9bfb188329490c8f3e6d77
+src/main/kotlin/com/foodrescue/backend/finance/dto/VerifyPayoutAccountRequest.kt | NEW | f98c65e6a7d6109d171c789c9a3e971afc2fbfd7843af938d6b4adf824fa2122
+src/main/kotlin/com/foodrescue/backend/finance/dto/VerifyStorePayoutRequest.kt | NEW | cd98b670c7ff51f38733ef1168a4d83c1e8fd5c5957a25054513be2647f3b83c
+src/main/kotlin/com/foodrescue/backend/finance/entity/Settlement.kt | MODIFIED | d4b637dbc6009e925125fb6e45b0b4b292701e094fadf8f0c1e00fdfd0a1f1f1
+src/main/kotlin/com/foodrescue/backend/finance/entity/StorePayout.kt | MODIFIED | 8fa355b671ef43de1fe9b3e372b2d76d2f989747bf2a372417e254b19fb0eeec
+src/main/kotlin/com/foodrescue/backend/finance/entity/StorePayoutAccount.kt | MODIFIED | 392f28cd7bdd715eed84e0df50602736dec19517a27bfb579e9814d94a059afc
+src/main/kotlin/com/foodrescue/backend/finance/repository/SettlementLineRepository.kt | MODIFIED | 3a6bb462a87026f44788002e2b88602643fc3e648a30dbd2093ee6eb77488534
+src/main/kotlin/com/foodrescue/backend/finance/repository/SettlementRepository.kt | MODIFIED | 1bf958a34afea5031995540b49378d156b65604287eefeebba312b4f4cd45ea4
+src/main/kotlin/com/foodrescue/backend/finance/repository/StorePayoutAccountRepository.kt | MODIFIED | 84d98e8369324c4c84fa1a4c412ba1a6eb9643b6b26226d143eb82f09becfca7
+src/main/kotlin/com/foodrescue/backend/finance/repository/StorePayoutRepository.kt | MODIFIED | ccfc0ab3c481305176a4f910a5d91557a6d2d30c317b6dd62d5937898a43c908
+src/main/kotlin/com/foodrescue/backend/finance/service/PayoutAccountCodec.kt | NEW | 3080b429d2f2cf0ed17051bc410f636ac0121562bbd37f0417a27922c52d9d7b
+src/main/kotlin/com/foodrescue/backend/finance/service/PayoutAccountService.kt | NEW | 943f7b190584f6a72a6308ce0c43f22d96e01586d3c4d83c7697dfacb606af76
+src/main/kotlin/com/foodrescue/backend/finance/service/PayoutAttachmentPolicy.kt | NEW | 6e09376b9cb28a7531ec82e658566bfd7b61988eb0a638cb454de52f7897b773
+src/main/kotlin/com/foodrescue/backend/finance/service/SettlementErrors.kt | NEW | 0b5126903a43c8e224d75440b432e70d1397d8e8dd733226716b60e566837f17
+src/main/kotlin/com/foodrescue/backend/finance/service/SettlementQueryService.kt | NEW | 9768ea454b00385eecd6e9887aade6110b68ee2fccb0f54d9c22b8e85571c3c6
+src/main/kotlin/com/foodrescue/backend/finance/service/SettlementService.kt | NEW | 7b6c131ffac9a1d956f4b25575fdd4236e2633bcf2f179f7133c288140cd9e35
+src/main/kotlin/com/foodrescue/backend/finance/service/StorePayoutService.kt | NEW | eb6bced947a055803113c6ad98dad622b4f79ddb6b335e130f654394c0db9e86
+src/main/resources/application.yml | MODIFIED | 71dba83aa439864e6a6ea04d4646a922cee6fe06073990bee3106a6e3046d5d9
+src/main/resources/db/migration/V25__settlement_and_payout_details.sql | NEW | 671bbdb3ab76d78b65da90b1a9ef88c5e3939693b6574e42b15f4f411e6345dc
+src/test/kotlin/com/foodrescue/backend/AdminBootstrapTests.kt | MODIFIED | 6bdba4b1549af8b9e8dfb9456b0d998e8b72db6cce784d75beb09e53021ad456
+src/test/kotlin/com/foodrescue/backend/AuthMigrationTests.kt | MODIFIED | 5074a41cc813e106e9104a69c856c71b99848b119501b6689f2c77fd716dcaec
+src/test/kotlin/com/foodrescue/backend/FoodRescueApplicationTests.kt | MODIFIED | b789f2398a9aec4e2c4fc9cd74e9cf9879db0ab819e78f494b626d681a5838b9
+src/test/kotlin/com/foodrescue/backend/PayoutAccountCodecTests.kt | NEW | 2d0a754a15b4336a116e904a7109d64ebd985e938bc12acb303d3c0026e7e8e5
+src/test/kotlin/com/foodrescue/backend/SettlementAndPayoutTests.kt | NEW | d91a1bcad71f43fc68715eee985757e54be72f08f5227beb5949216d6075f2b9
+src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | MODIFIED | 299e97fa4e90ae2c3dcdcd2c1575782688291d872f103a5d123b16270f00a79c
+src/test/kotlin/com/foodrescue/backend/support/AuthTestFixtures.kt | MODIFIED | e70b2778add8edcb536f94c873ad05712b497d972158402debebf0d9d51ceb8a
+
+8. KẾT QUẢ THEO SUITE (XML FULL BUILD)
+Suite | Tests | Skipped | Failures | Errors
+AdminAccountTests | 6 | 0 | 0 | 0
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0
+BoxPackingTests | 9 | 0 | 0 | 0
+BoxTemplateTests | 5 | 0 | 0 | 0
+BoxUnfitViolationSuspendTests | 19 | 0 | 0 | 0
+CommissionAndRevenueTests | 12 | 0 | 0 | 0
+ComplaintTests | 20 | 0 | 0 | 0
+FakePaymentGatewayTests | 1 | 0 | 0 | 0
+FileStorageFailureTests | 1 | 0 | 0 | 0
+FileTypeDetectorTests | 3 | 0 | 0 | 0
+FileUploadTests | 8 | 0 | 0 | 0
+FinancialPolicyTests | 7 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 0 | 0 | 0
+LocalDiskFileStorageTests | 5 | 0 | 0 | 0
+ManualRefundTests | 6 | 0 | 0 | 0
+MenuTests | 8 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+NoShowTests | 18 | 0 | 0 | 0
+NotificationTests | 19 | 0 | 0 | 0
+OpeningHoursValidatorTests | 3 | 0 | 0 | 0
+OrderCancellationTests | 20 | 0 | 0 | 0
+OrderLifecycleTests | 6 | 0 | 0 | 0
+OrderPlacementTests | 8 | 0 | 0 | 0
+PartnerApplicationTests | 11 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+PaymentReconciliationTests | 4 | 0 | 0 | 0
+PaymentRequestTests | 6 | 0 | 0 | 0
+PaymentWebhookTests | 6 | 0 | 0 | 0
+PayOsPaymentGatewayTests | 3 | 0 | 0 | 0
+PayOsSignatureTests | 4 | 0 | 0 | 0
+PayoutAccountCodecTests | 1 | 0 | 0 | 0
+PickupCodeCodecTests | 2 | 0 | 0 | 0
+PickupCodeTests | 8 | 0 | 0 | 0
+PickupHandoverTests | 14 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 0 | 0 | 0
+ProfileUpdateRequestParserTests | 6 | 0 | 0 | 0
+ProfileUpdateTests | 9 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+SaleBatchTests | 8 | 0 | 0 | 0
+SearchTests | 6 | 0 | 0 | 0
+SettlementAndPayoutTests | 17 | 0 | 0 | 0
+SmtpNotificationSenderTests | 2 | 0 | 0 | 0
+StaffManagementTests | 9 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+StoreChangeRequestTests | 3 | 0 | 0 | 0
+StoreProfileTests | 6 | 0 | 0 | 0
+StoreSalesPolicyTests | 1 | 0 | 0 | 0
+StoreStatusTests | 6 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0

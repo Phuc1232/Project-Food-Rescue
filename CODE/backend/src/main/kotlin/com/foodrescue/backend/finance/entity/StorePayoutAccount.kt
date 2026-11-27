@@ -31,5 +31,11 @@ class StorePayoutAccount(
     var effectiveFrom: Instant,
 
     @field:Column(name = "effective_until", nullable = true)
-    var effectiveUntil: Instant? = null
+    var effectiveUntil: Instant? = null,
+
+    @field:Column(name="key_id", length=64) var keyId: String? = null,
+    @field:Column(name="account_number_masked", length=64) var accountNumberMasked: String? = null,
+    @field:ManyToOne(fetch=FetchType.LAZY) @field:JoinColumn(name="created_by_id") var createdBy: com.foodrescue.backend.account.entity.Account? = null,
+    @field:ManyToOne(fetch=FetchType.LAZY) @field:JoinColumn(name="verified_by_id") var verifiedBy: com.foodrescue.backend.account.entity.Account? = null,
+    @field:Column(name="verification_note", columnDefinition="text") var verificationNote: String? = null
 ) : MutableEntity()

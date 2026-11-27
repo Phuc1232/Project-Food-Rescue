@@ -59,3 +59,5 @@ local.properties
 !docs/specs/t8-2-notifications/
 
 !docs/specs/t8-3-commission-and-revenue/
+
+!docs/specs/t8-4-settlement-and-payout/

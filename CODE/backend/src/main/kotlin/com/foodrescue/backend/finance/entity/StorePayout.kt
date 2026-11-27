@@ -43,5 +43,10 @@ class StorePayout(
 
     @field:Enumerated(EnumType.STRING)
     @field:Column(name = "status", nullable = false, length = 50)
-    var status: PayoutStatus
+    var status: PayoutStatus,
+
+    @field:Column(name="transferred_at") var transferredAt: Instant? = null,
+    @field:ManyToOne(fetch=FetchType.LAZY) @field:JoinColumn(name="recorded_by_id") var recordedBy: Account? = null,
+    @field:Column(name="failure_reason", columnDefinition="text") var failureReason: String? = null,
+    @field:Column(name="note", columnDefinition="text") var note: String? = null
 ) : MutableEntity()

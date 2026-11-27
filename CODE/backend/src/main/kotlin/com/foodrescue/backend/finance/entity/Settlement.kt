@@ -38,5 +38,10 @@ class Settlement(
 
     @field:ManyToOne(fetch = FetchType.LAZY, optional = true)
     @field:JoinColumn(name = "previous_settlement_id", nullable = true)
-    var previousSettlement: Settlement? = null
+    var previousSettlement: Settlement? = null,
+
+    @field:Column(name="settlement_code", length=64) var settlementCode: String? = null,
+    @field:Column(name="snapshot_fingerprint", length=128) var snapshotFingerprint: String? = null,
+    @field:Column(name="snapshot_taken_at") var snapshotTakenAt: Instant? = null,
+    @field:Column(name="held_exceptions_snapshot", columnDefinition="text") var heldExceptionsSnapshot: String? = null
 ) : MutableEntity()

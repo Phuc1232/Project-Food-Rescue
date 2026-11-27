@@ -1334,6 +1334,16 @@
           },
           "503": {
             "$ref": "#/components/responses/Error503"
+          },
+          "403": {
+            "description": "ACCESS_DENIED: payout evidence is restricted to its store owner and ADMIN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -1448,6 +1458,16 @@
           },
           "503": {
             "$ref": "#/components/responses/Error503"
+          },
+          "403": {
+            "description": "ACCESS_DENIED: payout evidence is restricted to its store owner and ADMIN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -11210,6 +11230,1202 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/finance/payout-accounts": {
+      "get": {
+        "operationId": "t84_get_stores_storeId_finance_payout_accounts",
+        "summary": "List masked payout account versions",
+        "tags": [
+          "Store finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutAccountHistoryView"
+                },
+                "example": {
+                  "versions": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/finance/payout-account": {
+      "put": {
+        "operationId": "t84_put_stores_storeId_finance_payout_account",
+        "summary": "Create a new payout account version",
+        "tags": [
+          "Store finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePayoutAccountView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "bankCode": "VCB",
+                  "accountNumberMasked": "******7890",
+                  "accountHolderName": "NGUYEN VAN A",
+                  "accountVersion": 1,
+                  "effectiveFrom": "2026-11-27T10:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPayoutAccountRequest"
+              },
+              "example": {
+                "bankCode": "VCB",
+                "accountNumber": "1234567890",
+                "accountHolderName": "NGUYEN VAN A"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/finance/settlements": {
+      "get": {
+        "operationId": "t84_get_stores_storeId_finance_settlements",
+        "summary": "List store settlements",
+        "tags": [
+          "Store finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "CONFIRMED",
+                "PARTIALLY_PAID",
+                "PAID"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "periodEndsAt",
+                "confirmedAt",
+                "createdAt"
+              ],
+              "default": "periodEndsAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementPage"
+                },
+                "example": {
+                  "content": [],
+                  "page": 0,
+                  "size": 0,
+                  "totalElements": 0,
+                  "totalPages": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/finance/settlements/{settlementId}": {
+      "get": {
+        "operationId": "t84_get_stores_storeId_finance_settlements_settlementId_",
+        "summary": "View store settlement details",
+        "tags": [
+          "Store finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementDetailView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "periodStartsAt": "2026-11-27T10:00:00Z",
+                  "periodEndsAt": "2026-11-27T10:00:00Z",
+                  "status": "DRAFT",
+                  "totalAmount": 0,
+                  "payableAmount": 0,
+                  "recoveryAmount": 0,
+                  "carriedOverRecoveryAmount": 0,
+                  "verifiedPaidAmount": 0,
+                  "pendingPayoutAmount": 0,
+                  "remainingPayableAmount": 0,
+                  "lines": [],
+                  "heldItems": [],
+                  "unresolvedExceptions": [],
+                  "payouts": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/stores/{storeId}/payout-accounts": {
+      "get": {
+        "operationId": "t84_get_admin_finance_stores_storeId_payout_accounts",
+        "summary": "List masked payout account versions",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutAccountHistoryView"
+                },
+                "example": {
+                  "versions": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/stores/{storeId}/payout-accounts/active-for-payout": {
+      "get": {
+        "operationId": "t84_get_admin_finance_stores_storeId_payout_accounts_active_for_payout",
+        "summary": "Reveal current recipient for payout; audited",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPayoutRecipientView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "bankCode": "Example",
+                  "accountNumber": "1234567890",
+                  "accountHolderName": "Example",
+                  "accountVersion": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/stores/{storeId}/payout-accounts/{accountId}/verify": {
+      "post": {
+        "operationId": "t84_post_admin_finance_stores_storeId_payout_accounts_accountId_verify",
+        "summary": "Verify current payout account version",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePayoutAccountView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "bankCode": "VCB",
+                  "accountNumberMasked": "******7890",
+                  "accountHolderName": "NGUYEN VAN A",
+                  "accountVersion": 1,
+                  "effectiveFrom": "2026-11-27T10:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyPayoutAccountRequest"
+              },
+              "example": {
+                "expectedVersion": 1,
+                "note": "Recipient details checked"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/settlements/draft": {
+      "post": {
+        "operationId": "t84_post_admin_finance_settlements_draft",
+        "summary": "Create or rebuild the unique store draft",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementDetailView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "periodStartsAt": "2026-11-27T10:00:00Z",
+                  "periodEndsAt": "2026-11-27T10:00:00Z",
+                  "status": "DRAFT",
+                  "totalAmount": 0,
+                  "payableAmount": 0,
+                  "recoveryAmount": 0,
+                  "carriedOverRecoveryAmount": 0,
+                  "verifiedPaidAmount": 0,
+                  "pendingPayoutAmount": 0,
+                  "remainingPayableAmount": 0,
+                  "lines": [],
+                  "heldItems": [],
+                  "unresolvedExceptions": [],
+                  "payouts": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSettlementDraftRequest"
+              },
+              "example": {
+                "storeId": "11111111-1111-4111-8111-111111111111",
+                "periodStartsAt": "2026-11-01T00:00:00Z",
+                "periodEndsAt": "2026-12-01T00:00:00Z"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/settlements/{settlementId}/confirm": {
+      "post": {
+        "operationId": "t84_post_admin_finance_settlements_settlementId_confirm",
+        "summary": "Confirm unchanged settlement snapshot",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementDetailView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "periodStartsAt": "2026-11-27T10:00:00Z",
+                  "periodEndsAt": "2026-11-27T10:00:00Z",
+                  "status": "DRAFT",
+                  "totalAmount": 0,
+                  "payableAmount": 0,
+                  "recoveryAmount": 0,
+                  "carriedOverRecoveryAmount": 0,
+                  "verifiedPaidAmount": 0,
+                  "pendingPayoutAmount": 0,
+                  "remainingPayableAmount": 0,
+                  "lines": [],
+                  "heldItems": [],
+                  "unresolvedExceptions": [],
+                  "payouts": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/settlements/{settlementId}/payouts": {
+      "post": {
+        "operationId": "t84_post_admin_finance_settlements_settlementId_payouts",
+        "summary": "Record manual bank payout",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePayoutView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "settlementId": "11111111-1111-4111-8111-111111111111",
+                  "payoutAccountId": "11111111-1111-4111-8111-111111111111",
+                  "payoutAccountVersion": 0,
+                  "recipientSnapshot": "{\"accountVersion\":1,\"accountNumberMasked\":\"******7890\"}",
+                  "amount": 54000,
+                  "transferReference": "Example",
+                  "status": "VERIFIED",
+                  "evidenceFileIds": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStorePayoutRequest"
+              },
+              "example": {
+                "payoutAccountId": "11111111-1111-4111-8111-111111111111",
+                "expectedAccountVersion": 1,
+                "amount": 54000,
+                "transferReference": "BANK-EXAMPLE-001",
+                "status": "VERIFIED",
+                "transferredAt": "2026-11-27T10:00:00Z",
+                "evidenceFileId": "22222222-2222-4222-8222-222222222222"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/payouts/{payoutId}/verify": {
+      "post": {
+        "operationId": "t84_post_admin_finance_payouts_payoutId_verify",
+        "summary": "Verify a pending payout",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "payoutId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePayoutView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "settlementId": "11111111-1111-4111-8111-111111111111",
+                  "payoutAccountId": "11111111-1111-4111-8111-111111111111",
+                  "payoutAccountVersion": 0,
+                  "recipientSnapshot": "{\"accountVersion\":1,\"accountNumberMasked\":\"******7890\"}",
+                  "amount": 54000,
+                  "transferReference": "Example",
+                  "status": "VERIFIED",
+                  "evidenceFileIds": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyStorePayoutRequest"
+              },
+              "example": {
+                "transferredAt": "2026-11-27T10:00:00Z",
+                "evidenceFileId": "22222222-2222-4222-8222-222222222222"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/payouts/{payoutId}/fail": {
+      "post": {
+        "operationId": "t84_post_admin_finance_payouts_payoutId_fail",
+        "summary": "Fail a pending payout and release its reservation",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "payoutId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePayoutView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "settlementId": "11111111-1111-4111-8111-111111111111",
+                  "payoutAccountId": "11111111-1111-4111-8111-111111111111",
+                  "payoutAccountVersion": 0,
+                  "recipientSnapshot": "{\"accountVersion\":1,\"accountNumberMasked\":\"******7890\"}",
+                  "amount": 54000,
+                  "transferReference": "Example",
+                  "status": "VERIFIED",
+                  "evidenceFileIds": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailStorePayoutRequest"
+              },
+              "example": {
+                "reason": "Bank transfer rejected"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/settlements": {
+      "get": {
+        "operationId": "t84_get_admin_finance_settlements",
+        "summary": "Search store settlements",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "CONFIRMED",
+                "PARTIALLY_PAID",
+                "PAID"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "periodEndsAt",
+                "confirmedAt",
+                "createdAt"
+              ],
+              "default": "periodEndsAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementPage"
+                },
+                "example": {
+                  "content": [],
+                  "page": 0,
+                  "size": 0,
+                  "totalElements": 0,
+                  "totalPages": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/settlements/{settlementId}": {
+      "get": {
+        "operationId": "t84_get_admin_finance_settlements_settlementId_",
+        "summary": "View settlement and payout history",
+        "tags": [
+          "Admin finance"
+        ],
+        "description": "Whole VND; UTC periods with exclusive periodEndsAt for entries. Negative periods require recovery. Owner/list responses contain masked account numbers only. ADMIN reveal is audited. Confirm returns 409 if snapshot changed or exceptions remain. Payouts require a current verified account and evidence for VERIFIED; transferReference is globally unique.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementDetailView"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "periodStartsAt": "2026-11-27T10:00:00Z",
+                  "periodEndsAt": "2026-11-27T10:00:00Z",
+                  "status": "DRAFT",
+                  "totalAmount": 0,
+                  "payableAmount": 0,
+                  "recoveryAmount": 0,
+                  "carriedOverRecoveryAmount": 0,
+                  "verifiedPaidAmount": 0,
+                  "pendingPayoutAmount": 0,
+                  "remainingPayableAmount": 0,
+                  "lines": [],
+                  "heldItems": [],
+                  "unresolvedExceptions": [],
+                  "payouts": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -18378,6 +19594,588 @@
           "storeAdjustmentAmount": 0,
           "netStoreRevenueAmount": 0,
           "currency": "VND"
+        }
+      },
+      "AdminPayoutRecipientView": {
+        "type": "object",
+        "required": [
+          "id",
+          "storeId",
+          "bankCode",
+          "accountNumber",
+          "accountHolderName",
+          "accountVersion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bankCode": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "accountHolderName": {
+            "type": "string"
+          },
+          "accountVersion": {
+            "type": "integer"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateSettlementDraftRequest": {
+        "type": "object",
+        "required": [
+          "storeId",
+          "periodStartsAt",
+          "periodEndsAt"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "periodStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateStorePayoutRequest": {
+        "type": "object",
+        "required": [
+          "payoutAccountId",
+          "expectedAccountVersion",
+          "amount",
+          "transferReference"
+        ],
+        "properties": {
+          "payoutAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedAccountVersion": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Positive whole VND, cannot exceed remaining payable amount. PENDING reserves the limit."
+          },
+          "transferReference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "VERIFIED"
+            ],
+            "default": "VERIFIED"
+          },
+          "transferredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidenceFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "FailStorePayoutRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "HeldExceptionView": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "reason",
+          "amount",
+          "detail"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ledgerEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "PayoutAccountHistoryView": {
+        "type": "object",
+        "required": [
+          "versions"
+        ],
+        "properties": {
+          "activeAccount": {
+            "$ref": "#/components/schemas/StorePayoutAccountView"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorePayoutAccountView"
+            }
+          }
+        }
+      },
+      "SettlementDetailView": {
+        "type": "object",
+        "required": [
+          "id",
+          "storeId",
+          "periodStartsAt",
+          "periodEndsAt",
+          "status",
+          "totalAmount",
+          "payableAmount",
+          "recoveryAmount",
+          "carriedOverRecoveryAmount",
+          "verifiedPaidAmount",
+          "pendingPayoutAmount",
+          "remainingPayableAmount",
+          "lines",
+          "heldItems",
+          "unresolvedExceptions",
+          "payouts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "settlementCode": {
+            "type": "string"
+          },
+          "periodStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "integer"
+          },
+          "payableAmount": {
+            "type": "integer"
+          },
+          "recoveryAmount": {
+            "type": "integer"
+          },
+          "carriedOverRecoveryAmount": {
+            "type": "integer"
+          },
+          "verifiedPaidAmount": {
+            "type": "integer"
+          },
+          "pendingPayoutAmount": {
+            "type": "integer"
+          },
+          "remainingPayableAmount": {
+            "type": "integer"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previousSettlementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "snapshotTakenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettlementLineView"
+            }
+          },
+          "heldItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeldExceptionView"
+            }
+          },
+          "unresolvedExceptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeldExceptionView"
+            }
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorePayoutView"
+            }
+          }
+        }
+      },
+      "SettlementLineView": {
+        "type": "object",
+        "required": [
+          "id",
+          "ledgerEntryId",
+          "orderId",
+          "orderCode",
+          "entryType",
+          "amount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ledgerEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "entryType": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "originalEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "originalSettlementId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SettlementSnapshotView": {
+        "type": "object",
+        "required": [
+          "heldItems",
+          "unresolvedExceptions"
+        ],
+        "properties": {
+          "heldItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeldExceptionView"
+            }
+          },
+          "unresolvedExceptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeldExceptionView"
+            }
+          }
+        }
+      },
+      "SettlementSummaryView": {
+        "type": "object",
+        "required": [
+          "id",
+          "storeId",
+          "periodStartsAt",
+          "periodEndsAt",
+          "status",
+          "totalAmount",
+          "payableAmount",
+          "recoveryAmount",
+          "carriedOverRecoveryAmount",
+          "verifiedPaidAmount",
+          "pendingPayoutAmount",
+          "remainingPayableAmount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "settlementCode": {
+            "type": "string"
+          },
+          "periodStartsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEndsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "integer"
+          },
+          "payableAmount": {
+            "type": "integer"
+          },
+          "recoveryAmount": {
+            "type": "integer"
+          },
+          "carriedOverRecoveryAmount": {
+            "type": "integer"
+          },
+          "verifiedPaidAmount": {
+            "type": "integer"
+          },
+          "pendingPayoutAmount": {
+            "type": "integer"
+          },
+          "remainingPayableAmount": {
+            "type": "integer"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StorePayoutAccountView": {
+        "type": "object",
+        "required": [
+          "id",
+          "storeId",
+          "bankCode",
+          "accountNumberMasked",
+          "accountHolderName",
+          "accountVersion",
+          "effectiveFrom"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bankCode": {
+            "type": "string"
+          },
+          "accountNumberMasked": {
+            "type": "string"
+          },
+          "accountHolderName": {
+            "type": "string"
+          },
+          "accountVersion": {
+            "type": "integer"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verificationNote": {
+            "type": "string"
+          }
+        }
+      },
+      "StorePayoutView": {
+        "type": "object",
+        "required": [
+          "id",
+          "settlementId",
+          "payoutAccountId",
+          "payoutAccountVersion",
+          "recipientSnapshot",
+          "amount",
+          "transferReference",
+          "status",
+          "evidenceFileIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "settlementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payoutAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payoutAccountVersion": {
+            "type": "integer"
+          },
+          "recipientSnapshot": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "transferReference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "transferredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "evidenceFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "UpsertPayoutAccountRequest": {
+        "type": "object",
+        "required": [
+          "bankCode",
+          "accountNumber",
+          "accountHolderName"
+        ],
+        "properties": {
+          "bankCode": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "accountHolderName": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyPayoutAccountRequest": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyStorePayoutRequest": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "transferredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidenceFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "SettlementPage": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettlementSummaryView"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
         }
       }
     },

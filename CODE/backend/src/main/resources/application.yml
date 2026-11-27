@@ -106,3 +106,6 @@ finance:
   ledger-job-enabled: true
   ledger-scan-ms: 30000
   ledger-batch-size: 100
+  payout-account:
+    active-key-id: ${PAYOUT_ACCOUNT_ACTIVE_KEY_ID:}
+    keys: ${PAYOUT_ACCOUNT_KEYS:}
