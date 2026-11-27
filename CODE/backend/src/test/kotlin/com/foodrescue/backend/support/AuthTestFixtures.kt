@@ -37,6 +37,7 @@ object TestAuthKeys {
         r.add("pickup.code.active-key-id") { "test-v1" }
         r.add("pickup.code.keys") { "test-v1:" + Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
         // T5.3: tests call OrderExpiryService directly with a fixed instant; no background expiry job.
+        r.add("finance.ledger-job-enabled") { "false" }
         r.add("notifications.dispatch-job-enabled") { "false" }
         r.add("orders.no-show-job-enabled") { "false" }; r.add("orders.no-show-compensation-job-enabled") { "false" }
         r.add("orders.expiry-job-enabled") { "false" }; r.add("payments.reconcile-job-enabled") { "false" }

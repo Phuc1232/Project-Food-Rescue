@@ -43,7 +43,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
 | 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [x] T7.5 |
-| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [x] T8.2 · [ ] T8.3 · [ ] T8.4 · [ ] T8.5 |
+| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [x] T8.2 · [x] T8.3 · [ ] T8.4 · [ ] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
 Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu đề card.
@@ -348,7 +348,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
   báo của tôi, đánh dấu đã đọc (đọc thông báo no-show = căn cứ nhận thông báo cho T7.4).
 - **AC tối thiểu:** rollback sự kiện → không có thông báo; gửi lỗi không làm hỏng nghiệp vụ; không gửi trùng.
 
-### [ ] T8.3 — Hoa hồng, quyền lợi cửa hàng, doanh thu
+### [x] T8.3 — Hoa hồng, quyền lợi cửa hàng, doanh thu
 - **Phụ thuộc:** T8.1. **Tài liệu:** UC-47, UC-48, BR-47..52.
 - **Phạm vi:** đơn COMPLETED → ghi PLATFORM_COMMISSION (= giá bán thực tế × tỷ lệ snapshot) + STORE_PAYABLE; no-show →
   NO_SHOW_COMPENSATION riêng, hoa hồng 0; chỉ đủ điều kiện đối soát khi qua cửa sổ phản ánh và không còn tranh chấp; hoàn

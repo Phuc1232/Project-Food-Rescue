@@ -21,7 +21,7 @@ class AuthMigrationTests {
             assertEquals("legacy-hash",jdbc.queryForObject("select password_hash from account",String::class.java))
             assertEquals(0,jdbc.queryForObject("select count(*) from account where email_verified_at is not null",Int::class.java))
             assertEquals(1,jdbc.queryForObject("select count(*) from login_session where revoked_at is not null",Int::class.java))
-            assertEquals(23,jdbc.queryForObject("select count(*) from flyway_schema_history where success",Int::class.java))
+            assertEquals(24,jdbc.queryForObject("select count(*) from flyway_schema_history where success",Int::class.java))
             assertEquals(2,jdbc.queryForObject("select count(*) from information_schema.columns where table_schema='public' and table_name='customer_order' and column_name in ('pickup_code_encrypted','pickup_code_key_id')",Int::class.java))
             assertEquals(0,jdbc.queryForObject("select count(*) from information_schema.tables where table_schema='public' and table_name='pickup_code'",Int::class.java))
         }

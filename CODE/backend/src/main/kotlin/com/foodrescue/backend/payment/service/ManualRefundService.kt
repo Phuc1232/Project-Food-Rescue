@@ -41,6 +41,7 @@ import java.util.UUID
  */
 @Service
 class ManualRefundService(private val outbox: NotificationOutboxService,
+    private val ledgerPosting: com.foodrescue.backend.finance.service.LedgerPostingService,
     private val complaints: com.foodrescue.backend.complaint.repository.ComplaintRepository,
     private val orders: com.foodrescue.backend.order.repository.CustomerOrderRepository,
     private val obligations: RefundRequestRepository,
@@ -118,7 +119,8 @@ class ManualRefundService(private val outbox: NotificationOutboxService,
             businessKey = "REFUND_SUCCEEDED:${refund.id}"))
         // Only money that was booked as order revenue is reversed in the store ledger (BR-T65-05).
         if (payment.status == PaymentStatus.VERIFIED)
-            ledger.save(LedgerEntry(event, o.order.store, LedgerEntryType.CUSTOMER_REFUND, amount.negate(), payment.currency, occurredAt = now))
+            ledger.save(LedgerEntry(event, o.order.store, LedgerEntryType.CUSTOMER_REFUND, amount.negate(), payment.currency, occurredAt = now, businessKey = "CUSTOMER_REFUND:${refund.id}"))
+        o.complaint?.let { c -> events.findByBusinessKey("COMPLAINT_RESOLVED:${c.id}")?.let { ledgerPosting.postComplaintResolvedIfSettled(c,it,now) } }
         outbox.orderEvent(o.order,NType.REFUND,"REFUND_SUCCEEDED",key="REFUND_SUCCEEDED:${refund.id}",payload=mapOf("refundRequestId" to o.id,"refundId" to refund.id,"amount" to amount))
         history.record(admin, o.order.store, ENTITY, o.id!!, "REFUND_SUCCEEDED", null, mapOf("amount" to amount, "bankTransactionId" to bankId))
         return views.view(o, true)

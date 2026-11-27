@@ -103,7 +103,7 @@ class PaymentConfirmationService(private val outbox: NotificationOutboxService,
         }
         val event = events.saveAndFlush(FinancialEvent(order, FinancialEventType.PAYMENT_RECEIVED, payment = payment, occurredAt = now,
             businessKey = "PAYMENT_RECEIVED:${payment.id}"))
-        ledger.save(LedgerEntry(event, order.store, LedgerEntryType.PAYMENT_RECEIPT, payment.receivedAmount, payment.currency, occurredAt = now))
+        ledger.save(LedgerEntry(event, order.store, LedgerEntryType.PAYMENT_RECEIPT, payment.receivedAmount, payment.currency, occurredAt = now, businessKey = "PAYMENT_RECEIPT:${payment.id}"))
         history.record(null, order.store, OrderPlacementService.ENTITY, order.id!!, "ORDER_CONFIRMED", mapOf("status" to "PENDING_PAYMENT"),
             mapOf("status" to "CONFIRMED", "paymentId" to payment.id, "boxes" to held.size))
         outbox.orderEvent(order,NType.ORDER_CONFIRMED,"PAYMENT_VERIFIED",key="PAYMENT_VERIFIED:${payment.id}",store=true,payload=mapOf("paymentId" to payment.id,"amount" to payment.receivedAmount))

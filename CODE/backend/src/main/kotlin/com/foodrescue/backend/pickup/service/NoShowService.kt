@@ -49,7 +49,8 @@ import java.util.UUID
 data class NoShowConfirmResult(val view: NoShowCaseDetailView, val created: Boolean)
 
 @Service
-class NoShowService(private val outbox: NotificationOutboxService, private val authorization: StoreAuthorizationService, private val orders: CustomerOrderRepository,
+class NoShowService(private val outbox: NotificationOutboxService,
+    private val ledgerPosting: com.foodrescue.backend.finance.service.LedgerPostingService, private val authorization: StoreAuthorizationService, private val orders: CustomerOrderRepository,
     private val cases: NoShowCaseRepository, private val sessions: PickupSessionRepository, private val incidents: PickupIncidentRepository,
     private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository, private val stores: StoreRepository,
     private val accounts: AccountRepository, private val payments: PaymentRepository, private val refunds: RefundRequestRepository,
@@ -153,7 +154,8 @@ class NoShowService(private val outbox: NotificationOutboxService, private val a
                 remaining -= part
             }
         }
-        events.save(FinancialEvent(order, FinancialEventType.NO_SHOW_CONFIRMED, noShowCase = case, occurredAt = now, businessKey = "NO_SHOW_CONFIRMED:$orderId"))
+        val noShowEvent = events.saveAndFlush(FinancialEvent(order, FinancialEventType.NO_SHOW_CONFIRMED, noShowCase = case, occurredAt = now, businessKey = "NO_SHOW_CONFIRMED:$orderId"))
+        ledgerPosting.postNoShowConfirmed(order, case, noShowEvent)
         history.record(actor, order.store, "CUSTOMER_ORDER", orderId, "NO_SHOW_CONFIRMED", null,
             mapOf("caseId" to case.id, "retainedAmount" to amounts.retainedAmount, "refundAmount" to amounts.refundAmount))
         cases.flush()

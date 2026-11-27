@@ -32,6 +32,7 @@ import java.util.UUID
 
 @Service
 class PickupSessionService(private val outbox: NotificationOutboxService,
+    private val ledgerPosting: com.foodrescue.backend.finance.service.LedgerPostingService,
     private val orders: CustomerOrderRepository, private val sessions: PickupSessionRepository,
     private val allocations: BoxAllocationRepository, private val boxes: PhysicalBoxRepository,
     private val authorization: StoreAuthorizationService, private val accounts: AccountRepository,
@@ -88,8 +89,9 @@ class PickupSessionService(private val outbox: NotificationOutboxService,
         order.statusReason = "HANDOVER_COMPLETED"
         order.statusChangedAt = now
         ready.forEach { (allocation, box) -> allocation.status = AllocationStatus.DELIVERED; box.status = BoxStatus.DELIVERED }
-        events.save(FinancialEvent(order = order, type = FinancialEventType.ORDER_COMPLETED,
+        val completedEvent = events.saveAndFlush(FinancialEvent(order = order, type = FinancialEventType.ORDER_COMPLETED,
             occurredAt = now, businessKey = "ORDER_COMPLETED:${order.id}"))
+        ledgerPosting.postOrderCompleted(order, completedEvent)
         history.record(accounts.getReferenceById(actorId), order.store, "CUSTOMER_ORDER", order.id!!,
             "HANDOVER_COMPLETED", null, mapOf("sessionId" to session.id, "status" to order.status.name))
         outbox.orderEvent(order,NType.ORDER_STATUS,"ORDER_COMPLETED")

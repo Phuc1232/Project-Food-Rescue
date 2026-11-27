@@ -1,0 +1,154 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T8.3
+Ngày: 2026-11-27 | Trạng thái: DONE
+Plan: docs/specs/t8-3-commission-and-revenue/02-plan.md
+
+1. KẾT QUẢ
+- V24 bổ sung business_key nullable, partial unique index và index store/occurred_at; không backfill, không sửa V1–V23 hay trigger bất biến; giữ 43 entities.
+- COMPLETED ghi PLATFORM_COMMISSION và STORE_PAYABLE ngay trong transaction bàn giao; làm tròn MoneyRounding HALF_UP, phần cửa hàng bằng tổng thực thu của đơn trừ hoa hồng.
+- NO_SHOW ghi riêng NO_SHOW_COMPENSATION, không hoa hồng. HELD/DISPUTED bị giữ; ELIGIBLE mới vào khoản có thể đối soát. Khi quyết định tịch thu vẫn chờ hoàn tiền, tiếp tục giữ dưới trạng thái DISPUTED.
+- Complaint CLOSED mới ghi ADJUSTMENT, liên kết original_entry_id. Hoàn tiền hậu giao ghi trong cùng transaction với CUSTOMER_REFUND cuối cùng của complaint. Hỗ trợ STORE/SHARED theo snapshot, PLATFORM chịu toàn bộ và explicit adjustments.
+- Atomic INSERT ON CONFLICT DO NOTHING; job định kỳ và API reconcile dùng khóa order trước event, SKIP LOCKED và chỉ tìm các khóa dự kiến còn thiếu, tránh starvation bởi event đã xử lý hoặc quyết định không cần bút toán.
+- 3 API Owner + 2 API Admin; doanh thu/hoa hồng, khoản giữ/được nhận, sổ cái đơn và balanced; lọc ngày UTC, mã đơn, trạng thái, phân trang và sort whitelist.
+- OpenAPI 126 paths / 31 tags; 989 local references được kiểm tra resolve; có schemas, examples và errors.
+
+2. KIỂM CHỨNG
+- Baseline build thành công (UP-TO-DATE), theo lệnh trong plan.
+- Test-first: tạo/chạy CommissionAndRevenueTests trước implementation; Docker Desktop lỗi tạo Ryuk HTTP 500 khiến chưa xác nhận RED nghiệp vụ. Không trình bày lỗi môi trường này là bằng chứng RED nghiệp vụ.
+- Docker đã được khởi động lại; targeted regression chạy 78 test, 76 pass, 2 lỗi fixture (bankTransactionId ngắn, clock sub-microsecond). Đã sửa, full build cuối xác nhận toàn bộ xanh.
+- Không tắt, skip hoặc xóa test để làm xanh build; không dùng payOS thật, không dùng DB Compose.
+- Command cuối: .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain
+- Đã đọc trực tiếp HTML index và XML tất cả suite. Full build: BUILD SUCCESSFUL in 17m 25s.
+- Kết quả: 59 suites; 348 PASS / 1 SKIPPED / 0 FAIL / 0 ERROR.
+- CommissionAndRevenueTests: 12/12 PASS.
+- Ca skip có sẵn: SwaggerUiContextPathTests :: hold disposable browser sandbox until stop signal().
+- Báo cáo: build/reports/tests/test/index.html và build/test-results/test/TEST-*.xml.
+- Một lượt full build trước đó được dừng sau khi phát hiện fixture rounding thiếu Payment liên kết; đã sửa fixture tuân thủ FK/check và chạy lại full build, không bỏ test.
+
+3. TRUY VẾT FILE VÀ AC
+- finance/entity/LedgerEntry.kt; finance/repository/{LedgerEntry,FinancialEvent}Repository.kt; db/migration/V24__ledger_entry_business_key.sql: MODIFIED/NEW — AC-01..08,11.
+- finance/FinanceLedgerProperties.kt; finance/service/{LedgerPostingService,LedgerPostingJob}.kt: NEW — AC-01..08.
+- finance/service/OrderLedgerService.kt; finance/service/StoreFinanceService.kt; finance/dto/*.kt: NEW — AC-01..09.
+- finance/controller/{StoreFinanceController,AdminFinanceLedgerController}.kt: NEW — AC-08..10.
+- payment/service/{PaymentConfirmationService,ManualRefundService}.kt; pickup/service/{PickupSessionService,NoShowService}.kt; complaint/service/AdminComplaintService.kt: MODIFIED — AC-01,03,05..08.
+- application.yml; support/AuthTestFixtures.kt: MODIFIED — job cấu hình, tắt nền khi test.
+- CommissionAndRevenueTests.kt: NEW — 12 test tích hợp AC-01..10: làm tròn .45/.50/.75, cân bằng, bàn giao/no-show đồng bộ, cửa sổ 48h, forfeiture, refund, explicit/platform adjustments, phân trang/lọc và phân quyền đầy đủ 6 quyền staff.
+- AuthMigrationTests.kt; FoodRescueApplicationTests.kt; SwaggerUiTests.kt; docs/api/openapi.yaml: MODIFIED — AC-11.
+- .gitignore; roadmap; plan; báo cáo này: tài liệu và đã đóng task sau khi xác nhận full build.
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, profile dev)
+1) Login Owner, Authorize bearer; GET /stores/{storeId}/finance/revenue và /entitlements. Cửa hàng rỗng trả summary 0, danh sách rỗng.
+2) Đặt đơn và xác minh thanh toán bằng môi trường thử; bàn giao hoàn tất. GET /finance/orders/{orderId}/ledger: có PAYMENT_RECEIPT, PLATFORM_COMMISSION, STORE_PAYABLE, balanced=true; revenue theo totalAmount và commissionRateSnapshot.
+3) Lọc revenue với orderCode, from/to UTC; page/size; sort completedAt hoặc occurredAt. from>to hoặc sort sai trả 400.
+4) Xác nhận no-show sau khung nhận. Ledger có NO_SHOW_COMPENSATION, hoa hồng 0; entitlements HELD. Ghi nhận khách nhận thông báo và qua cửa sổ phản ánh bằng luồng T7.4/T8.2; job hiện có đổi ELIGIBLE.
+5) Tạo khiếu nại hậu giao: khoản STORE_PAYABLE chuyển HELD. Admin decide có refund giữ DECIDED; approve và confirm chuyển khoản thử theo T6.5; complaint CLOSED, xuất hiện ADJUSTMENT có originalEntryId; balanced=true sau khi hoàn thành.
+6) No-show lỗi cửa hàng: quyết định có hoàn phần giữ; khi còn DECIDED vẫn thuộc held. Hoàn đủ nghĩa vụ: đảo compensation, net=0, FORFEITED.
+7) Login Admin; GET /admin/finance/orders/{orderId}/ledger; POST /admin/finance/ledger/reconcile lặp lại: không tăng số dòng, entriesCreated=0 khi hết backlog.
+8) Login Staff có cả 6 quyền V7, Customer hoặc Owner khác: ba API finance của cửa hàng trả 403; chưa login 401. Owner gọi Admin API trả 403.
+Không thực hiện chuyển tiền thật trong phiên triển khai; các kịch bản tài chính dùng dữ liệu/môi trường thử.
+
+5. GIỚI HẠN / ĐIỀU CHỈNH SO VỚI PLAN
+- Khóa CustomerOrder trước FinancialEvent trong worker để đồng nhất với live transaction và tránh đảo thứ tự khóa; vẫn SKIP LOCKED trên cả hai.
+- Báo cáo tổng hợp hiện tải tập đơn/bút toán theo bộ lọc rồi phân trang trong bộ nhớ để summary đúng trên toàn tập. Nếu dữ liệu tăng lớn cần truy vấn aggregate/pagination tại DB trong task tối ưu riêng.
+- balanced phản ánh số liệu ledger thực tế: có thể false khi tiền còn chờ hoàn/phân bổ hoặc Admin chỉ định explicit adjustments không bù đúng số tiền hoàn. Không tạo bút toán giả để che chênh lệch.
+- Không triển khai settlement/payout T8.4. Không sửa các migration cũ. Không commit theo quy định Git đang tạm ngưng của repo.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Không ghi nhận lỗi nghiệp vụ ngoài phạm vi T8.3. Lỗi Docker/Ryuk ban đầu là môi trường kiểm thử, đã phục hồi.
+
+7. DANH MỤC FILE / SHA-256 (mã nguồn và contract)
+
+File | Loại | SHA-256
+docs/api/openapi.yaml | MODIFIED | d4bc11f229884dea31c166c7efa54e58aa809baf6a28edda234a449c07e2fc5d
+src/main/kotlin/com/foodrescue/backend/complaint/service/AdminComplaintService.kt | MODIFIED | d86749e1d971d36a06a91c95cf173d065ad0ee0a253a9aa6aec29536379e9857
+src/main/kotlin/com/foodrescue/backend/finance/FinanceLedgerProperties.kt | NEW | b621815b8a73da2a17d06bd35a477522cf547d5a631f2ccb032596599053dddd
+src/main/kotlin/com/foodrescue/backend/finance/controller/AdminFinanceLedgerController.kt | NEW | c4b66a8ec281b4cb993046cce0eb84018f5173e8af58e153d357d2f8a2811255
+src/main/kotlin/com/foodrescue/backend/finance/controller/StoreFinanceController.kt | NEW | cd5c5883eecf9ed2af55057835f1e8a2496011183c4d745a1c13e775c20cabff
+src/main/kotlin/com/foodrescue/backend/finance/dto/LedgerEntryView.kt | NEW | 2ead3542c132f0222b10dc7954f7b6f7d3b5e4105fce29bdedf3f191296e2dcd
+src/main/kotlin/com/foodrescue/backend/finance/dto/LedgerSyncReportView.kt | NEW | 0923a1eaaa8d03996cae1057d70c96b0230898624300e1cd762de1c32d64c970
+src/main/kotlin/com/foodrescue/backend/finance/dto/OrderLedgerView.kt | NEW | f0a98b5344a94dd2a7fe797344e10f5a705d2d695f3983c59eacc9f27da1030b
+src/main/kotlin/com/foodrescue/backend/finance/dto/StoreEntitlementItemView.kt | NEW | 7dbc0b48cfb05e9a7fcc76da3688205085aa2f0f934d9126f627767ddd8bcdf1
+src/main/kotlin/com/foodrescue/backend/finance/dto/StoreEntitlementReportView.kt | NEW | 2daf4858adcfc13ecaf48b638466dbd4d4df3942c2da7504e016fb0306022d8d
+src/main/kotlin/com/foodrescue/backend/finance/dto/StoreEntitlementSummaryView.kt | NEW | 2e7a4117550439c21a8f8e2ce43397a5d81366a967c3a9cc53f3e476c99e1890
+src/main/kotlin/com/foodrescue/backend/finance/dto/StoreOrderRevenueItemView.kt | NEW | 57da7f730c43f5164c726f2ceb7369f17b67bd699b20bbe2b4a65a712f5fa2f5
+src/main/kotlin/com/foodrescue/backend/finance/dto/StoreRevenueReportView.kt | NEW | c57fedc0b81ae018109632a9449fc79388de62f5a6d5c49809d750d0b51fb3bd
+src/main/kotlin/com/foodrescue/backend/finance/dto/StoreRevenueSummaryView.kt | NEW | 4ba69d7e48828e5550740eac8588650087179274b360bd77351d882a5f99de06
+src/main/kotlin/com/foodrescue/backend/finance/entity/LedgerEntry.kt | MODIFIED | 5609cd3202ca143098926b3961132cf404babd8d94f9a18affb62d82f9406dc1
+src/main/kotlin/com/foodrescue/backend/finance/repository/FinancialEventRepository.kt | MODIFIED | 503be50ffade66fc801d192c52989af70db59c7b78dbfbc5069b934cfa0f249b
+src/main/kotlin/com/foodrescue/backend/finance/repository/LedgerEntryRepository.kt | MODIFIED | 136ecac814d8c877143d59a2f5edf461bffcb9343c0151107d1db20a365723a5
+src/main/kotlin/com/foodrescue/backend/finance/service/LedgerPostingJob.kt | NEW | 9a29d7712422b10503f690247566312868cc37f697befca0a30d80159bf1315c
+src/main/kotlin/com/foodrescue/backend/finance/service/LedgerPostingService.kt | NEW | 95082bd4990acb861ba291e539db98c6e23a8245f45056169196b3a1ff26e239
+src/main/kotlin/com/foodrescue/backend/finance/service/OrderLedgerService.kt | NEW | 7a4b97a48f06f3ea29444e62462897eeef5093e35743a6a36bb34747175b5f91
+src/main/kotlin/com/foodrescue/backend/finance/service/StoreFinanceService.kt | NEW | 242a678e4955e7049acc8d21a80cbfafa0119f0ce57fbe9becf0ce8401c165cb
+src/main/kotlin/com/foodrescue/backend/payment/service/ManualRefundService.kt | MODIFIED | da663edd65e207d64588b690b619379b5fd42d65b672c3f561c703164a6b6b5b
+src/main/kotlin/com/foodrescue/backend/payment/service/PaymentConfirmationService.kt | MODIFIED | c7caedf1a3e3be5014ca0e1acc0416ca7cbfb017f37f568d705bad4924ae8c07
+src/main/kotlin/com/foodrescue/backend/pickup/service/NoShowService.kt | MODIFIED | 6e136ef1708915e8fd512b2e65eaa1ea3b6fda1da3098ba316e63639fcca683e
+src/main/kotlin/com/foodrescue/backend/pickup/service/PickupSessionService.kt | MODIFIED | d20e22066c7b0a95c12b907a5a5d7f904050a6823014943d6ab818278efbaffc
+src/main/resources/application.yml | MODIFIED | 5cc83d8dceff54b65d1ce02e15e9e4dc5ed4165e2ffc2ebbc51c3955dda5502a
+src/main/resources/db/migration/V24__ledger_entry_business_key.sql | NEW | 6cde3c010eb55f01560a9678e88b503a6b4afae297733de3056178243875f2e7
+src/test/kotlin/com/foodrescue/backend/AuthMigrationTests.kt | MODIFIED | 23a2ef834b63f78535a17b06d5c5e2b20434bddc7c381e52c871bc369680c566
+src/test/kotlin/com/foodrescue/backend/CommissionAndRevenueTests.kt | NEW | 3f8c6a79baa43608e7e3605008ece444d54adca59984216a22b3b2609c9c6b95
+src/test/kotlin/com/foodrescue/backend/FoodRescueApplicationTests.kt | MODIFIED | 0006ae1fd28e8a4c6eb9dd9fb9df327f155cb9f72438438b07a4d0afb36c1f68
+src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | MODIFIED | 88693a68bc349a31ab8e2b041cf0309830c4d835c3f17c685ae9b9b7eecf8654
+src/test/kotlin/com/foodrescue/backend/support/AuthTestFixtures.kt | MODIFIED | a7a79a1646111c0cb9931598c38129bb7daf1645c577759443ff404b68f4bcbf
+
+8. KẾT QUẢ THEO SUITE (XML FULL BUILD)
+Suite | Tests | Skipped | Failures | Errors
+AdminAccountTests | 6 | 0 | 0 | 0
+AdminBootstrapTests | 2 | 0 | 0 | 0
+ApiContractTests | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 0 | 0 | 0
+BoxPackingTests | 9 | 0 | 0 | 0
+BoxTemplateTests | 5 | 0 | 0 | 0
+BoxUnfitViolationSuspendTests | 19 | 0 | 0 | 0
+CommissionAndRevenueTests | 12 | 0 | 0 | 0
+ComplaintTests | 20 | 0 | 0 | 0
+FakePaymentGatewayTests | 1 | 0 | 0 | 0
+FileStorageFailureTests | 1 | 0 | 0 | 0
+FileTypeDetectorTests | 3 | 0 | 0 | 0
+FileUploadTests | 8 | 0 | 0 | 0
+FinancialPolicyTests | 7 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 0 | 0 | 0
+LocalDiskFileStorageTests | 5 | 0 | 0 | 0
+ManualRefundTests | 6 | 0 | 0 | 0
+MenuTests | 8 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 0 | 0 | 0
+NoShowTests | 18 | 0 | 0 | 0
+NotificationTests | 19 | 0 | 0 | 0
+OpeningHoursValidatorTests | 3 | 0 | 0 | 0
+OrderCancellationTests | 20 | 0 | 0 | 0
+OrderLifecycleTests | 6 | 0 | 0 | 0
+OrderPlacementTests | 8 | 0 | 0 | 0
+PartnerApplicationTests | 11 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 0 | 0 | 0
+PaymentReconciliationTests | 4 | 0 | 0 | 0
+PaymentRequestTests | 6 | 0 | 0 | 0
+PaymentWebhookTests | 6 | 0 | 0 | 0
+PayOsPaymentGatewayTests | 3 | 0 | 0 | 0
+PayOsSignatureTests | 4 | 0 | 0 | 0
+PickupCodeCodecTests | 2 | 0 | 0 | 0
+PickupCodeTests | 8 | 0 | 0 | 0
+PickupHandoverTests | 14 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 0 | 0 | 0
+ProfileUpdateRequestParserTests | 6 | 0 | 0 | 0
+ProfileUpdateTests | 9 | 0 | 0 | 0
+RateLimitTests | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 0 | 0 | 0
+SaleBatchTests | 8 | 0 | 0 | 0
+SearchTests | 6 | 0 | 0 | 0
+SmtpNotificationSenderTests | 2 | 0 | 0 | 0
+StaffManagementTests | 9 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 0 | 0 | 0
+StoreChangeRequestTests | 3 | 0 | 0 | 0
+StoreProfileTests | 6 | 0 | 0 | 0
+StoreSalesPolicyTests | 1 | 0 | 0 | 0
+StoreStatusTests | 6 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 0 | 0 | 0

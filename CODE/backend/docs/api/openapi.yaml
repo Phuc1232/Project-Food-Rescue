@@ -10766,6 +10766,450 @@
           }
         }
       }
+    },
+    "/api/v1/stores/{storeId}/finance/revenue": {
+      "get": {
+        "operationId": "get_store_StoreRevenueReportView",
+        "summary": "Read StoreRevenueReportView",
+        "description": "Whole VND; inclusive UTC from/to. Owner STORE_PROFILE_MANAGE required; staff denied.",
+        "tags": [
+          "Store finance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "completedAt",
+                "occurredAt"
+              ]
+            }
+          },
+          {
+            "name": "orderCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreRevenueReportView"
+                },
+                "example": {
+                  "summary": {
+                    "completedOrderCount": 0,
+                    "grossSalesAmount": 0,
+                    "grossCommissionAmount": 0,
+                    "commissionAdjustmentAmount": 0,
+                    "netCommissionAmount": 0,
+                    "storeAdjustmentAmount": 0,
+                    "netStoreRevenueAmount": 0,
+                    "currency": "VND"
+                  },
+                  "orders": {
+                    "content": [],
+                    "page": 0,
+                    "size": 20,
+                    "totalElements": 0,
+                    "totalPages": 0
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/finance/entitlements": {
+      "get": {
+        "operationId": "get_store_StoreEntitlementReportView",
+        "summary": "Read StoreEntitlementReportView",
+        "description": "Whole VND; inclusive UTC from/to. Owner STORE_PROFILE_MANAGE required; staff denied.",
+        "tags": [
+          "Store finance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "occurredAt"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "HELD",
+                "ELIGIBLE",
+                "DISPUTED",
+                "FORFEITED",
+                "SETTLED"
+              ],
+              "default": "ALL"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreEntitlementReportView"
+                },
+                "example": {
+                  "summary": {
+                    "salesPayableEligibleAmount": 0,
+                    "noShowCompensationEligibleAmount": 0,
+                    "totalEligibleToSettleAmount": 0,
+                    "heldNoShowAmount": 0,
+                    "heldDisputedSalesAmount": 0,
+                    "totalHeldAmount": 0,
+                    "forfeitedNoShowAmount": 0,
+                    "currency": "VND"
+                  },
+                  "items": {
+                    "content": [],
+                    "page": 0,
+                    "size": 20,
+                    "totalElements": 0,
+                    "totalPages": 0
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/stores/{storeId}/finance/orders/{orderId}/ledger": {
+      "get": {
+        "operationId": "get_store_OrderLedgerView",
+        "summary": "Read OrderLedgerView",
+        "description": "Whole VND; inclusive UTC from/to. Owner STORE_PROFILE_MANAGE required; staff denied.",
+        "tags": [
+          "Store finance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderLedgerView"
+                },
+                "example": {
+                  "orderId": "11111111-1111-4111-8111-111111111111",
+                  "orderCode": "ORD-EXAMPLE",
+                  "collectedVerified": 0,
+                  "refundedVerified": 0,
+                  "netCollected": 0,
+                  "grossCommission": 0,
+                  "commissionAdjustment": 0,
+                  "netCommission": 0,
+                  "grossStorePayable": 0,
+                  "storeAdjustment": 0,
+                  "netStorePayable": 0,
+                  "grossNoShowCompensation": 0,
+                  "noShowAdjustment": 0,
+                  "netNoShowCompensation": 0,
+                  "netAllocated": 0,
+                  "balanced": true,
+                  "entries": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/orders/{orderId}/ledger": {
+      "get": {
+        "operationId": "get_admin_OrderLedgerView",
+        "summary": "Read OrderLedgerView",
+        "description": "ADMIN required. Reconcile is idempotent and skips locked orders.",
+        "tags": [
+          "Admin finance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderLedgerView"
+                },
+                "example": {
+                  "orderId": "11111111-1111-4111-8111-111111111111",
+                  "orderCode": "ORD-EXAMPLE",
+                  "collectedVerified": 0,
+                  "refundedVerified": 0,
+                  "netCollected": 0,
+                  "grossCommission": 0,
+                  "commissionAdjustment": 0,
+                  "netCommission": 0,
+                  "grossStorePayable": 0,
+                  "storeAdjustment": 0,
+                  "netStorePayable": 0,
+                  "grossNoShowCompensation": 0,
+                  "noShowAdjustment": 0,
+                  "netNoShowCompensation": 0,
+                  "netAllocated": 0,
+                  "balanced": true,
+                  "entries": []
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/ledger/reconcile": {
+      "post": {
+        "operationId": "post_admin_LedgerSyncReportView",
+        "summary": "Reconcile ledger",
+        "description": "ADMIN required. Reconcile is idempotent and skips locked orders.",
+        "tags": [
+          "Admin finance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerSyncReportView"
+                },
+                "example": {
+                  "eventsScanned": 0,
+                  "entriesCreated": 0,
+                  "entriesSkippedAlreadyPosted": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -17523,6 +17967,418 @@
             "minimum": 0
           }
         }
+      },
+      "LedgerEntryView": {
+        "type": "object",
+        "required": [
+          "id",
+          "eventId",
+          "eventType",
+          "type",
+          "amount",
+          "currency",
+          "occurredAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "originalEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "businessKey": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LedgerSyncReportView": {
+        "type": "object",
+        "required": [
+          "eventsScanned",
+          "entriesCreated",
+          "entriesSkippedAlreadyPosted"
+        ],
+        "properties": {
+          "eventsScanned": {
+            "type": "integer"
+          },
+          "entriesCreated": {
+            "type": "integer"
+          },
+          "entriesSkippedAlreadyPosted": {
+            "type": "integer"
+          }
+        }
+      },
+      "OrderLedgerView": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "orderCode",
+          "collectedVerified",
+          "refundedVerified",
+          "netCollected",
+          "grossCommission",
+          "commissionAdjustment",
+          "netCommission",
+          "grossStorePayable",
+          "storeAdjustment",
+          "netStorePayable",
+          "grossNoShowCompensation",
+          "noShowAdjustment",
+          "netNoShowCompensation",
+          "netAllocated",
+          "balanced",
+          "entries"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "collectedVerified": {
+            "type": "integer"
+          },
+          "refundedVerified": {
+            "type": "integer"
+          },
+          "netCollected": {
+            "type": "integer"
+          },
+          "grossCommission": {
+            "type": "integer"
+          },
+          "commissionAdjustment": {
+            "type": "integer"
+          },
+          "netCommission": {
+            "type": "integer"
+          },
+          "grossStorePayable": {
+            "type": "integer"
+          },
+          "storeAdjustment": {
+            "type": "integer"
+          },
+          "netStorePayable": {
+            "type": "integer"
+          },
+          "grossNoShowCompensation": {
+            "type": "integer"
+          },
+          "noShowAdjustment": {
+            "type": "integer"
+          },
+          "netNoShowCompensation": {
+            "type": "integer"
+          },
+          "netAllocated": {
+            "type": "integer"
+          },
+          "balanced": {
+            "type": "boolean"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LedgerEntryView"
+            }
+          }
+        }
+      },
+      "StoreEntitlementItemView": {
+        "type": "object",
+        "required": [
+          "ledgerEntryId",
+          "orderId",
+          "orderCode",
+          "type",
+          "grossAmount",
+          "adjustmentAmount",
+          "netAmount",
+          "eligibilityStatus",
+          "occurredAt"
+        ],
+        "properties": {
+          "ledgerEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "grossAmount": {
+            "type": "integer"
+          },
+          "adjustmentAmount": {
+            "type": "integer"
+          },
+          "netAmount": {
+            "type": "integer"
+          },
+          "eligibilityStatus": {
+            "type": "string"
+          },
+          "holdReason": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StoreEntitlementReportView": {
+        "type": "object",
+        "required": [
+          "summary",
+          "items"
+        ],
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/StoreEntitlementSummaryView"
+          },
+          "items": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StoreEntitlementItemView"
+                }
+              },
+              "page": {
+                "type": "integer"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "totalElements": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "StoreEntitlementSummaryView": {
+        "type": "object",
+        "required": [
+          "salesPayableEligibleAmount",
+          "noShowCompensationEligibleAmount",
+          "totalEligibleToSettleAmount",
+          "heldNoShowAmount",
+          "heldDisputedSalesAmount",
+          "totalHeldAmount",
+          "forfeitedNoShowAmount",
+          "currency"
+        ],
+        "properties": {
+          "salesPayableEligibleAmount": {
+            "type": "integer"
+          },
+          "noShowCompensationEligibleAmount": {
+            "type": "integer"
+          },
+          "totalEligibleToSettleAmount": {
+            "type": "integer"
+          },
+          "heldNoShowAmount": {
+            "type": "integer"
+          },
+          "heldDisputedSalesAmount": {
+            "type": "integer"
+          },
+          "totalHeldAmount": {
+            "type": "integer"
+          },
+          "forfeitedNoShowAmount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "salesPayableEligibleAmount": 0,
+          "noShowCompensationEligibleAmount": 0,
+          "totalEligibleToSettleAmount": 0,
+          "heldNoShowAmount": 0,
+          "heldDisputedSalesAmount": 0,
+          "totalHeldAmount": 0,
+          "forfeitedNoShowAmount": 0,
+          "currency": "VND"
+        }
+      },
+      "StoreOrderRevenueItemView": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "orderCode",
+          "commissionRateSnapshot",
+          "actualSellingPrice",
+          "grossCommissionAmount",
+          "commissionAdjustmentAmount",
+          "netCommissionAmount",
+          "grossStorePayableAmount",
+          "storeAdjustmentAmount",
+          "netStoreRevenueAmount"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "commissionRateSnapshot": {
+            "type": "number"
+          },
+          "actualSellingPrice": {
+            "type": "integer"
+          },
+          "grossCommissionAmount": {
+            "type": "integer"
+          },
+          "commissionAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netCommissionAmount": {
+            "type": "integer"
+          },
+          "grossStorePayableAmount": {
+            "type": "integer"
+          },
+          "storeAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netStoreRevenueAmount": {
+            "type": "integer"
+          }
+        }
+      },
+      "StoreRevenueReportView": {
+        "type": "object",
+        "required": [
+          "summary",
+          "orders"
+        ],
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/StoreRevenueSummaryView"
+          },
+          "orders": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StoreOrderRevenueItemView"
+                }
+              },
+              "page": {
+                "type": "integer"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "totalElements": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "StoreRevenueSummaryView": {
+        "type": "object",
+        "required": [
+          "completedOrderCount",
+          "grossSalesAmount",
+          "grossCommissionAmount",
+          "commissionAdjustmentAmount",
+          "netCommissionAmount",
+          "storeAdjustmentAmount",
+          "netStoreRevenueAmount",
+          "currency"
+        ],
+        "properties": {
+          "completedOrderCount": {
+            "type": "integer"
+          },
+          "grossSalesAmount": {
+            "type": "integer"
+          },
+          "grossCommissionAmount": {
+            "type": "integer"
+          },
+          "commissionAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netCommissionAmount": {
+            "type": "integer"
+          },
+          "storeAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netStoreRevenueAmount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "completedOrderCount": 0,
+          "grossSalesAmount": 0,
+          "grossCommissionAmount": 0,
+          "commissionAdjustmentAmount": 0,
+          "netCommissionAmount": 0,
+          "storeAdjustmentAmount": 0,
+          "netStoreRevenueAmount": 0,
+          "currency": "VND"
+        }
       }
     },
     "responses": {
@@ -17803,6 +18659,12 @@
     {
       "name": "Notifications",
       "description": "Own inbox, unread counters and read receipts; transactional email outbox"
+    },
+    {
+      "name": "Store finance"
+    },
+    {
+      "name": "Admin finance"
     }
   ]
 }

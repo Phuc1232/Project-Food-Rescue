@@ -1,7 +1,7 @@
 # Technical Plan: T8.3 — Hoa hồng, Quyền lợi Cửa hàng & Doanh thu
 
 **Based on:** [01-business-definition.md](01-business-definition.md), Gate A đã được người dùng duyệt `Q1`–`Q5` ngày 2026-11-27.  
-**Status:** Chờ duyệt Gate B  
+**Status:** Hoàn tất triển khai và kiểm chứng full build ngày 2026-11-27
 **Updated:** 2026-11-27  
 **Scope:** T8.3 (`UC-47`, `UC-48`, `BR-46..52`, `NFR-17..20`: hạch toán sổ cái `PLATFORM_COMMISSION` + `STORE_PAYABLE` cho đơn `COMPLETED`, hạch toán riêng `NO_SHOW_COMPENSATION` hoa hồng `0` và theo dõi khóa 48h/tranh chấp, hạch toán `ADJUSTMENT` gắn `original_entry_id`, đảm bảo cân bằng `Σ phân bổ = tiền thu − tiền hoàn`, idempotency `business_key`, và API Store Owner/Admin).  
 **Phụ thuộc:** T8.1 (`[x]`), T8.2 (`[x]`) trong [roadmap-3-9.md](../roadmap-3-9.md).
@@ -248,13 +248,13 @@ Thêm **5** đường dẫn mới (nâng từ `121` → **`126`** paths) và **2
 
 ## 6. Task Breakdown
 
-- [ ] **T8.3-01:** Tạo migration `V24__ledger_entry_business_key.sql`, cập nhật `LedgerEntry`, `LedgerEntryRepository`, `FinancialEventRepository`, `FinanceLedgerProperties`, `application.yml`, `AuthTestFixtures`.
-- [ ] **T8.3-02 (TDD):** Viết trước bộ integration test `CommissionAndRevenueTests.kt` bao phủ `AC-01`..`AC-10` và chạy xác nhận TDD RED (endpoint `404` / chưa có bút toán `PLATFORM_COMMISSION`, `STORE_PAYABLE`, `NO_SHOW_COMPENSATION`, `ADJUSTMENT`).
-- [ ] **T8.3-03:** Cài đặt `LedgerPostingService`, `LedgerPostingJob`, DTOs (`LedgerEntryView`, `OrderLedgerView`, `LedgerSyncReportView`, `StoreRevenueReportView`, `StoreEntitlementReportView`), `OrderLedgerService`, `StoreFinanceService`, `StoreFinanceController`, `AdminFinanceLedgerController`.
-- [ ] **T8.3-04:** Tích hợp `LedgerPostingService` & `businessKey` vào `PaymentConfirmationService`, `ManualRefundService`, `PickupSessionService`, `NoShowService`, `AdminComplaintService`.
-- [ ] **T8.3-05:** Cập nhật `docs/api/openapi.yaml` (`126` paths / `31` tags) và kỳ vọng tại `AuthMigrationTests`, `FoodRescueApplicationTests`, `SwaggerUiTests`.
-- [ ] **T8.3-06:** Chạy targeted tests (`CommissionAndRevenueTests`, `NoShowTests`, `ComplaintTests`, `ManualRefundTests`, `PaymentWebhookTests`, `SwaggerUiTests`, `ApiContractTests`, `FoodRescueApplicationTests`), sau đó chạy full `./gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain`.
-- [ ] **T8.3-07:** Đọc trực tiếp `build/reports/tests/test/index.html` và XML các suite, viết `03-implementation-control.txt`, cập nhật `[x] T8.3` trong `roadmap-3-9.md` và `.gitignore`.
+- [x] **T8.3-01:** Tạo migration `V24__ledger_entry_business_key.sql`, cập nhật `LedgerEntry`, `LedgerEntryRepository`, `FinancialEventRepository`, `FinanceLedgerProperties`, `application.yml`, `AuthTestFixtures`.
+- [x] **T8.3-02 (TDD):** Viết trước bộ integration test `CommissionAndRevenueTests.kt` bao phủ `AC-01`..`AC-10` và chạy xác nhận TDD RED (endpoint `404` / chưa có bút toán `PLATFORM_COMMISSION`, `STORE_PAYABLE`, `NO_SHOW_COMPENSATION`, `ADJUSTMENT`).
+- [x] **T8.3-03:** Cài đặt `LedgerPostingService`, `LedgerPostingJob`, DTOs (`LedgerEntryView`, `OrderLedgerView`, `LedgerSyncReportView`, `StoreRevenueReportView`, `StoreEntitlementReportView`), `OrderLedgerService`, `StoreFinanceService`, `StoreFinanceController`, `AdminFinanceLedgerController`.
+- [x] **T8.3-04:** Tích hợp `LedgerPostingService` & `businessKey` vào `PaymentConfirmationService`, `ManualRefundService`, `PickupSessionService`, `NoShowService`, `AdminComplaintService`.
+- [x] **T8.3-05:** Cập nhật `docs/api/openapi.yaml` (`126` paths / `31` tags) và kỳ vọng tại `AuthMigrationTests`, `FoodRescueApplicationTests`, `SwaggerUiTests`.
+- [x] **T8.3-06:** Chạy targeted tests (`CommissionAndRevenueTests`, `NoShowTests`, `ComplaintTests`, `ManualRefundTests`, `PaymentWebhookTests`, `SwaggerUiTests`, `ApiContractTests`, `FoodRescueApplicationTests`), sau đó chạy full `./gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain`.
+- [x] **T8.3-07:** Đọc trực tiếp `build/reports/tests/test/index.html` và XML các suite, viết `03-implementation-control.txt`, cập nhật `[x] T8.3` trong `roadmap-3-9.md` và `.gitignore`.
 
 ---
 
@@ -298,3 +298,11 @@ Thêm **5** đường dẫn mới (nâng từ `121` → **`126`** paths) và **2
    *Kiểm soát:* Không thay đổi rule/response API cũ; `PaymentWebhookTests` kiểm tra `ledger_entry` trước khi bàn giao/no-show, `ManualRefundTests` kiểm tra theo `type='CUSTOMER_REFUND'`, `NoShowTests` không giả định `ledger_entry = 0`. Sẽ chạy regression toàn bộ các suite này trước khi đóng task.
 5. **Rollback:**  
    Trước khi đóng task, có thể hoàn tác sạch gói controller/service/DTO mới dưới `finance/`, các lời gọi `LedgerPostingService` ở 5 service tích hợp và `V24` trên DB mới mà không ảnh hưởng dữ liệu/bất biến của `V1`–`V23`.
+
+
+## Ghi nhận triển khai
+
+- Giữ thứ tự khóa `CustomerOrder -> FinancialEvent`: truy vấn pending dùng `FOR UPDATE OF o SKIP LOCKED`, sau đó khóa event bằng `FOR UPDATE SKIP LOCKED`. Tránh chu trình khóa ngược với luồng nghiệp vụ đang giữ order trước khi ghi event.
+- Giá trị mặc định batch lấy trong thân phương thức transactional; tránh truy cập field của Spring proxy từ Kotlin default-argument bridge.
+- No-show đã quyết định `FORFEITED` nhưng complaint còn `DECIDED` tiếp tục hiển thị `DISPUTED`/khoản giữ, tới khi hoàn tất hoàn tiền và ghi đảo bút toán.
+- Lượt test-first đã viết/chạy trước implementation; RED ban đầu do Docker Desktop không khởi động được Ryuk (HTTP 500), không xác nhận được RED nghiệp vụ trước implementation. Sau khi Docker được khởi động, các lượt test thực tế được chạy và sửa lỗi; không tắt/skip test.

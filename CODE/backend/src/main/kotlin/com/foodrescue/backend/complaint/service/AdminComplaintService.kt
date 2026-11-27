@@ -34,7 +34,8 @@ import java.math.BigDecimal
 import java.util.UUID
 @Service
 @PreAuthorize("hasRole('ADMIN')")
-class AdminComplaintService(private val outbox: NotificationOutboxService, private val complaints: ComplaintRepository,private val workflow: ComplaintService,private val views: ComplaintViews,
+class AdminComplaintService(private val outbox: NotificationOutboxService,
+    private val ledgerPosting: com.foodrescue.backend.finance.service.LedgerPostingService, private val complaints: ComplaintRepository,private val workflow: ComplaintService,private val views: ComplaintViews,
     private val accounts: AccountRepository,private val cases: NoShowCaseRepository,private val payments: PaymentRepository,
     private val refunds: RefundRepository,private val obligations: RefundRequestRepository,private val events: FinancialEventRepository,
     private val history: StoreHistoryRecorder,private val mapper: ObjectMapper,private val clock: Clock) {
@@ -92,16 +93,18 @@ class AdminComplaintService(private val outbox: NotificationOutboxService, priva
         c.status=if(total.signum()>0) ComplaintStatus.DECIDED else ComplaintStatus.CLOSED;c.closedAt=if(total.signum()==0) now else null
         r.refundAllocations.forEach { a -> obligations.save(RefundRequest(order=c.order,complaint=c,reason="COMPLAINT_${r.outcome!!.name}: ${r.reason.trim()}",
             requestedAmount=a.amount!!.setScale(0),status=RefundRequestStatus.PENDING,payment=sources[a.paymentId],reasonCode="COMPLAINT_${r.outcome.name}")) }
-        events.save(FinancialEvent(c.order,FinancialEventType.COMPLAINT_RESOLVED,complaint=c,occurredAt=now,businessKey="COMPLAINT_RESOLVED:$id"))
+        val resolvedEvent=events.saveAndFlush(FinancialEvent(c.order,FinancialEventType.COMPLAINT_RESOLVED,complaint=c,occurredAt=now,businessKey="COMPLAINT_RESOLVED:$id"))
+        ledgerPosting.postComplaintResolvedIfSettled(c,resolvedEvent,now)
         complaints.flush();record(c,"COMPLAINT_DECIDED");if(c.status==ComplaintStatus.CLOSED) record(c,"COMPLAINT_CLOSED")
         return views.admin(c)
     }
     @Transactional
     fun close(adminId: UUID,id: UUID): AdminComplaintDetail {
-        val c=complaints.findForUpdate(id) ?: missing()
+        val c=workflow.lock(id)
         if(c.status!=ComplaintStatus.DECIDED) conflict("INVALID_COMPLAINT_STATUS","Complaint must be DECIDED")
         if(obligations.findAllByComplaintIdOrderByCreatedAt(id).any { it.status!=RefundRequestStatus.FULFILLED }) conflict("REFUND_PENDING","Refund obligations remain unfinished")
         c.status=ComplaintStatus.CLOSED;c.closedAt=clock.instant();c.handledBy=accounts.getReferenceById(adminId);record(c,"COMPLAINT_CLOSED")
+        events.findByBusinessKey("COMPLAINT_RESOLVED:$id")?.let { ledgerPosting.postComplaintResolvedIfSettled(c,it,clock.instant()) }
         return views.admin(c)
     }
     private fun record(c: Complaint,action: String) {

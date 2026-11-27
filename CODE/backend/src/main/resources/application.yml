@@ -101,3 +101,8 @@ notifications:
   retry-delays-seconds: [60, 300, 900]
   mail-from: ${NOTIFICATIONS_MAIL_FROM:}
   email-enabled: ${NOTIFICATIONS_EMAIL_ENABLED:true}
+
+finance:
+  ledger-job-enabled: true
+  ledger-scan-ms: 30000
+  ledger-batch-size: 100

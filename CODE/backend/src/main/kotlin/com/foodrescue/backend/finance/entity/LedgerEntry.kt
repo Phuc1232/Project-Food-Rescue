@@ -37,5 +37,8 @@ class LedgerEntry(
     val originalEntry: LedgerEntry? = null,
 
     @field:Column(name = "occurred_at", nullable = false)
-    val occurredAt: Instant
+    val occurredAt: Instant,
+
+    @field:Column(name = "business_key", length = 255)
+    val businessKey: String? = null
 ) : BaseEntity()
