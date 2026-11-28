@@ -22,7 +22,7 @@ open class SwaggerUiTests: AuthTestFixtures() {
         assertEquals(401,call("/docs/","POST").statusCode())
     }
     @Test fun `UI uses static reviewed contract with safe configuration and examples`() {
-        val contract=json(call("/openapi.yaml")); assertEquals(140,contract["paths"].size())
+        val contract=json(call("/openapi.yaml")); assertEquals(143,contract["paths"].size())
         assertEquals(".",contract["servers"][0]["url"].asString())
         assertEquals("bearer",contract["components"]["securitySchemes"]["bearerAuth"]["scheme"].asString())
         assertEquals(31,contract["tags"].size())

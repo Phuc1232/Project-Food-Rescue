@@ -1,0 +1,148 @@
+FOODRESCUE — KIỂM SOÁT TRIỂN KHAI T8.5
+Ngày: 2026-11-28 | Trạng thái: HOÀN TẤT
+Plan: docs/specs/t8-5-admin-monitoring-and-stats/02-plan.md
+
+1. KẾT QUẢ
+- Thêm 3 API ADMIN-only: GET /api/v1/admin/stores/{storeId}/menu-price-audit; GET /api/v1/admin/audit-logs; GET /api/v1/admin/finance/statistics.
+- Menu: giá hiện hành, lịch sử tác giả/lý do, tài liệu toàn menu và riêng món, tổng hợp snapshot theo mức giá với số hộp/số lượng/first-last packedAt; delta=listedPrice-snapshot, cờ mismatch, filter trước phân trang, empty state.
+- Audit: lọc store/entity/entityId/actor/action/UTC; sort whitelist, batch resolve OWNER -> ADMIN -> STAFF, SYSTEM/CUSTOMER fallback; parse before/after thành JSON, mask accountNumber và redact credential/ciphertext fields, JSON lỗi trả null thay vì lộ raw text. Không sửa StoreHistoryRecorder.ENTITY_TYPES hay API Owner history.
+- Finance: đủ 8 trạng thái đơn; tiền thu/hoàn, doanh thu hoàn tất, commission/payable/no-show gross/adjustment/net; phân hoạch bút toán HELD / DRAFT / ELIGIBLE_UNASSIGNED / CONFIRMED_SETTLED không đếm trùng.
+- Bất biến: totalStoreEntitlementNetAmount = heldAmount + eligibleUnsettledAmount + confirmedSettledLedgerAmount; totalEstimatedPayableAmount = eligibleUnsettledAmount + confirmedRemainingPayableAmount; tổng toàn sàn tính bằng tổng byStore.
+- Settlement và payout: gọi lại SettlementQueryService.carriedRecovery/payableCap; không thay công thức T8.4, không sửa/bổ sung bút toán, không tự chạy reconcile. PENDING + VERIFIED giữ hạn mức; FAILED không tính vào cam kết.
+- Các API dùng transaction readOnly REPEATABLE_READ để giữ snapshot nhất quán giữa các query trong cùng response.
+- V26 index-only: thêm 4 index audit/customer_order. Tái sử dụng idx_ledger_entry_store_occurred từ V24 (cùng prefix store_id, occurred_at DESC, thêm id); tránh lỗi trùng tên và index dư. Không sửa V1–V25, không sửa trigger, giữ nguyên 43 entities.
+- OpenAPI: 143 paths / 31 tags; schemas, examples, params và lỗi chuẩn cho cả 3 endpoint.
+
+2. KIỂM CHỨNG
+- Baseline BUILD SUCCESSFUL (UP-TO-DATE), 25 migrations, 43 entities, 61 suites, 366 PASS / 1 SKIPPED theo baseline T8.4 đã kiểm chứng.
+- TDD RED thật: test AC-01 empty menu HTTP 404 thay vì 200 trước service/controller; XML đã được đọc; 1 test/1 failure (2m27s).
+- Lượt đầu 7/7 PASS. Mở rộng 9 ca có 8 PASS và 1 lỗi fixture dùng JsonNode.map của Jackson 3; đã chuyển sang duyệt chỉ số, không sửa nghiệp vụ để chiều test.
+- Targeted regression theo plan: 78/78 PASS, 11 suite, 0 FAIL / 0 ERROR / 0 SKIPPED (4m41s).
+- Snapshot hai mức giá trước/sau thay đổi: PASS (1m4s).
+- Đã bổ sung đọc audit JSON bằng BigDecimal để không làm tròn số lớn khi che dữ liệu; ca 9007199254740993.00 đã PASS (1m4s).
+- Command: .\gradlew.bat --gradle-user-home C:/Users/WIN-LOR/.gradle build --console=plain
+- Full BUILD SUCCESSFUL (12m24s): 62 suites, 376 tests = 375 PASS / 0 FAIL / 0 ERROR / 1 SKIPPED có sẵn. T8.5 đạt 9/9 PASS. Đã đọc trực tiếp HTML (376/0/1, duration 12m16.11s) và XML tất cả suites.
+- Skip có sẵn: SwaggerUiContextPathTests :: hold disposable browser sandbox until stop signal().
+- Sau full build chỉ hoàn thiện ví dụ/nullable OpenAPI và giữ nguyên thứ tự schema cũ để giảm diff; kiểm tra cấu trúc ví dụ/ref và đóng gói lại bằng assemble. Không thay code sau full build.
+- Reports: build/reports/tests/test/index.html; build/test-results/test/TEST-*.xml.
+- PostgreSQL Testcontainers, FakePaymentGateway, Clock điều khiển và key giả; không dùng DB Compose, không gọi payOS/chuyển tiền thật. Không tắt/skip/xóa test để làm xanh build.
+
+3. TRUY VẾT FILE / AC
+- V26__admin_monitoring_indexes.sql: AC-01..07; migration/entity validation.
+- catalog/dto/{PackedBoxPriceSummaryView,MenuPriceAuditHistoryItem,MenuItemPriceAuditView,StoreMenuPriceAuditView}.kt; catalog/service/MenuPriceInspectionService.kt; catalog/controller/AdminMenuAuditController.kt: AC-01,05,06; batch SQL tránh N+1 lịch sử/chứng từ/snapshot.
+- audit/dto/AdminAuditLogItem.kt; audit/service/AdminActivityLogService.kt; audit/controller/AdminAuditLogController.kt: AC-02,05,06; filter/roles/che dữ liệu, chỉ đọc.
+- finance/dto/{AdminFinanceLedgerStatsView,AdminFinanceSettlementStatsView,AdminStoreFinanceStatsItem,AdminFinanceStatisticsView}.kt; finance/service/AdminFinanceStatsService.kt; finance/controller/AdminFinanceStatsController.kt: AC-03..06; phân hoạch và tổng hợp số liệu chính xác BigDecimal scale 0.
+- AdminMonitoringAndStatsTests.kt: 9 test AC-01..06; giá trước/sau thay đổi, tài liệu món/toàn menu, role/redaction, lifecycle hủy-hoàn/hết hạn/no-show tranh chấp -> ELIGIBLE -> SETTLED -> partial payout, đa cửa hàng, UTC boundaries, validation và bảo mật.
+- AuthMigrationTests,FoodRescueApplicationTests,SwaggerUiTests: AC-07, 26 migrations / 143 paths / 31 tags.
+- docs/api/openapi.yaml; .gitignore; plan; roadmap; báo cáo này: contract và kiểm soát task.
+
+4. KỊCH BẢN BẤM THỬ SWAGGER (/docs, dev)
+1) Login ADMIN và Authorize. GET /admin/stores/{storeId}/menu-price-audit: store trống trả items.content=[], totalElements=0. Store không tồn tại 404.
+2) Owner tạo món giá 25.000, upload price-documents riêng món và toàn menu, đóng hộp chứa món. Đổi giá món sang 30.000 có reason/version, đóng hộp mới. Admin audit trả hai mức snapshot 25.000 và 30.000, delta 5.000/0 và mismatch flag đúng; history/docs giữ đủ phiên bản. onlyMismatchedWithPackedBoxes=true lọc trước phân trang.
+3) GET /admin/audit-logs với storeId, entityType (vd STORE_PAYOUT_ACCOUNT/SETTLEMENT/STORE_PAYOUT), entityId, actorId, action, from/to UTC. Xem actorRole, occurredAt, before/after JSON, correlationId. STK chỉ có dạng che; credential fields bị redact. Query không có kết quả trả page rỗng.
+4) GET /admin/finance/statistics?storeId=...: đủ 8 trạng thái đơn, các chỉ số đúng thời điểm nguồn. So sánh verifiedCollected/refunded, commission, store payable và no-show với ledger của các đơn qua API T8.3.
+5) Chuẩn bị COMPLETED không tranh chấp, COMPLETED khiếu nại mở, NO_SHOW HELD/DISPUTED, CANCELLED hoàn đủ, EXPIRED và PENDING_PAYMENT. Kiểm tra held/eligible partition. Sau khi no-show qua cửa sổ phản ánh, lập/chốt settlement và chi một phần theo T8.4; confirmedSettledLedgerAmount, paidOutVerifiedAmount và confirmedRemainingPayableAmount khớp bảng chi tiết.
+6) Lập DRAFT: khoản nằm trong DRAFT_UNCONFIRMED; CONFIRMED/PARTIALLY_PAID/PAID ưu tiên nhóm CONFIRMED_SETTLED. Mọi bút toán trong filter chỉ thuộc một nhóm. Ghi nhận số âm/adjustment kỳ trước và kiểm tra cap/recovery theo màn hình chi tiết T8.4.
+7) Bỏ storeId để xem toàn sàn; cộng từng trường byStore khớp tổng. Dùng from=to tại mốc completedAt/occurredAt để kiểm tra biên bao gồm cả hai đầu; from>to trả 400.
+8) Các lỗi: entityType không hỗ trợ, size>100 hoặc sort sai 400; store/menuItem sai 404. Cả ba API: thiếu login 401, Owner/Staff đủ 6 quyền/Customer 403.
+
+5. NGỮ NGHĨA THỜI GIAN / GIỚI HẠN
+- [from,to] UTC inclusive: counts theo accepted_at; completed revenue/count theo completed_at; ledger metrics theo occurred_at. Khoản giữ và membership vào settlement dùng trạng thái hiện tại trong snapshot, không dựng lại lịch sử trạng thái tại to.
+- Header metrics theo confirmed_at. Paid verified theo transferred_at (legacy fallback confirmed_at); Pending theo transferred_at hoặc created_at, cột created_at của StorePayoutService được ghi bằng Clock. Remaining cap trừ toàn bộ cam kết trên các header được lọc, kể cả payout ngoài khoảng thời gian; outstanding recovery lấy kỳ mới nhất trong tập header được chọn, dùng đầy đủ chuỗi kỳ trước để tránh cấn nợ sai.
+- Chọn toàn bộ Store theo tên/id, kể cả cửa hàng rỗng, để byStore luôn cộng đúng về tổng. Báo cáo hiện tính theo từng store và tải nhóm menu trước khi phân trang mismatch; nếu quy mô lớn cần tối ưu thêm trong task hiệu năng.
+- Không thay đổi cách ghi audit của các task cũ. Vai trò theo đúng rule đã duyệt: current owner/admin membership, từng có staff assignment. Không giải mã STK hay trả ciphertext qua API monitoring.
+- Không thay đổi nghiệp vụ thu/hoàn/hoa hồng/đối soát/chi trả; không có thêm cấu hình khóa. Không triển khai T9.x. Không commit theo quy định Git tạm ngưng của repo.
+
+6. PHÁT HIỆN NGOÀI PHẠM VI
+- Chưa ghi nhận lỗi nghiệp vụ ngoài phạm vi T8.5. Index trùng tên trong plan đã được giải quyết bằng tái sử dụng V24, ghi rõ trong plan.
+
+7. FILE / LOẠI / SHA-256
+
+File | Loại | SHA-256
+docs/api/openapi.yaml | MODIFIED | f15469b183dccc8080dc347de8be98aece6a023294619ee4283f49b485c4ea05
+src/main/kotlin/com/foodrescue/backend/audit/controller/AdminAuditLogController.kt | NEW | 6cab60c8b3ecf2611cb3b8175546ca95969631721c877597be5e4761ff405c7e
+src/main/kotlin/com/foodrescue/backend/audit/dto/AdminAuditLogItem.kt | NEW | d82110ca42d6f94651859699260117fac0e3c552ece1a124c4c781115b4cbcb7
+src/main/kotlin/com/foodrescue/backend/audit/service/AdminActivityLogService.kt | NEW | c5091f63c70b87df298e1b77fc5358cb4fce8711bfbea9e551028a6ba7b04734
+src/main/kotlin/com/foodrescue/backend/catalog/controller/AdminMenuAuditController.kt | NEW | 95108b1f57c32e7362d45febf14aa55a3dfd6d0a4f8bb578e4eb3aa035930227
+src/main/kotlin/com/foodrescue/backend/catalog/dto/MenuItemPriceAuditView.kt | NEW | dfdac3f9c4c53a1f4729eba9444c53fa240d1f5dd926306a3f5b9966f0a003fd
+src/main/kotlin/com/foodrescue/backend/catalog/dto/MenuPriceAuditHistoryItem.kt | NEW | 3037603251d49bad029a03b3250b475ca0f58511f05e81fc4af08d2469e7a499
+src/main/kotlin/com/foodrescue/backend/catalog/dto/PackedBoxPriceSummaryView.kt | NEW | f0185d9e331a11d358e8985cd3ca7f922070d19387373c73e4b0e4dcca132e1b
+src/main/kotlin/com/foodrescue/backend/catalog/dto/StoreMenuPriceAuditView.kt | NEW | 20d2d47ded667f127e56fb500ef3fcecbe61d0faf1068335b8344cbf2141a344
+src/main/kotlin/com/foodrescue/backend/catalog/service/MenuPriceInspectionService.kt | NEW | 8014b3fa2f5524f53b76c329624ab34366918126ddd35433df43e6f340ab48f5
+src/main/kotlin/com/foodrescue/backend/finance/controller/AdminFinanceStatsController.kt | NEW | 7ebc20a1a3656622c1c88ed713bcf12075ab5b979587eb086e2ac56615e970bf
+src/main/kotlin/com/foodrescue/backend/finance/dto/AdminFinanceLedgerStatsView.kt | NEW | 96d0e49e44c74dd6fa8551844844aafadc5d072cc95d9f252d35a75918ff883d
+src/main/kotlin/com/foodrescue/backend/finance/dto/AdminFinanceSettlementStatsView.kt | NEW | 4e5a9386e61b3c4ebda5038cdd0977987443538d842898a3f8f60cf596921ba1
+src/main/kotlin/com/foodrescue/backend/finance/dto/AdminFinanceStatisticsView.kt | NEW | 4087ae63f061441a82fe683c33003189f1113cc2226c3dcdf287ad6013d94fce
+src/main/kotlin/com/foodrescue/backend/finance/dto/AdminStoreFinanceStatsItem.kt | NEW | 60a2921654331a0aeef888e51cb1e57fbf0e426f6709a60884db5815bb3594d5
+src/main/kotlin/com/foodrescue/backend/finance/service/AdminFinanceStatsService.kt | NEW | bad20d1e1f4a5d8d5939fa4a1585587640a478f6709131c9ebec836ec403bfa8
+src/main/resources/db/migration/V26__admin_monitoring_indexes.sql | NEW | c952198c7540d16f9212078ef73ffab99463a6815e8945c9c32eee779dcb8e48
+src/test/kotlin/com/foodrescue/backend/AdminMonitoringAndStatsTests.kt | NEW | 07a7be7f4fad6894ad51f2d6d61053d701ed9dd3d2e7d6184a704d81ab327456
+src/test/kotlin/com/foodrescue/backend/AuthMigrationTests.kt | MODIFIED | 3be6715ce61fffc33d287f7a0a69f16c0037c5191f436467ccf2daab1973eaf9
+src/test/kotlin/com/foodrescue/backend/FoodRescueApplicationTests.kt | MODIFIED | 3c91089e9f9da0f4b19427309beb054889286b2cd85eaa503e0a5adc802dfee6
+src/test/kotlin/com/foodrescue/backend/SwaggerUiTests.kt | MODIFIED | e658ae6cd8df991cad94de9afd36cf9a05f905335d352f2c0d21e997f5afc4fc
+
+8. KẾT QUẢ TỪNG SUITE (XML FULL BUILD)
+
+Suite | Total | PASS | SKIPPED | FAIL | ERROR
+AdminAccountTests | 6 | 6 | 0 | 0 | 0
+AdminBootstrapTests | 2 | 2 | 0 | 0 | 0
+AdminMonitoringAndStatsTests | 9 | 9 | 0 | 0 | 0
+ApiContractTests | 4 | 4 | 0 | 0 | 0
+AuthFlowTests | 7 | 7 | 0 | 0 | 0
+AuthMigrationTests | 1 | 1 | 0 | 0 | 0
+BoxPackingTests | 9 | 9 | 0 | 0 | 0
+BoxTemplateTests | 5 | 5 | 0 | 0 | 0
+BoxUnfitViolationSuspendTests | 19 | 19 | 0 | 0 | 0
+CommissionAndRevenueTests | 12 | 12 | 0 | 0 | 0
+ComplaintTests | 20 | 20 | 0 | 0 | 0
+FakePaymentGatewayTests | 1 | 1 | 0 | 0 | 0
+FileStorageFailureTests | 1 | 1 | 0 | 0 | 0
+FileTypeDetectorTests | 3 | 3 | 0 | 0 | 0
+FileUploadTests | 8 | 8 | 0 | 0 | 0
+FinancialPolicyTests | 7 | 7 | 0 | 0 | 0
+FoodRescueApplicationTests | 9 | 9 | 0 | 0 | 0
+JwtSecurityTests | 1 | 1 | 0 | 0 | 0
+LocalDiskFileStorageTests | 5 | 5 | 0 | 0 | 0
+ManualRefundTests | 6 | 6 | 0 | 0 | 0
+MenuTests | 8 | 8 | 0 | 0 | 0
+NoShowAmountsTests | 2 | 2 | 0 | 0 | 0
+NoShowTests | 18 | 18 | 0 | 0 | 0
+NotificationTests | 19 | 19 | 0 | 0 | 0
+OpeningHoursValidatorTests | 3 | 3 | 0 | 0 | 0
+OrderCancellationTests | 20 | 20 | 0 | 0 | 0
+OrderLifecycleTests | 6 | 6 | 0 | 0 | 0
+OrderPlacementTests | 8 | 8 | 0 | 0 | 0
+PartnerApplicationTests | 11 | 11 | 0 | 0 | 0
+PasswordRecoveryTests | 4 | 4 | 0 | 0 | 0
+PaymentReconciliationTests | 4 | 4 | 0 | 0 | 0
+PaymentRequestTests | 6 | 6 | 0 | 0 | 0
+PaymentWebhookTests | 6 | 6 | 0 | 0 | 0
+PayOsPaymentGatewayTests | 3 | 3 | 0 | 0 | 0
+PayOsSignatureTests | 4 | 4 | 0 | 0 | 0
+PayoutAccountCodecTests | 1 | 1 | 0 | 0 | 0
+PickupCodeCodecTests | 2 | 2 | 0 | 0 | 0
+PickupCodeTests | 8 | 8 | 0 | 0 | 0
+PickupHandoverTests | 14 | 14 | 0 | 0 | 0
+ProductionApiContractTests | 1 | 1 | 0 | 0 | 0
+ProfileUpdateCorsTests | 1 | 1 | 0 | 0 | 0
+ProfileUpdateRequestParserTests | 6 | 6 | 0 | 0 | 0
+ProfileUpdateTests | 9 | 9 | 0 | 0 | 0
+RateLimitTests | 3 | 3 | 0 | 0 | 0
+RefreshTokenConcurrencyTests | 3 | 3 | 0 | 0 | 0
+SaleBatchTests | 8 | 8 | 0 | 0 | 0
+SearchTests | 6 | 6 | 0 | 0 | 0
+SettlementAndPayoutTests | 17 | 17 | 0 | 0 | 0
+SmtpNotificationSenderTests | 2 | 2 | 0 | 0 | 0
+StaffManagementTests | 9 | 9 | 0 | 0 | 0
+StoreAuthorizationTests | 2 | 2 | 0 | 0 | 0
+StoreChangeRequestTests | 3 | 3 | 0 | 0 | 0
+StoreProfileTests | 6 | 6 | 0 | 0 | 0
+StoreSalesPolicyTests | 1 | 1 | 0 | 0 | 0
+StoreStatusTests | 6 | 6 | 0 | 0 | 0
+SwaggerUiContextPathTests | 3 | 2 | 1 | 0 | 0
+SwaggerUiDefaultProfileTests | 1 | 1 | 0 | 0 | 0
+SwaggerUiDevTests | 2 | 2 | 0 | 0 | 0
+SwaggerUiMixedDevProfileTests | 1 | 1 | 0 | 0 | 0
+SwaggerUiMixedTestProfileTests | 1 | 1 | 0 | 0 | 0
+SwaggerUiProductionTests | 1 | 1 | 0 | 0 | 0
+SwaggerUiTests | 2 | 2 | 0 | 0 | 0

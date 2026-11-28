@@ -43,7 +43,7 @@ Nếu khảo sát cho thấy card sai/thiếu, ghi đề xuất sửa card trong
 | 5. Tìm kiếm và đặt hàng | [x] T5.1 · [x] T5.2 · [x] T5.3 |
 | 6. Thanh toán và hoàn tiền | [x] T6.1 · [x] T6.2 · [x] T6.3 · [x] T6.4 · [x] T6.5 |
 | 7. Bàn giao, hủy, no-show | [x] T7.1 · [x] T7.2 · [x] T7.3 · [x] T7.4 · [x] T7.5 |
-| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [x] T8.2 · [x] T8.3 · [x] T8.4 · [ ] T8.5 |
+| 8. Khiếu nại, thông báo, đối soát | [x] T8.1 · [x] T8.2 · [x] T8.3 · [x] T8.4 · [x] T8.5 |
 | 9. Hoàn thiện và triển khai | [ ] T9.1 · [ ] T9.2 · [ ] T9.3 · [ ] T9.4 · [ ] T9.5 |
 
 Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu đề card.
@@ -367,7 +367,7 @@ Khi xong một task: đổi `[ ]` thành `[x]` ở cả bảng trên và tiêu �
 - **AC tối thiểu:** một bút toán chỉ thuộc một bảng; không chi vượt; mã chuyển trùng → từ chối; tài khoản nhận vừa đổi
   hoặc chưa xác minh → chặn chi; khoản tranh chấp không vào bảng.
 
-### [ ] T8.5 — Giám sát và thống kê quản trị
+### [x] T8.5 — Giám sát và thống kê quản trị
 - **Phụ thuộc:** T8.4. **Tài liệu:** UC-75, UC-76, UC-79, BR-56.
 - **Phạm vi:** admin xem lịch sử hoạt động cửa hàng (giá, đóng hộp, đơn, tiền, bàn giao, no-show, hoàn, quyết định quản
   trị — từ `audit_log`/event), lọc theo đối tượng/thời gian/người; thống kê tài chính cơ bản theo kỳ/cửa hàng (số đơn

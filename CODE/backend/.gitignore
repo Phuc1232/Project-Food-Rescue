@@ -61,3 +61,5 @@ local.properties
 !docs/specs/t8-3-commission-and-revenue/
 
 !docs/specs/t8-4-settlement-and-payout/
+
+!docs/specs/t8-5-admin-monitoring-and-stats/

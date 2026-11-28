@@ -12426,6 +12426,508 @@
           }
         }
       }
+    },
+    "/api/v1/admin/stores/{storeId}/menu-price-audit": {
+      "get": {
+        "operationId": "t85_StoreMenuPriceAuditView",
+        "tags": [
+          "Admin stores"
+        ],
+        "summary": "Inspect current and packed menu prices",
+        "description": "ADMIN only; read-only consistent snapshot. Includes current listed prices, immutable price history, item and whole-menu evidence, and packed-box snapshot groups. Delta = current listed price minus snapshot price. Mismatch filtering applies before pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "menuItemId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "DISCONTINUED"
+              ]
+            }
+          },
+          {
+            "name": "onlyMismatchedWithPackedBoxes",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreMenuPriceAuditView"
+                },
+                "example": {
+                  "storeId": "11111111-1111-4111-8111-111111111111",
+                  "storeName": "Bánh mì Cô Ba",
+                  "storeStatus": "ACTIVE",
+                  "items": {
+                    "page": 0,
+                    "size": 20,
+                    "totalElements": 1,
+                    "totalPages": 1,
+                    "content": [
+                      {
+                        "item": {
+                          "id": "22222222-2222-4222-8222-222222222222",
+                          "name": "Bánh mì",
+                          "categoryCode": "BAKERY",
+                          "categoryName": "Bakery",
+                          "listedPrice": 30000,
+                          "ingredients": "Bánh mì, thịt",
+                          "safetyWarnings": "Có gluten",
+                          "status": "ACTIVE",
+                          "version": 1
+                        },
+                        "priceHistory": [
+                          {
+                            "previousPrice": 25000,
+                            "newPrice": 30000,
+                            "changedAt": "2026-11-28T10:00:00Z",
+                            "changedById": "33333333-3333-4333-8333-333333333333",
+                            "changedByDisplayName": "Store Owner",
+                            "reason": "Giá nguyên liệu thay đổi"
+                          },
+                          {
+                            "previousPrice": 25000,
+                            "newPrice": 25000,
+                            "changedAt": "2026-11-20T10:00:00Z",
+                            "changedById": "33333333-3333-4333-8333-333333333333",
+                            "changedByDisplayName": "Store Owner",
+                            "reason": "Initial price"
+                          }
+                        ],
+                        "documents": [],
+                        "hasPackedPriceMismatch": true,
+                        "packedBoxPriceSummary": [
+                          {
+                            "unitPriceSnapshot": 25000,
+                            "boxCount": 1,
+                            "totalQuantity": 2,
+                            "firstPackedAt": "2026-11-27T10:00:00Z",
+                            "lastPackedAt": "2026-11-27T10:00:00Z",
+                            "differsFromCurrentListedPrice": true,
+                            "priceDeltaFromCurrentListedPrice": 5000
+                          },
+                          {
+                            "unitPriceSnapshot": 30000,
+                            "boxCount": 1,
+                            "totalQuantity": 1,
+                            "firstPackedAt": "2026-11-28T11:00:00Z",
+                            "lastPackedAt": "2026-11-28T11:00:00Z",
+                            "differsFromCurrentListedPrice": false,
+                            "priceDeltaFromCurrentListedPrice": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "operationId": "t85_PageResponseAdminAuditLogItem",
+        "tags": [
+          "Admin stores"
+        ],
+        "summary": "Search store activity across business modules",
+        "description": "ADMIN only; read-only consistent snapshot. Filters business audit records by store, entity, actor, action and inclusive UTC occurredAt. Role attribution uses current owner/admin membership and historical staff assignments. Structured bank numbers are masked and credential/ciphertext fields redacted; monetary JSON numbers retain decimal precision.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "occurredAt",
+                "createdAt"
+              ],
+              "default": "occurredAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseAdminAuditLogItem"
+                },
+                "example": {
+                  "page": 0,
+                  "size": 20,
+                  "totalElements": 1,
+                  "totalPages": 1,
+                  "content": [
+                    {
+                      "id": "44444444-4444-4444-8444-444444444444",
+                      "storeId": "11111111-1111-4111-8111-111111111111",
+                      "storeName": "Bánh mì Cô Ba",
+                      "entityType": "STORE_PAYOUT_ACCOUNT",
+                      "entityId": "55555555-5555-4555-8555-555555555555",
+                      "action": "PAYOUT_ACCOUNT_UPDATED",
+                      "actorId": "33333333-3333-4333-8333-333333333333",
+                      "actorLoginIdentifier": "owner@example.test",
+                      "actorDisplayName": "Store Owner",
+                      "actorRole": "OWNER",
+                      "correlationId": "66666666-6666-4666-8666-666666666666",
+                      "occurredAt": "2026-11-28T10:00:00Z",
+                      "before": null,
+                      "after": {
+                        "accountVersion": 1,
+                        "bankCode": "VCB",
+                        "accountNumberMasked": "******7890"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/finance/statistics": {
+      "get": {
+        "operationId": "t85_AdminFinanceStatisticsView",
+        "tags": [
+          "Admin finance"
+        ],
+        "summary": "Reconcile platform and store financial statistics",
+        "description": "ADMIN only, read-only consistent snapshot. UTC inclusive [from,to]. Orders by acceptedAt, completed revenue by completedAt, ledger by occurredAt, statements by confirmedAt, verified payouts by transferredAt (legacy confirmedAt fallback), pending payouts by transferredAt or recorded createdAt. Remaining commitments include all payouts on the selected statements. Role attribution uses current owner/admin membership and historical staff assignments. Bank numbers and credential fields in audit JSON are masked/redacted.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminFinanceStatisticsView"
+                },
+                "example": {
+                  "totalOrderCount": 1,
+                  "orderCountsByStatus": {
+                    "PENDING_PAYMENT": 0,
+                    "CONFIRMED": 0,
+                    "HANDOVER_IN_PROGRESS": 0,
+                    "COMPLETED": 1,
+                    "CANCELLED": 0,
+                    "EXPIRED": 0,
+                    "PENDING_NO_SHOW": 0,
+                    "NO_SHOW": 0
+                  },
+                  "ledger": {
+                    "verifiedCollectedAmount": 60000,
+                    "verifiedRefundedAmount": 0,
+                    "netCashFlowAmount": 60000,
+                    "completedOrderGrossRevenue": 60000,
+                    "grossCommissionAmount": 6000,
+                    "commissionAdjustmentAmount": 0,
+                    "netCommissionAmount": 6000,
+                    "grossStorePayableAmount": 54000,
+                    "storePayableAdjustmentAmount": 0,
+                    "netStorePayableAmount": 54000,
+                    "grossNoShowCompensationAmount": 0,
+                    "noShowAdjustmentAmount": 0,
+                    "netNoShowCompensationAmount": 0,
+                    "totalStoreEntitlementNetAmount": 54000,
+                    "totalLedgerAllocatedAmount": 60000,
+                    "completedOrderCount": 1
+                  },
+                  "settlementAndHold": {
+                    "heldNoShowAmount": 0,
+                    "heldDisputedSalesAmount": 0,
+                    "heldAmount": 0,
+                    "draftUnconfirmedAmount": 0,
+                    "eligibleUnassignedAmount": 54000,
+                    "eligibleUnsettledAmount": 54000,
+                    "confirmedSettledLedgerAmount": 0,
+                    "confirmedSettlementTotalAmount": 0,
+                    "confirmedSettlementPayableAmount": 0,
+                    "confirmedSettlementRecoveryAmount": 0,
+                    "paidOutVerifiedAmount": 0,
+                    "pendingPayoutAmount": 0,
+                    "confirmedRemainingPayableAmount": 0,
+                    "outstandingRecoveryDebtAmount": 0,
+                    "totalEstimatedPayableAmount": 54000,
+                    "confirmedSettlementCount": 0
+                  },
+                  "byStore": [
+                    {
+                      "storeId": "11111111-1111-4111-8111-111111111111",
+                      "storeName": "Bánh mì Cô Ba",
+                      "storeStatus": "ACTIVE",
+                      "totalOrderCount": 1,
+                      "orderCountsByStatus": {
+                        "PENDING_PAYMENT": 0,
+                        "CONFIRMED": 0,
+                        "HANDOVER_IN_PROGRESS": 0,
+                        "COMPLETED": 1,
+                        "CANCELLED": 0,
+                        "EXPIRED": 0,
+                        "PENDING_NO_SHOW": 0,
+                        "NO_SHOW": 0
+                      },
+                      "ledger": {
+                        "verifiedCollectedAmount": 60000,
+                        "verifiedRefundedAmount": 0,
+                        "netCashFlowAmount": 60000,
+                        "completedOrderGrossRevenue": 60000,
+                        "grossCommissionAmount": 6000,
+                        "commissionAdjustmentAmount": 0,
+                        "netCommissionAmount": 6000,
+                        "grossStorePayableAmount": 54000,
+                        "storePayableAdjustmentAmount": 0,
+                        "netStorePayableAmount": 54000,
+                        "grossNoShowCompensationAmount": 0,
+                        "noShowAdjustmentAmount": 0,
+                        "netNoShowCompensationAmount": 0,
+                        "totalStoreEntitlementNetAmount": 54000,
+                        "totalLedgerAllocatedAmount": 60000,
+                        "completedOrderCount": 1
+                      },
+                      "settlementAndHold": {
+                        "heldNoShowAmount": 0,
+                        "heldDisputedSalesAmount": 0,
+                        "heldAmount": 0,
+                        "draftUnconfirmedAmount": 0,
+                        "eligibleUnassignedAmount": 54000,
+                        "eligibleUnsettledAmount": 54000,
+                        "confirmedSettledLedgerAmount": 0,
+                        "confirmedSettlementTotalAmount": 0,
+                        "confirmedSettlementPayableAmount": 0,
+                        "confirmedSettlementRecoveryAmount": 0,
+                        "paidOutVerifiedAmount": 0,
+                        "pendingPayoutAmount": 0,
+                        "confirmedRemainingPayableAmount": 0,
+                        "outstandingRecoveryDebtAmount": 0,
+                        "totalEstimatedPayableAmount": 54000,
+                        "confirmedSettlementCount": 0
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -20162,6 +20664,495 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SettlementSummaryView"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminAuditLogItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "entityType",
+          "entityId",
+          "action",
+          "actorRole",
+          "occurredAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "actorLoginIdentifier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorDisplayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorRole": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before": {},
+          "after": {}
+        }
+      },
+      "MenuItemPriceAuditView": {
+        "type": "object",
+        "required": [
+          "item",
+          "priceHistory",
+          "documents",
+          "packedBoxPriceSummary",
+          "hasPackedPriceMismatch"
+        ],
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/MenuItemView"
+          },
+          "priceHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuPriceAuditHistoryItem"
+            }
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceDocumentView"
+            }
+          },
+          "packedBoxPriceSummary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackedBoxPriceSummaryView"
+            }
+          },
+          "hasPackedPriceMismatch": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MenuPriceAuditHistoryItem": {
+        "type": "object",
+        "required": [
+          "previousPrice",
+          "newPrice",
+          "changedAt",
+          "changedById",
+          "changedByDisplayName",
+          "reason"
+        ],
+        "properties": {
+          "previousPrice": {
+            "type": "integer"
+          },
+          "newPrice": {
+            "type": "integer"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "changedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changedByDisplayName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PackedBoxPriceSummaryView": {
+        "type": "object",
+        "required": [
+          "unitPriceSnapshot",
+          "boxCount",
+          "totalQuantity",
+          "firstPackedAt",
+          "lastPackedAt",
+          "differsFromCurrentListedPrice",
+          "priceDeltaFromCurrentListedPrice"
+        ],
+        "properties": {
+          "unitPriceSnapshot": {
+            "type": "integer"
+          },
+          "boxCount": {
+            "type": "integer"
+          },
+          "totalQuantity": {
+            "type": "integer"
+          },
+          "firstPackedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastPackedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "differsFromCurrentListedPrice": {
+            "type": "boolean"
+          },
+          "priceDeltaFromCurrentListedPrice": {
+            "type": "integer"
+          }
+        }
+      },
+      "StoreMenuPriceAuditView": {
+        "type": "object",
+        "required": [
+          "storeId",
+          "storeName",
+          "storeStatus",
+          "items"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "storeStatus": {
+            "type": "string"
+          },
+          "items": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MenuItemPriceAuditView"
+                }
+              },
+              "page": {
+                "type": "integer"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "totalElements": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "AdminFinanceLedgerStatsView": {
+        "type": "object",
+        "required": [
+          "verifiedCollectedAmount",
+          "verifiedRefundedAmount",
+          "netCashFlowAmount",
+          "completedOrderGrossRevenue",
+          "grossCommissionAmount",
+          "commissionAdjustmentAmount",
+          "netCommissionAmount",
+          "grossStorePayableAmount",
+          "storePayableAdjustmentAmount",
+          "netStorePayableAmount",
+          "grossNoShowCompensationAmount",
+          "noShowAdjustmentAmount",
+          "netNoShowCompensationAmount",
+          "totalStoreEntitlementNetAmount",
+          "totalLedgerAllocatedAmount",
+          "completedOrderCount"
+        ],
+        "properties": {
+          "verifiedCollectedAmount": {
+            "type": "integer"
+          },
+          "verifiedRefundedAmount": {
+            "type": "integer"
+          },
+          "netCashFlowAmount": {
+            "type": "integer"
+          },
+          "completedOrderGrossRevenue": {
+            "type": "integer"
+          },
+          "grossCommissionAmount": {
+            "type": "integer"
+          },
+          "commissionAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netCommissionAmount": {
+            "type": "integer"
+          },
+          "grossStorePayableAmount": {
+            "type": "integer"
+          },
+          "storePayableAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netStorePayableAmount": {
+            "type": "integer"
+          },
+          "grossNoShowCompensationAmount": {
+            "type": "integer"
+          },
+          "noShowAdjustmentAmount": {
+            "type": "integer"
+          },
+          "netNoShowCompensationAmount": {
+            "type": "integer"
+          },
+          "totalStoreEntitlementNetAmount": {
+            "type": "integer"
+          },
+          "totalLedgerAllocatedAmount": {
+            "type": "integer"
+          },
+          "completedOrderCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminFinanceSettlementStatsView": {
+        "type": "object",
+        "required": [
+          "heldNoShowAmount",
+          "heldDisputedSalesAmount",
+          "heldAmount",
+          "draftUnconfirmedAmount",
+          "eligibleUnassignedAmount",
+          "eligibleUnsettledAmount",
+          "confirmedSettledLedgerAmount",
+          "confirmedSettlementTotalAmount",
+          "confirmedSettlementPayableAmount",
+          "confirmedSettlementRecoveryAmount",
+          "paidOutVerifiedAmount",
+          "pendingPayoutAmount",
+          "confirmedRemainingPayableAmount",
+          "outstandingRecoveryDebtAmount",
+          "totalEstimatedPayableAmount",
+          "confirmedSettlementCount"
+        ],
+        "properties": {
+          "heldNoShowAmount": {
+            "type": "integer"
+          },
+          "heldDisputedSalesAmount": {
+            "type": "integer"
+          },
+          "heldAmount": {
+            "type": "integer"
+          },
+          "draftUnconfirmedAmount": {
+            "type": "integer"
+          },
+          "eligibleUnassignedAmount": {
+            "type": "integer"
+          },
+          "eligibleUnsettledAmount": {
+            "type": "integer"
+          },
+          "confirmedSettledLedgerAmount": {
+            "type": "integer"
+          },
+          "confirmedSettlementTotalAmount": {
+            "type": "integer"
+          },
+          "confirmedSettlementPayableAmount": {
+            "type": "integer"
+          },
+          "confirmedSettlementRecoveryAmount": {
+            "type": "integer"
+          },
+          "paidOutVerifiedAmount": {
+            "type": "integer"
+          },
+          "pendingPayoutAmount": {
+            "type": "integer"
+          },
+          "confirmedRemainingPayableAmount": {
+            "type": "integer"
+          },
+          "outstandingRecoveryDebtAmount": {
+            "type": "integer"
+          },
+          "totalEstimatedPayableAmount": {
+            "type": "integer"
+          },
+          "confirmedSettlementCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminFinanceStatisticsView": {
+        "type": "object",
+        "required": [
+          "totalOrderCount",
+          "orderCountsByStatus",
+          "ledger",
+          "settlementAndHold",
+          "byStore"
+        ],
+        "properties": {
+          "scopeStoreId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "totalOrderCount": {
+            "type": "integer"
+          },
+          "orderCountsByStatus": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/AdminFinanceLedgerStatsView"
+          },
+          "settlementAndHold": {
+            "$ref": "#/components/schemas/AdminFinanceSettlementStatsView"
+          },
+          "byStore": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminStoreFinanceStatsItem"
+            }
+          }
+        }
+      },
+      "AdminStoreFinanceStatsItem": {
+        "type": "object",
+        "required": [
+          "storeId",
+          "storeName",
+          "storeStatus",
+          "totalOrderCount",
+          "orderCountsByStatus",
+          "ledger",
+          "settlementAndHold"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "storeStatus": {
+            "type": "string"
+          },
+          "totalOrderCount": {
+            "type": "integer"
+          },
+          "orderCountsByStatus": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/AdminFinanceLedgerStatsView"
+          },
+          "settlementAndHold": {
+            "$ref": "#/components/schemas/AdminFinanceSettlementStatsView"
+          }
+        }
+      },
+      "PageResponseAdminAuditLogItem": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAuditLogItem"
             }
           },
           "page": {
